@@ -1,0 +1,364 @@
+"""Read/write KOI projects as Markdown (AI-friendly, no DB)."""
+
+from __future__ import annotations
+
+import re
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Optional
+
+import yaml
+
+from koi.core.models import (
+    DEFAULT_KANBAN_COLUMNS,
+    LEGACY_COLUMN_PLANNED,
+    ExperimentCard,
+    KanbanBoard,
+    KanbanColumn,
+    MethodResearchQuestion,
+    Node,
+    NodeType,
+    Project,
+    ResearchQuestionCertainty,
+    Verdict,
+)
+
+
+def normalize_kanban_board(board: KanbanBoard) -> KanbanBoard:
+    """Drop legacy ``planned`` column; move its cards to backlog."""
+    for card in board.cards:
+        if card.column_id == LEGACY_COLUMN_PLANNED:
+            card.column_id = "backlog"
+    default_by_id = {c.id: c for c in DEFAULT_KANBAN_COLUMNS}
+    existing = {c.id: c for c in board.columns if c.id != LEGACY_COLUMN_PLANNED}
+    board.columns = [
+        KanbanColumn(
+            id=dc.id,
+            title=existing[dc.id].title if dc.id in existing else dc.title,
+            order=i,
+        )
+        for i, dc in enumerate(DEFAULT_KANBAN_COLUMNS)
+    ]
+    valid_cols = {c.id for c in board.columns}
+    for card in board.cards:
+        if card.column_id not in valid_cols:
+            card.column_id = "backlog"
+    return board
+
+HEADING_RE = re.compile(
+    r"^(#{1,6})\s+(problem|cause|cause_evidence|remediation|method|experiment):\s*(\S+)\s*$",
+    re.IGNORECASE,
+)
+KANBAN_START_RE = re.compile(r"^<!--\s*koi:kanban\s+(\S+)\s*-->\s*$", re.IGNORECASE)
+METHOD_QUESTIONS_START_RE = re.compile(
+    r"^<!--\s*koi:method-questions\s*-->\s*$", re.IGNORECASE
+)
+CARD_META_RE = re.compile(
+    r"^(.*?)(?:\s*<!--\s*id:(\S+)(?:\s+desc:(.*?))?\s*-->)?\s*$",
+    re.DOTALL,
+)
+VERDICT_RE = re.compile(r"^verdict:\s*(open|supported|refuted)\s*$", re.IGNORECASE)
+
+
+def _split_frontmatter(text: str) -> tuple[dict[str, Any], str]:
+    if not text.startswith("---"):
+        return {}, text
+    parts = text.split("---", 2)
+    if len(parts) < 3:
+        return {}, text
+    meta = yaml.safe_load(parts[1]) or {}
+    body = parts[2].lstrip("\n")
+    return meta, body
+
+
+def _parse_method_questions(lines: list[str], start: int) -> tuple[list[MethodResearchQuestion], int]:
+    """Parse YAML list after ``<!-- koi:method-questions -->``."""
+    block: list[str] = []
+    i = start
+    while i < len(lines):
+        line = lines[i]
+        if (
+            HEADING_RE.match(line)
+            or KANBAN_START_RE.match(line)
+            or METHOD_QUESTIONS_START_RE.match(line)
+        ):
+            break
+        if line.strip() == "" and block:
+            break
+        block.append(line)
+        i += 1
+    if not block:
+        return [], i
+    raw = yaml.safe_load("\n".join(block))
+    if not raw:
+        return [], i
+    if not isinstance(raw, list):
+        raw = [raw]
+    questions: list[MethodResearchQuestion] = []
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        certainty_raw = str(item.get("certainty", "definite")).lower()
+        try:
+            certainty = ResearchQuestionCertainty(certainty_raw)
+        except ValueError:
+            certainty = ResearchQuestionCertainty.DEFINITE
+        importance_raw = item.get("importance", 3)
+        try:
+            importance = max(1, min(5, int(importance_raw)))
+        except (TypeError, ValueError):
+            importance = 3
+        card_id_raw = item.get("card_id")
+        card_id = str(card_id_raw).strip() if card_id_raw else None
+        questions.append(
+            MethodResearchQuestion(
+                id=str(item.get("id") or f"rq-{len(questions)}"),
+                question=str(item.get("question") or "").strip(),
+                answer=str(item.get("answer") or "").strip(),
+                narrative=str(item.get("narrative") or "").strip(),
+                certainty=certainty,
+                importance=importance,
+                card_id=card_id or None,
+            )
+        )
+    return [q for q in questions if q.question], i
+
+
+def _parse_kanban_table(lines: list[str], board_id: str, owner_node_id: str) -> KanbanBoard:
+    columns: list[KanbanColumn] = []
+    cards: list[ExperimentCard] = []
+    if len(lines) < 2:
+        return KanbanBoard(
+            id=board_id,
+            owner_node_id=owner_node_id,
+            columns=list(DEFAULT_KANBAN_COLUMNS),
+            cards=[],
+        )
+
+    header_cells = [c.strip().lower() for c in lines[0].strip("|").split("|")]
+    columns = [
+        KanbanColumn(id=cid, title=cid.replace("_", " ").title(), order=i)
+        for i, cid in enumerate(header_cells)
+    ]
+
+    for row_line in lines[2:]:
+        if not row_line.strip().startswith("|"):
+            break
+        cells = [c.strip() for c in row_line.strip("|").split("|")]
+        for col_id, raw in zip(header_cells, cells):
+            if not raw or raw in ("—", "-", ""):
+                continue
+            m = CARD_META_RE.match(raw)
+            title = (m.group(1) if m else raw).strip()
+            card_id = m.group(2) if m and m.group(2) else None
+            desc = (m.group(3) or "").strip() if m and m.group(3) else ""
+            cards.append(
+                ExperimentCard(
+                    id=card_id or f"card-{len(cards)}",
+                    board_id=board_id,
+                    column_id=col_id,
+                    title=title,
+                    description=desc,
+                )
+            )
+
+    return KanbanBoard(id=board_id, owner_node_id=owner_node_id, columns=columns, cards=cards)
+
+
+def _parse_literature_keywords(raw: Any) -> list[str]:
+    if raw is None:
+        return []
+    if isinstance(raw, str):
+        parts = re.split(r"[,;\n]+", raw)
+    elif isinstance(raw, list):
+        parts = [str(item) for item in raw]
+    else:
+        return []
+    return [part.strip() for part in parts if part and part.strip()]
+
+
+def parse_project_md(text: str, project_id: Optional[str] = None) -> Project:
+    meta, body = _split_frontmatter(text)
+    pid = str(meta.get("id") or project_id or "project")
+    project = Project(
+        id=pid,
+        title=str(meta.get("title") or pid),
+        description=str(meta.get("description") or ""),
+        literature_keywords=_parse_literature_keywords(meta.get("literature_keywords")),
+    )
+
+    lines = body.splitlines()
+    stack: list[tuple[int, str]] = []  # (heading_level, node_id)
+    nodes: list[Node] = []
+    boards: list[KanbanBoard] = []
+    i = 0
+
+    while i < len(lines):
+        hm = HEADING_RE.match(lines[i])
+        if hm:
+            level = len(hm.group(1))
+            node_type = NodeType(hm.group(2).lower())
+            node_id = hm.group(3)
+
+            while stack and stack[-1][0] >= level:
+                stack.pop()
+            parent_id = stack[-1][1] if stack else None
+            stack.append((level, node_id))
+
+            i += 1
+            title = ""
+            description_lines: list[str] = []
+            verdict = Verdict.OPEN
+
+            while i < len(lines):
+                if (
+                    HEADING_RE.match(lines[i])
+                    or KANBAN_START_RE.match(lines[i])
+                    or METHOD_QUESTIONS_START_RE.match(lines[i])
+                ):
+                    break
+                line = lines[i]
+                vm = VERDICT_RE.match(line.strip())
+                if vm and not title:
+                    verdict = Verdict(vm.group(1).lower())
+                    i += 1
+                    continue
+                if line.strip() == "" and not title:
+                    i += 1
+                    continue
+                if not title:
+                    title = line.strip()
+                else:
+                    description_lines.append(line)
+                i += 1
+
+            nodes.append(
+                Node(
+                    id=node_id,
+                    project_id=pid,
+                    parent_id=parent_id,
+                    node_type=node_type,
+                    title=title or node_id,
+                    description="\n".join(description_lines).strip(),
+                    verdict=verdict,
+                )
+            )
+            continue
+
+        km = KANBAN_START_RE.match(lines[i])
+        if km and stack:
+            board_id = km.group(1)
+            owner_node_id = stack[-1][1]
+            i += 1
+            table_lines: list[str] = []
+            while i < len(lines) and (
+                lines[i].strip().startswith("|") or lines[i].strip() == ""
+            ):
+                if lines[i].strip().startswith("|"):
+                    table_lines.append(lines[i])
+                i += 1
+            boards.append(_parse_kanban_table(table_lines, board_id, owner_node_id))
+            continue
+
+        qm = METHOD_QUESTIONS_START_RE.match(lines[i])
+        if qm and stack:
+            owner_node_id = stack[-1][1]
+            i += 1
+            questions, i = _parse_method_questions(lines, i)
+            for n in nodes:
+                if n.id == owner_node_id:
+                    n.research_questions = questions
+                    break
+            continue
+
+        i += 1
+
+    project.nodes = nodes
+    project.boards = [normalize_kanban_board(b) for b in boards]
+    return project
+
+
+def _format_card(cell: ExperimentCard) -> str:
+    base = cell.title.replace("|", "\\|")
+    if cell.description or cell.id:
+        desc = cell.description.replace("-->", "→")
+        return f"{base} <!-- id:{cell.id} desc:{desc} -->"
+    return base
+
+
+def _write_kanban(board: KanbanBoard) -> list[str]:
+    cols = board.columns or list(DEFAULT_KANBAN_COLUMNS)
+    col_ids = [c.id for c in cols]
+    lines = [
+        f"<!-- koi:kanban {board.id} -->",
+        "| " + " | ".join(col_ids) + " |",
+        "| " + " | ".join("---" for _ in col_ids) + " |",
+    ]
+    rows: dict[str, list[str]] = {cid: [] for cid in col_ids}
+    for card in board.cards:
+        if card.column_id in rows:
+            rows[card.column_id].append(_format_card(card))
+
+    max_rows = max((len(v) for v in rows.values()), default=0)
+    for r in range(max_rows):
+        cells = []
+        for cid in col_ids:
+            cards_in_col = rows[cid]
+            cells.append(cards_in_col[r] if r < len(cards_in_col) else "")
+        lines.append("| " + " | ".join(cells) + " |")
+    lines.append("")
+    return lines
+
+
+def _children_map(nodes: list[Node]) -> dict[Optional[str], list[Node]]:
+    children: dict[Optional[str], list[Node]] = {}
+    for n in nodes:
+        children.setdefault(n.parent_id, []).append(n)
+    for key in children:
+        children[key].sort(key=lambda x: (x.node_type.value, x.title))
+    return children
+
+
+def serialize_project_md(project: Project) -> str:
+    updated = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    meta = {
+        "id": project.id,
+        "title": project.title,
+        "description": project.description,
+        "updated": updated,
+        "format": "koi/1",
+    }
+    boards_by_owner = {b.owner_node_id: b for b in project.boards}
+    out: list[str] = [
+        "---",
+        yaml.dump(meta, allow_unicode=True, sort_keys=False).strip(),
+        "---",
+        "",
+    ]
+
+    root = next((n for n in project.nodes if n.node_type == NodeType.PROBLEM), None)
+    if not root:
+        return "\n".join(out)
+
+    children = _children_map(project.nodes)
+
+    def walk(node: Node, depth: int) -> None:
+        hashes = "#" * depth
+        out.append(f"{hashes} {node.node_type.value}: {node.id}")
+        out.append("")
+        if node.verdict != Verdict.OPEN:
+            out.append(f"verdict: {node.verdict.value}")
+            out.append("")
+        out.append(node.title)
+        out.append("")
+        if node.description:
+            out.append(node.description)
+            out.append("")
+        board = boards_by_owner.get(node.id)
+        if board:
+            out.extend(_write_kanban(board))
+        for ch in children.get(node.id, []):
+            walk(ch, depth + 1)
+
+    walk(root, 1)
+    return "\n".join(out).rstrip() + "\n"

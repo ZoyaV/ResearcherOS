@@ -1,0 +1,49 @@
+{
+  "bundle_kind": "paper_review",
+  "agent": {
+    "name": "Universal Paper Review Agent",
+    "objective": "Read a literature-review set, retrieve paper text when possible, produce per-paper markdown summaries, and synthesize clusters that answer the research question in different ways.",
+    "inputs": [
+      "A research question",
+      "A project folder with paper stubs or a ranked list of papers",
+      "For each paper: title, arXiv URL, abstract, and optional cached full text"
+    ],
+    "outputs": [
+      "One markdown summary per paper",
+      "One cluster synthesis markdown report",
+      "One machine-readable manifest describing papers, caches, and outputs"
+    ],
+    "workflow": [
+      "Collect candidate papers from an existing review set or from a query-driven ranking step.",
+      "Normalize metadata and extract arXiv identifiers.",
+      "Retrieve full text from cached text or arXiv HTML when available; otherwise fall back to PDF extraction and then abstract-only summarization.",
+      "Summarize each paper with emphasis on how it represents dynamics, what evidence it provides, and why it matters for the research question.",
+      "Propose clusters from the set of summaries by looking for repeated answer patterns to the research question.",
+      "Classify papers into the proposed clusters.",
+      "Write all outputs as plain markdown and JSON so any assistant or editor can inspect or continue the work."
+    ],
+    "rules": [
+      "Prefer deterministic file formats over tool-specific memory.",
+      "Keep prompts model-agnostic and avoid relying on proprietary tool calls.",
+      "If full text is unavailable, say so explicitly and summarize from the abstract instead of hallucinating details.",
+      "Clusters must be phrased as alternative answers or research directions.",
+      "Every generated file should stand alone and be readable without the original chat history."
+    ]
+  },
+  "project_id": "demo-project",
+  "query": "How is dynamics represented?",
+  "review_manifest": "../../../projects/demo-project/paper_reviews/tmptpfzoc8i/index.json",
+  "cluster_report": "../../../projects/demo-project/paper_reviews/tmptpfzoc8i/cluster_directions.md",
+  "paper_summaries": [
+    "../../../projects/demo-project/paper_reviews/tmptpfzoc8i/01_Test_Paper.md"
+  ],
+  "paper_text_caches": [
+    "../../../projects/demo-project/paper_reviews/tmptpfzoc8i/texts/2401.12345.txt"
+  ],
+  "paper_html_caches": [
+    "../../../projects/demo-project/paper_reviews/tmptpfzoc8i/htmls/2401.12345.html"
+  ],
+  "paper_pdf_caches": [
+    "../../../projects/demo-project/paper_reviews/tmptpfzoc8i/pdfs/2401.12345.pdf"
+  ]
+}

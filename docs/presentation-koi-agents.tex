@@ -1,0 +1,185 @@
+\documentclass[aspectratio=169,11pt]{beamer}
+\usetheme{Madrid}
+\usecolortheme{whale}
+\usepackage[utf8]{inputenc}
+\usepackage[russian]{babel}
+\usepackage{booktabs}
+\usepackage{listings}
+\lstset{basicstyle=\ttfamily\small, breaklines=true}
+
+\title{ResearchOS (KOI):\\агент как штатный исследователь}
+\subtitle{Опыт разработки платформы с Claude / Cursor / Codex}
+\author{...}
+\institute{...}
+\date{\today}
+
+\begin{document}
+
+% --- Титул ---
+\begin{frame}
+  \titlepage
+\end{frame}
+
+% --- Архитектура ---
+\begin{frame}{Идея за 30 секунд}
+  \begin{center}
+    \small
+    ПРОБЛЕМА $\rightarrow$ гипотезы $\rightarrow$ методы $\rightarrow$ канбан\\
+    $\rightarrow$ отчёт $\rightarrow$ вердикт + инсайты $\rightarrow$ база знаний
+  \end{center}
+  \vspace{0.5em}
+  \begin{block}{Ключевой принцип}
+    Знание рождается только из эксперимента с \textbf{заранее заданным правилом решения}.
+    Вердикт --- подстановка чисел, не «впечатление» модели.
+  \end{block}
+  \begin{itemize}
+    \item Хранение: Markdown-файлы, без БД
+    \item UI: локальный редактор \texttt{project.md} / отчётов / канбана
+    \item Агент IDE --- исполнитель по умолчанию
+  \end{itemize}
+\end{frame}
+
+% --- Инсайт 1 ---
+\begin{frame}{Инсайт 1: портирование скиллов}
+  \begin{block}{Можно портировать скиллы между Claude / Cursor / Codex}
+    \texttt{SKILL.md} --- универсальный формат плейбука;\\
+    \texttt{AGENTS.md} --- единая точка входа для любого агентного IDE.
+  \end{block}
+  \begin{itemize}
+    \item Плейбуки в \texttt{.cursor/skills/} \textbf{не привязаны к Cursor}
+    \item Агент адаптирует пути и команды под свою среду
+    \item Один репозиторий --- одинаковые workflow для всей команды
+  \end{itemize}
+\end{frame}
+
+% --- Инсайт 2 ---
+\begin{frame}{Инсайт 2: децентрализованная синхронизация}
+  \begin{block}{Git + агент вместо общего хоста}
+    У каждого --- свой локальный инстанс (localhost:8080),\\
+    данные проектов синхронизируются через git по инициативе агента.
+  \end{block}
+  \begin{itemize}
+    \item Синхронизируется только \texttt{projects/<id>/}
+    \item Скилл \texttt{koi-project-sync}: pull при старте, push значимых изменений
+    \item Хуки \texttt{sessionStart} / \texttt{stop} --- без отдельного CI
+  \end{itemize}
+\end{frame}
+
+% --- Инсайт 3 ---
+\begin{frame}{Инсайт 3: веб-платформа без API агента}
+  \begin{block}{Hooks + inbox + файловая очередь}
+    UI $\rightarrow$ \texttt{agent-chat-queue.json} $\rightarrow$ watcher $\rightarrow$ агент $\rightarrow$ ответ в UI
+  \end{block}
+  \begin{tabular}{lccc}
+    \toprule
+    Режим & Задержка & API & Один чат \\
+    \midrule
+    Inbox-чат & $\sim$1--3\,с & нет & да \\
+    Hooks & до минут & нет & нет \\
+    Фоновый API & $\sim$5\,с & да & нет \\
+    \bottomrule
+  \end{tabular}
+  \vspace{0.5em}
+  \small Inbox: JSON-очередь $\rightarrow$ \texttt{koi\_agent\_chat\_inbox.py pending} $\rightarrow$ скиллы \texttt{koi-agent-chat} / \texttt{koi-related-work}
+\end{frame}
+
+% --- Инсайт 4 ---
+\begin{frame}{Инсайт 4: разделение интеллекта и транспорта}
+  \begin{columns}[T]
+    \column{0.48\textwidth}
+    \textbf{Агент делает:}
+    \begin{itemize}
+      \item эксперимент
+      \item анализ и синтез
+      \item курирование знаний
+      \item ответы в чате UI
+    \end{itemize}
+    \column{0.48\textwidth}
+    \textbf{Код делает:}
+    \begin{itemize}
+      \item валидация формата отчёта
+      \item idempotent ingest
+      \item пересборка \texttt{KNOWLEDGE.md}
+      \item очереди и хуки
+    \end{itemize}
+  \end{columns}
+  \vspace{0.5em}
+  \begin{alertblock}{Форматные ворота}
+    Невалидный \texttt{.run.md} отбраковывается целиком --- состояние не меняется.
+  \end{alertblock}
+\end{frame}
+
+% --- Инсайт 5 ---
+\begin{frame}{Инсайт 5: двухслойная база знаний}
+  \begin{block}{Автоген (правила)}
+    \texttt{KNOWLEDGE.md}, \texttt{hypotheses.md}, \texttt{KNOWLEDGE\_LOG.md}\\
+    Точно, плоско, пересобирается при каждом save
+  \end{block}
+  \begin{block}{Курируемый слой (агент)}
+    \texttt{projects/<id>/knowledge/*.md}\\
+    Кросс-анализ: связки, противоречия, пределы применимости, открытые вопросы
+  \end{block}
+  \small Агент в чате сначала читает \texttt{research.json}, отчёты --- только если не хватает деталей.
+\end{frame}
+
+% --- Инсайт 6 ---
+\begin{frame}{Инсайт 6: файловые очереди как оркестратор}
+  \begin{itemize}
+    \item \texttt{agent-chat-queue.json} --- вопросы из UI
+    \item done-research queue --- карточки, ждущие вывода
+    \item sync-push queue --- что коммитить в git
+  \end{itemize}
+  \vspace{0.5em}
+  При старте сессии агент:
+  \begin{enumerate}
+    \item pull (синхронизация)
+    \item проверка всех очередей
+    \item (опционально) старт dev-сервера
+  \end{enumerate}
+  \vspace{0.5em}
+  \textbf{Нет центрального планировщика} --- только файлы + хуки + дисциплина агента.
+\end{frame}
+
+% --- Инсайт 7 ---
+\begin{frame}{Инсайт 7: агент как QA UI}
+  \begin{itemize}
+    \item Скилл \texttt{koi-ui-design-review}: линт, design tokens, a11y
+    \item Скилл \texttt{koi-visual-qa}: скриншоты, регресс mindmap/канбана/модалок
+    \item Агент проверяет UI, который сам же и пишет
+  \end{itemize}
+\end{frame}
+
+% --- Инсайт 8 ---
+\begin{frame}{Инсайт 8: graceful degradation}
+  \begin{block}{Клон без облачного бэкенда --- нормальный случай}
+    \texttt{koi\_check\_hypothesis.py} недоступен $\Rightarrow$ агент сам:
+  \end{block}
+  \begin{enumerate}
+    \item проводит эксперимент локально
+    \item заполняет шаблон \texttt{experiment-report.md}
+    \item \texttt{--ingest-only} (сначала \texttt{--dry-run})
+  \end{enumerate}
+  Репозиторий спроектирован так, чтобы \textbf{агент IDE заменял серверный воркер}.
+\end{frame}
+
+% --- Выводы ---
+\begin{frame}{Выводы}
+  \begin{enumerate}
+    \item \textbf{MD + git + очереди} --- минимальный стек интеграции агентов
+    \item \textbf{Скиллы} --- переносимые плейбуки, не привязка к одному IDE
+    \item \textbf{Форматные ворота} --- LLM не пишет в БЗ напрямую
+    \item \textbf{Агент = исследователь + синхронизатор + QA}, код = транспорт
+    \item \textbf{Локальный хост + git} --- командная работа без общего сервера
+  \end{enumerate}
+\end{frame}
+
+% --- Демо (опционально) ---
+\begin{frame}{Демо (если есть время)}
+  \begin{itemize}
+    \item Карта гипотез + канбан на localhost:8080
+    \item Панель «Спросить агента» $\rightarrow$ Inbox-чат
+    \item База знаний: вердикты, инсайты, журнал пополнений
+  \end{itemize}
+\end{frame}
+
+\end{document}

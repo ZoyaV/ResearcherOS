@@ -1,0 +1,258 @@
+/** API base URL: same port via /api proxy (koi_web_proxy.py), else direct :8010. */
+export function apiBase() {
+  if (typeof window === "undefined" || !window.location?.hostname) {
+    return "http://127.0.0.1:8010";
+  }
+  const { protocol, hostname, port } = window.location;
+  if (port === "8080" || port === "" || port === "80") {
+    return `${protocol}//${hostname}${port ? `:${port}` : ""}/api`;
+  }
+  return `${protocol}//${hostname}:8010`;
+}
+
+export const API_BASE = apiBase();
+
+/** GET, возвращающий сырой текст (markdown базы знаний). */
+async function apiText(path) {
+  const res = await fetch(`${apiBase()}${path}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || res.statusText);
+  }
+  return res.text();
+}
+
+async function api(path, options = {}) {
+  const res = await fetch(`${apiBase()}${path}`, {
+    headers: { "Content-Type": "application/json", ...options.headers },
+    ...options,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    const detail = err.detail || res.statusText;
+    if (res.status === 404 && String(path).includes("/review-agent")) {
+      throw new Error(
+        "Review Agent API route was not found. Restart KOI so the backend picks up the new endpoint."
+      );
+    }
+    throw new Error(detail);
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+export const KoiApi = {
+  health: () => api("/health"),
+  translateToEnglish: (text) =>
+    api("/agent/translate-to-english", {
+      method: "POST",
+      body: JSON.stringify({ text }),
+    }),
+  libraryStatus: () => api("/library/status"),
+  searchLibrary: (query, limit = 10) =>
+    api("/library/search", {
+      method: "POST",
+      body: JSON.stringify({ query, limit }),
+    }),
+  searchInternet: (query, limit = 10) =>
+    api("/library/search-internet", {
+      method: "POST",
+      body: JSON.stringify({ query, limit }),
+    }),
+  discoverLibrary: (query, limit = 10) =>
+    api("/library/discover", {
+      method: "POST",
+      body: JSON.stringify({ query, limit }),
+    }),
+  uploadLibrary: async (file) => {
+    const fd = new FormData();
+    fd.append("file", file, file.name || "library.csv");
+    const res = await fetch(`${apiBase()}/library/upload`, {
+      method: "POST",
+      body: fd,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      const detail = err.detail;
+      const msg = Array.isArray(detail)
+        ? detail.map((d) => d.msg || JSON.stringify(d)).join("; ")
+        : detail || res.statusText;
+      throw new Error(msg || "Upload failed");
+    }
+    return res.json();
+  },
+  addPaperReviewToProject: (projectId, query, limit = 10, papers = []) =>
+    api(`/projects/${projectId}/paper-reviews`, {
+      method: "POST",
+      body: JSON.stringify({ query, limit, papers }),
+    }),
+  runReviewAgent: (
+    projectId,
+    { query = "", limit = 10, refresh = false, download_pdfs = true, papers = [] } = {}
+  ) =>
+    api(`/projects/${projectId}/review-agent`, {
+      method: "POST",
+      body: JSON.stringify({ query, limit, refresh, download_pdfs, papers }),
+    }),
+  runPaperQuestionAgent: (
+    projectId,
+    { question = "", limit = 10, refresh = false, download_pdfs = true, papers = [] } = {}
+  ) =>
+    api(`/projects/${projectId}/paper-question-agent`, {
+      method: "POST",
+      body: JSON.stringify({ question, limit, refresh, download_pdfs, papers }),
+    }),
+  generateRelatedWorks: (projectId, { problem = "", cluster_keys = [] } = {}) =>
+    api(`/projects/${projectId}/paper-question-agent/related-works`, {
+      method: "POST",
+      body: JSON.stringify({ problem, cluster_keys }),
+    }),
+  getRelatedWorkItem: (itemId) => api(`/related-works/${encodeURIComponent(itemId)}`),
+  claimRelatedWorkItem: (itemId) =>
+    api(`/related-works/${encodeURIComponent(itemId)}/claim`, { method: "POST" }),
+  listRelatedWorks: (projectId) =>
+    api(`/projects/${encodeURIComponent(projectId)}/related-works`),
+  getLatestPaperQuestionAgentRun: (projectId) =>
+    api(`/projects/${projectId}/paper-question-agent/latest`),
+  createReviewSet: (query, limit = 10, papers = []) =>
+    api("/library/review-set", {
+      method: "POST",
+      body: JSON.stringify({ query, limit, papers }),
+    }),
+  listProjects: () => api("/projects"),
+  listProjectsGrouped: () => api("/projects/grouped"),
+  listPrograms: () => api("/programs"),
+  createProgram: (title, description = "") =>
+    api("/programs", {
+      method: "POST",
+      body: JSON.stringify({ title, description }),
+    }),
+  getProgram: (id) => api(`/programs/${id}`),
+  getLaboratory: () => api("/laboratory"),
+  getProject: (id) => api(`/projects/${id}`),
+  getKanbanRunningActivity: (id) => api(`/projects/${id}/kanban/running-activity`),
+  getCardLive: (projectId, boardId, cardId, tailLines = 100) =>
+    api(
+      `/projects/${projectId}/boards/${boardId}/cards/${cardId}/live?tail_lines=${tailLines}`
+    ),
+  liveFileUrl: (projectId, path) => {
+    const q = encodeURIComponent(String(path || ""));
+    return `${apiBase()}/projects/${encodeURIComponent(projectId)}/live/file?path=${q}`;
+  },
+  createProject: ({ title, description, tag, programId, programTitle }) =>
+    api("/projects", {
+      method: "POST",
+      body: JSON.stringify({
+        title,
+        description: description || "",
+        tag,
+        program_id: programId || undefined,
+        program_title: programTitle || undefined,
+      }),
+    }),
+  saveProject: (id, project) =>
+    api(`/projects/${id}`, { method: "PUT", body: JSON.stringify(project) }),
+  addNode: (projectId, body) =>
+    api(`/projects/${projectId}/nodes`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  patchNode: (projectId, nodeId, body) =>
+    api(`/projects/${projectId}/nodes/${nodeId}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteNode: (projectId, nodeId) =>
+    api(`/projects/${projectId}/nodes/${nodeId}`, { method: "DELETE" }),
+  addCard: (projectId, boardId, body) =>
+    api(`/projects/${projectId}/boards/${boardId}/cards`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  patchCard: (projectId, boardId, cardId, body) =>
+    api(`/projects/${projectId}/boards/${boardId}/cards/${cardId}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteCard: (projectId, boardId, cardId) =>
+    api(`/projects/${projectId}/boards/${boardId}/cards/${cardId}`, {
+      method: "DELETE",
+    }),
+  getCardReport: (projectId, boardId, cardId) =>
+    api(`/projects/${projectId}/boards/${boardId}/cards/${cardId}/report`),
+  getCardReportPath: (projectId, boardId, cardId) =>
+    api(`/projects/${projectId}/boards/${boardId}/cards/${cardId}/report-path`),
+  saveCardReport: (projectId, boardId, cardId, content) =>
+    api(`/projects/${projectId}/boards/${boardId}/cards/${cardId}/report`, {
+      method: "PUT",
+      body: JSON.stringify({ content }),
+    }),
+  uploadReportAsset: async (projectId, boardId, cardId, file) => {
+    const fd = new FormData();
+    fd.append("file", file, file.name || "paste.png");
+    const res = await fetch(
+      `${apiBase()}/projects/${projectId}/boards/${boardId}/cards/${cardId}/report/assets`,
+      { method: "POST", body: fd }
+    );
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      const detail = err.detail;
+      const msg = Array.isArray(detail)
+        ? detail.map((d) => d.msg || JSON.stringify(d)).join("; ")
+        : detail || res.statusText;
+      throw new Error(msg || "Upload failed");
+    }
+    return res.json();
+  },
+  reportAssetUrl: (projectId, boardId, cardId, markdownPath) => {
+    const name = String(markdownPath || "")
+      .replace(/^assets\//, "")
+      .replace(/^\/+/, "");
+    return `${apiBase()}/projects/${projectId}/boards/${boardId}/cards/${cardId}/report/assets/${encodeURIComponent(name)}`;
+  },
+  generatePaper: (projectId) =>
+    api(`/projects/${projectId}/paper`, { method: "POST" }),
+  getPaperStatus: (projectId) => api(`/projects/${projectId}/paper/status`),
+  paperPdfUrl: (projectId) => `${apiBase()}/projects/${projectId}/paper/pdf`,
+  paperTexUrl: (projectId) => `${apiBase()}/projects/${projectId}/paper/tex`,
+  getKnowledge: (projectId) => apiText(`/projects/${projectId}/knowledge`),
+  getKnowledgeSummary: (projectId) => api(`/projects/${projectId}/knowledge/summary`),
+  getKnowledgeLog: (projectId) => apiText(`/projects/${projectId}/knowledge/log`),
+  getKnowledgeFile: (projectId, path) =>
+    apiText(`/projects/${projectId}/knowledge/file?path=${encodeURIComponent(path)}`),
+  knowledgeAssetUrl: (projectId, path) =>
+    `${apiBase()}/projects/${projectId}/knowledge/asset?path=${encodeURIComponent(path)}`,
+  sendAgentQuestion: (body) =>
+    api("/agent-chat", { method: "POST", body: JSON.stringify(body) }),
+  listAgentChat: (projectId) =>
+    api(`/agent-chat?project_id=${encodeURIComponent(projectId)}`),
+  listAgentChatPending: () => api("/agent-chat/pending"),
+  deleteAgentChatItem: (itemId) =>
+    api(`/agent-chat/${encodeURIComponent(itemId)}`, { method: "DELETE" }),
+  getSyncStatus: () => api("/sync/status"),
+  pullSync: () => api("/sync/pull", { method: "POST" }),
+  getProjectDiscovery: (since = 0) =>
+    api(`/sync/project-discovery?since=${encodeURIComponent(since)}`),
+  getRqDiscoveries: () => api("/sync/rq-discoveries"),
+  getRqDiscoveriesFeed: (limit = 50) =>
+    api(`/sync/rq-discoveries/feed?limit=${encodeURIComponent(limit)}`),
+  ackRqDiscoveries: () => api("/sync/rq-discoveries/ack", { method: "POST" }),
+  getSettings: () => api("/settings"),
+  setInboxConfigured: (configured = true, inboxKind = "chat") =>
+    api("/settings/inbox-configured", {
+      method: "PUT",
+      body: JSON.stringify({ configured, inbox_kind: inboxKind }),
+    }),
+  saveCursorApiKey: (cursor_api_key) =>
+    api("/settings/cursor-api-key", {
+      method: "PUT",
+      body: JSON.stringify({ cursor_api_key }),
+    }),
+  saveAgentChatSettings: (body) =>
+    api("/settings/agent-chat", {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  baseUrl: apiBase,
+  meta: () => api("/meta/node-types"),
+};

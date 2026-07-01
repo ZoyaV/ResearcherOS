@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": ".cursor/hooks/koi-session-start.sh"
+      },
+      {
+        "command": ".cursor/hooks/koi-project-sync-session.sh"
+      },
+      {
+        "command": ".cursor/hooks/koi-agent-chat-session.sh"
+      },
+      {
+        "command": ".cursor/hooks/koi-done-research-session.sh"
+      }
+    ],
+    "stop": [
+      {
+        "command": ".cursor/hooks/koi-agent-chat-stop.sh",
+        "loop_limit": 10
+      },
+      {
+        "command": ".cursor/hooks/koi-done-research-stop.sh",
+        "loop_limit": 10
+      },
+      {
+        "command": ".cursor/hooks/koi-project-sync-stop.sh",
+        "loop_limit": 10
+      }
+    ]
+  }
+}

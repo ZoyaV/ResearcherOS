@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ResearchOS — RelatedWork</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=20260622x" />
+  <script>
+    (function () {
+      var t = localStorage.getItem("koi-theme");
+      if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+    })();
+  </script>
+</head>
+<body class="rw-body">
+  <header class="topbar">
+    <div class="topbar-row">
+      <div class="brand">
+        <span class="logo">ResearchOS</span>
+        <span class="tagline" id="brand-tagline" aria-live="polite"></span>
+      </div>
+      <div class="toolbar">
+        <a href="tour.html" class="btn btn-tour" title="Интерактивная презентация о платформе">О платформе</a>
+        <a href="index.html" class="btn">Main Workspace</a>
+        <button type="button" id="btn-rw-settings" class="btn btn-settings" title="Настройки поиска" aria-label="Настройки поиска">
+          <svg class="settings-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.07 7.07 0 0 0-1.63-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.63.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87a.49.49 0 0 0 .12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.04.71 1.63.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.63-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 15.6 12 3.6 3.6 0 0 1 12 15.6z"/></svg>
+        </button>
+        <button type="button" id="btn-theme" class="btn btn-theme" title="Светлая тема" aria-label="Переключить тему">
+          <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"/><path fill="currentColor" d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+          <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 14.5A8.5 8.5 0 0 1 9.5 3 7 7 0 1 0 21 14.5z"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="rw-page" id="rw-page">
+    <header class="rw-project-banner hidden" id="rw-project-banner" aria-label="Текущий проект">
+      <p class="literature-panel-kicker">Обзор литературы</p>
+      <h1 class="rw-project-banner__title" id="rw-project-banner-title"></h1>
+      <a href="index.html" id="rw-project-banner-back" class="rw-project-banner__back">← Вернуться в проект</a>
+    </header>
+    <div class="rw-workspace" id="rw-workspace">
+      <section class="rw-search-column" id="rw-search-column" aria-label="Поиск литературы">
+        <div class="rw-browser" id="rw-browser">
+          <form id="literature-search-form" class="rw-search-form">
+            <div class="rw-search-bar">
+              <label class="sr-only" for="literature-query">Исследовательский вопрос</label>
+              <input
+                id="literature-query"
+                class="rw-search-input"
+                type="text"
+                autocomplete="off"
+                placeholder="Введите вопрос — статьи ищем по ключевым словам проекта, кластеры — по вопросу…"
+              />
+              <button type="submit" id="literature-search-button" class="rw-search-submit btn btn-primary" aria-label="Сгенерировать">
+                <svg class="rw-search-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+                <span class="rw-search-submit-label">Сгенерировать</span>
+              </button>
+            </div>
+          </form>
+          <div id="rw-loader" class="koi-loader rw-loader hidden" aria-live="polite" aria-busy="false">
+            <div class="koi-loader__viz" aria-hidden="true">
+              <div class="koi-loader__ring"></div>
+              <div class="koi-loader__ring koi-loader__ring--delay"></div>
+              <span class="koi-loader__dot koi-loader__dot--a"></span>
+              <span class="koi-loader__dot koi-loader__dot--b"></span>
+              <span class="koi-loader__dot koi-loader__dot--c"></span>
+              <div class="koi-loader__center">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                  <path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2.5L18.5 10H13V4.5zM8 13h8v2H8v-2zm0 4h5v2H8v-2z"/>
+                </svg>
+              </div>
+            </div>
+            <p id="rw-loader-step" class="koi-loader__step">Подготовка…</p>
+            <p class="koi-loader__hint" aria-hidden="true"></p>
+          </div>
+          <p id="literature-search-status" class="rw-search-status"></p>
+        </div>
+
+        <div id="literature-results-wrap" class="rw-results-wrap hidden">
+          <div class="literature-selection-toolbar">
+            <div class="literature-selection-meta">
+              <strong>Найденные статьи</strong>
+              <span id="literature-selection-summary">Нет статей.</span>
+            </div>
+            <div class="literature-selection-actions">
+              <button type="button" id="literature-select-all" class="btn btn-small">Выбрать все</button>
+              <button type="button" id="literature-clear-selection" class="btn btn-small">Сбросить</button>
+            </div>
+          </div>
+          <div id="literature-results" class="literature-results" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <div class="rw-split-divider hidden" id="rw-split-divider" aria-hidden="true"></div>
+
+      <aside class="rw-insights-column hidden" id="rw-insights-column" aria-label="Кластеры и Related Work">
+        <header class="rw-pane-header rw-insights-header">
+          <div>
+            <p class="literature-panel-kicker">Кластеры</p>
+            <h2 class="rw-pane-title">Группы ответов по статьям</h2>
+          </div>
+        </header>
+
+        <div class="rw-stats-row">
+          <div class="rw-cluster-stats hidden" id="rw-cluster-stats" aria-live="polite">
+            <div class="rw-stat">
+              <span class="rw-stat-value" id="rw-stat-articles">0</span>
+              <span class="rw-stat-label">статей</span>
+            </div>
+            <div class="rw-stat">
+              <span class="rw-stat-value" id="rw-stat-clusters">0</span>
+              <span class="rw-stat-label">кластеров</span>
+            </div>
+          </div>
+          <button type="button" id="related-works-generate" class="btn btn-primary rw-related-btn" disabled title="Сгенерировать Related Work">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+            Related Work
+          </button>
+        </div>
+        <div class="rw-inbox-status-row">
+          <div id="rw-inbox-indicator" class="rw-inbox-indicator hidden" aria-live="polite" role="button" tabindex="0" title="Статус Literature Inbox">
+            <span class="rw-inbox-dot" id="rw-inbox-dot" aria-hidden="true"></span>
+            <span id="rw-inbox-indicator-text"></span>
+          </div>
+          <button type="button" id="rw-inbox-restart" class="btn btn-small rw-inbox-restart-btn hidden" title="Сбросить настройку Inbox и скопировать сообщение заново">Перезапустить Inbox</button>
+        </div>
+
+        <div id="rw-inbox-message" class="rw-inbox-message rw-literature-inbox-setup hidden">
+          <p class="rw-inbox-message-label">Literature Inbox не настроен</p>
+          <p class="rw-inbox-message-hint">Скопируйте bootstrap → чат <strong>ResearchOS Literature Inbox</strong> → настройте loop (<code>tail -f</code> лога или <code>/loop 15s</code>) → «Inbox готов».</p>
+          <div class="rw-inbox-message-actions">
+            <button type="button" id="rw-inbox-message-copy" class="btn btn-primary btn-small">Скопировать</button>
+            <button type="button" id="rw-inbox-mark-configured" class="btn btn-small" disabled title="Сначала скопируйте сообщение и вставьте в Cursor">Inbox готов</button>
+            <button type="button" id="rw-inbox-reset-configured" class="btn btn-small hidden">Перезапустить</button>
+          </div>
+          <p id="rw-inbox-message-status" class="agent-chat-inbox-copy-status"></p>
+        </div>
+
+        <div class="rw-related-pane hidden" id="rw-related-pane">
+          <p class="literature-panel-kicker">Related Work</p>
+          <div id="rw-related-waiting" class="rw-related-waiting hidden" aria-live="polite">
+            <div id="rw-related-queue-panel" class="rw-related-queue-panel hidden">
+              <div class="rw-related-queue-panel__row">
+                <div class="koi-loader koi-loader--compact koi-loader--warm" aria-hidden="true">
+                  <div class="koi-loader__viz">
+                    <div class="koi-loader__ring"></div>
+                    <div class="koi-loader__ring koi-loader__ring--delay"></div>
+                    <span class="koi-loader__dot koi-loader__dot--a"></span>
+                    <span class="koi-loader__dot koi-loader__dot--b"></span>
+                    <span class="koi-loader__dot koi-loader__dot--c"></span>
+                    <div class="koi-loader__center">
+                      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                        <path fill="currentColor" d="M12 22c5.52 0 10-4.48 10-10S17.52 2 12 2 2 6.48 2 12s4.48 10 10 10zm0-2a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm.5-13H11v6l4.75 2.85.75-1.23-4-2.35V7z"/>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <p class="rw-related-queue-panel__title">Ждём агента</p>
+                  <p id="rw-related-queue-hint" class="koi-loader__hint koi-loader__hint--panel"></p>
+                </div>
+              </div>
+            </div>
+            <div id="rw-related-agent-panel" class="rw-related-agent-panel hidden" aria-live="polite">
+              <div class="rw-related-agent-panel__row">
+                <div class="koi-loader koi-loader--compact" aria-hidden="true">
+                  <div class="koi-loader__viz">
+                    <div class="koi-loader__ring"></div>
+                    <div class="koi-loader__ring koi-loader__ring--delay"></div>
+                    <span class="koi-loader__dot koi-loader__dot--a"></span>
+                    <span class="koi-loader__dot koi-loader__dot--b"></span>
+                    <span class="koi-loader__dot koi-loader__dot--c"></span>
+                    <div class="koi-loader__center">
+                      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                        <path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2.5L18.5 10H13V4.5zM8 13h8v2H8v-2zm0 4h8v2H8v-2z"/>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <p class="rw-related-agent-panel__title">Агент работает</p>
+                  <p id="rw-related-agent-hint" class="koi-loader__hint koi-loader__hint--panel">Related Work в процессе</p>
+                </div>
+              </div>
+            </div>
+            <p id="rw-related-waiting-lead" class="rw-related-waiting-lead hidden">Агент ждёт запрос</p>
+            <p id="rw-related-waiting-hint" class="rw-related-waiting-hint hidden">Скопируйте сообщение в ResearchOS Literature Inbox — ответ появится здесь.</p>
+            <div id="rw-related-waiting-actions" class="rw-related-waiting-actions hidden">
+              <button type="button" id="rw-related-waiting-copy" class="btn btn-primary btn-small">Скопировать сообщение</button>
+            </div>
+            <p class="rw-related-waiting-timer-row rw-related-waiting-timer-label hidden">Прошло: <span id="rw-related-waiting-timer" class="rw-related-waiting-timer">00:00</span></p>
+          </div>
+          <p id="related-works-status" class="rw-pane-meta rw-related-status hidden"></p>
+          <div id="rw-related-loader" class="koi-loader rw-loader rw-loader--compact hidden" aria-live="polite">
+            <div class="koi-loader__viz" aria-hidden="true">
+              <div class="koi-loader__ring"></div>
+              <div class="koi-loader__ring koi-loader__ring--delay"></div>
+              <span class="koi-loader__dot koi-loader__dot--a"></span>
+              <span class="koi-loader__dot koi-loader__dot--b"></span>
+              <span class="koi-loader__dot koi-loader__dot--c"></span>
+              <div class="koi-loader__center">
+                <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                  <path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 2.5L18.5 10H13V4.5zM8 13h8v2H8v-2zm0 4h8v2H8v-2z"/>
+                </svg>
+              </div>
+            </div>
+            <p id="rw-related-loader-step" class="koi-loader__step">Генерация Related Work…</p>
+            <p class="koi-loader__hint" aria-hidden="true"></p>
+          </div>
+          <div id="related-works-output" class="rw-related-output" aria-live="polite"></div>
+        </div>
+
+        <div class="rw-clusters-pane" id="rw-clusters-pane">
+          <div id="literature-agent-results" class="literature-agent-results" aria-live="polite">
+            <p class="literature-empty">Запустите генерацию, чтобы увидеть кластеры.</p>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <div id="cluster-modal" class="modal hidden" aria-hidden="true">
+    <div class="modal-backdrop" data-close="cluster-modal"></div>
+    <section class="modal-panel modal-panel--cluster" role="dialog" aria-modal="true" aria-labelledby="cluster-modal-title">
+      <button type="button" class="modal-close" data-close="cluster-modal" aria-label="Close cluster details">✕</button>
+      <p class="modal-type">Proposed Cluster</p>
+      <h2 id="cluster-modal-title">Cluster details</h2>
+      <div id="cluster-modal-content" class="cluster-modal-content"></div>
+    </section>
+  </div>
+
+  <div id="rw-settings-modal" class="modal hidden" aria-hidden="true">
+    <div class="modal-backdrop" data-close="rw-settings-modal"></div>
+    <section class="modal-panel modal-panel--settings" role="dialog" aria-modal="true" aria-labelledby="rw-settings-title">
+      <button type="button" class="modal-close" data-close="rw-settings-modal" aria-label="Закрыть настройки">✕</button>
+      <p class="modal-type">Настройки поиска</p>
+      <h2 id="rw-settings-title">Источники и параметры</h2>
+
+      <div class="rw-settings-section">
+        <h3>Источник статей</h3>
+        <div class="rw-settings-radios" role="radiogroup" aria-label="Источник поиска">
+          <label class="rw-settings-radio">
+            <input type="radio" name="rw-search-mode" value="local" />
+            <span><strong>Своя база</strong> — поиск по загруженному CSV</span>
+          </label>
+          <label class="rw-settings-radio">
+            <input type="radio" name="rw-search-mode" value="internet" />
+            <span><strong>Интернет (arXiv)</strong> — прямой поиск без агента</span>
+          </label>
+          <label class="rw-settings-radio">
+            <input type="radio" name="rw-search-mode" value="both" />
+            <span><strong>Оба</strong> — сначала своя база, затем дополнение из интернета</span>
+          </label>
+        </div>
+        <p id="rw-library-status" class="rw-settings-hint">Проверка библиотеки…</p>
+      </div>
+
+      <div class="rw-settings-section">
+        <h3>Своя база</h3>
+        <p class="rw-settings-hint">CSV с колонками: <code>no</code>, <code>arxiv_url</code>, <code>title</code>, <code>authors</code>, <code>abstract</code>.</p>
+        <label class="library-upload-picker" for="library-upload-input">
+          <input type="file" id="library-upload-input" accept=".csv,text/csv" />
+          <span id="library-upload-filename">Выберите CSV с компьютера</span>
+        </label>
+        <div class="rw-settings-actions">
+          <button type="button" id="library-upload-submit" class="btn btn-small">Загрузить CSV</button>
+          <button type="button" id="library-agent-bootstrap-submit" class="btn btn-small">Обновить базу через агента</button>
+        </div>
+        <p id="library-upload-status" class="library-upload-status">Файл не выбран.</p>
+        <p id="library-agent-bootstrap-status" class="library-upload-status"></p>
+      </div>
+
+      <div class="rw-settings-section">
+        <h3>Zotero</h3>
+        <p class="rw-settings-hint">Подключите библиотеку Zotero — синхронизация коллекций в разработке.</p>
+        <label class="rw-settings-field" for="rw-zotero-user-id">
+          <span>Zotero User ID</span>
+          <input type="text" id="rw-zotero-user-id" placeholder="Например: 12345678" autocomplete="off" />
+        </label>
+        <label class="rw-settings-field" for="rw-zotero-api-key">
+          <span>API Key (read-only)</span>
+          <input type="password" id="rw-zotero-api-key" placeholder="Ключ из zotero.org/settings/keys" autocomplete="off" />
+        </label>
+        <p id="rw-zotero-status" class="rw-settings-hint">Сохраняется локально в браузере. Импорт в базу — скоро.</p>
+      </div>
+
+      <div class="rw-settings-section">
+        <h3>Параметры</h3>
+        <label class="rw-settings-field" for="literature-project-select">
+          <span>Проект</span>
+          <select id="literature-project-select"></select>
+        </label>
+        <p id="rw-project-keywords-hint" class="rw-settings-hint">Выберите проект — покажем ключевые слова для поиска.</p>
+        <label class="rw-settings-field" for="literature-limit">
+          <span>Макс. статей</span>
+          <input type="number" id="literature-limit" min="1" max="50" value="10" />
+        </label>
+        <label class="literature-inline-toggle" for="literature-auto-translate">
+          <input type="checkbox" id="literature-auto-translate" checked />
+          <span>Автоперевод вопроса на английский</span>
+        </label>
+        <label class="literature-inline-toggle" for="literature-overwrite-answers">
+          <input type="checkbox" id="literature-overwrite-answers" />
+          <span>Перезаписывать существующие ответы по статьям</span>
+        </label>
+      </div>
+
+      <div class="rw-settings-section">
+        <h3>Контекст проекта</h3>
+        <p class="rw-settings-hint">Добавьте problem, cause или kanban-задачу к вопросу для кластеризации (поиск статей — только по <code>literature_keywords</code> в project.md).</p>
+        <button type="button" id="literature-open-context-modal" class="btn btn-small">Выбрать контекст</button>
+        <button type="button" id="literature-clear-context" class="btn btn-small">Очистить контекст</button>
+        <p id="literature-context-status" class="literature-context-status">Выберите проект.</p>
+        <div id="literature-context-summary-list" class="literature-context-summary-list"></div>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn" data-close="rw-settings-modal">Закрыть</button>
+        <button type="button" id="rw-settings-save" class="btn btn-primary">Сохранить</button>
+      </div>
+    </section>
+  </div>
+
+  <div id="literature-context-modal" class="modal hidden" aria-hidden="true">
+    <div class="modal-backdrop" data-close="literature-context-modal"></div>
+    <section class="modal-panel modal-panel--context" role="dialog" aria-modal="true" aria-labelledby="literature-context-modal-title">
+      <button type="button" class="modal-close" data-close="literature-context-modal" aria-label="Close project context dialog">✕</button>
+      <p class="modal-type">Project Context</p>
+      <h2 id="literature-context-modal-title">Choose reusable problem, cause, hypothesis, or task context</h2>
+      <p class="modal-desc">Select items from the current project to enrich the literature search query.</p>
+      <div class="literature-context-modal-toolbar">
+        <p id="literature-context-modal-status" class="literature-context-status">Select a project to load reusable context.</p>
+        <button type="button" id="literature-context-modal-clear" class="btn btn-small">Clear Selected Context</button>
+      </div>
+      <div id="literature-context-groups" class="literature-context-groups" aria-live="polite"></div>
+    </section>
+  </div>
+
+  <div id="rw-related-inbox-modal" class="modal hidden" aria-hidden="true">
+    <div class="modal-backdrop" data-close="rw-related-inbox-modal"></div>
+    <section class="modal-panel modal-panel--settings" role="dialog" aria-modal="true" aria-labelledby="rw-related-inbox-title">
+      <button type="button" class="modal-close" data-close="rw-related-inbox-modal" aria-label="Закрыть">✕</button>
+      <p class="modal-type">Related Work → Cursor</p>
+      <h2 id="rw-related-inbox-title">Запуск агента</h2>
+      <p class="rw-settings-hint">Резервный режим: если Literature Inbox ещё не настроен. После настройки Related Work уходит в очередь автоматически.</p>
+      <ol class="agent-chat-inbox-steps">
+        <li>Откройте чат <strong>ResearchOS Literature Inbox</strong> в Cursor (один раз настройте по инструкции в настройках).</li>
+        <li>Нажмите «Скопировать сообщение» и вставьте в чат.</li>
+        <li>Агент выполняет <code>claim</code> — окно ожидания перейдёт в режим «Агент работает».</li>
+        <li>Агент напишет Related Work и выполнит <code>answer</code> — черновик появится на странице автоматически.</li>
+      </ol>
+      <div class="agent-chat-inbox-actions">
+        <button type="button" id="rw-related-inbox-copy" class="btn btn-primary">Скопировать сообщение</button>
+        <button type="button" class="btn" data-close="rw-related-inbox-modal">Закрыть</button>
+      </div>
+      <p id="rw-related-inbox-copy-status" class="agent-chat-inbox-copy-status"></p>
+      <p id="rw-related-inbox-watcher-status" class="agent-chat-inbox-watcher-status"></p>
+    </section>
+  </div>
+
+  <script type="module" src="literature.js?v=20260622ad"></script>
+</body>
+</html>
