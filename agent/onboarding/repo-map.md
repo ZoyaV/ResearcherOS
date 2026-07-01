@@ -9,7 +9,6 @@ ReseachOS/
   koi/         доменное ядро (core / adapters / services)
   standards/   шаблон и правила публичных отчётов
   agent/       AGENTS.md, onboarding, templates, process.md, bin/build_kb.py
-  kb/          symlink → agent/
   docs/
     human/     getting-started, project-format, program-format, knowledge-base
     agent/     domain-model, agent-chat-inbox

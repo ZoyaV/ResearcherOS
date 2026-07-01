@@ -1,8 +1,7 @@
 <p align="center">
-  <img src="docs/assets/researchos-logo.png" alt="ResearchOS" width="480">
+  <img src="docs/assets/reseacheros_logo.png" alt="ResearchOS" width="480">
 </p>
 
-# ResearchOS
 
 ## About
 
