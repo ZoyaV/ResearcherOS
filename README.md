@@ -1,260 +1,253 @@
+<p align="center">
+  <img src="docs/assets/researchos-logo.png" alt="ResearchOS" width="480">
+</p>
+
 # ResearchOS
 
-## Коротко о проекте
+## About
 
-**ResearchOS** — платформа для организации исследований. Её методология строится вокруг **извлечения знаний**: от проблемы и дерева гипотез — через канбан экспериментов и структурированные отчёты — к вердиктам и инсайтам, которые накапливаются в базе знаний по заданным правилам.
-
-Цикл исследования:
+ResearchOS is a research organization platform built around knowledge extraction: from a problem and hypothesis tree, through kanban experiments and structured reports, to verdicts and insights that accumulate in a curated knowledge base.
 
 ```
-Проблема → причины (гипотезы о природе) → гипотезы (как доказать / устранить)
-  → методы проверки → карточки-эксперименты в канбане
-  → отчёт → вердикт + инсайты → база знаний
+Problem → causes (nature hypotheses) → hypotheses (how to prove / fix)
+  → verification methods → kanban experiment cards
+  → report → verdict + insights → knowledge base
 ```
 
-Данные хранятся в **Markdown-файлах**, без базы данных. **Engine** — код в этом репозитории (`koi/`, `api/`, `web/`, `standards/`, `agent/`). **Проекты** — соседние каталоги с маркером `koi-structure/project.md`; код экспериментов — в `projectcode/` рядом.
+All research data lives in Markdown files — no database required. The engine is this repository (`koi/`, `api/`, `web/`, `standards/`, `agent/`). Projects are sibling directories marked by `koi-structure/project.md`; experiment code lives in `projectcode/` (or a custom `code_root`).
 
-Подробный путеводитель для новичка: [docs/human/getting-started.md](docs/human/getting-started.md).  
-Инструкции для агента IDE: [agent/AGENTS.md](agent/AGENTS.md).
+| Docs | |
+|------|---|
+| Getting started walkthrough | [docs/human/getting-started.md](docs/human/getting-started.md) |
+| Project format | [docs/human/project-format.md](docs/human/project-format.md) |
+| Agent instructions | [agent/AGENTS.md](agent/AGENTS.md) |
 
----
+## News
 
-## Начало работы
+| Date | What shipped |
+|------|----------------|
+| 2026-07-01 | Open-source release on GitHub (`main` = engine, `test_project` = demo sample). |
+| 2026-07-01 | Orphan-branch sync — `koi-structure/` can live on a dedicated git branch (`koi/research` or custom) while your code branch stays clean. CLI: `scripts/koi_project_sync.py init-sync-branch`. |
+| 2026-07-01 | Stable local serve — `koi-serve.sh` works reliably on macOS; web port proxies `/api` so one URL is enough. |
+| 2026-07-01 | Live card view — real-time experiment activity on kanban cards; refreshed method-activity UI. |
+| 2026-07-01 | Report & knowledge fixes — reliable card report loading; repo `docs/*.md` served via knowledge API. |
+| 2026-06-23 | Demo project — `bicycle_problem` sample (search-ad budget efficiency) for onboarding. |
 
-### 1) Как установить
+## Installation
 
-#### Инструкция
+Requirements: Python 3.10+, `git`, `curl`. Optional: [tectonic](https://tectonic-typesetting.github.io) or `pdflatex` for NeurIPS PDF export.
 
-**Требования:** Python 3.10+, `git`, `curl`. Опционально: [tectonic](https://tectonic-typesetting.github.io) или `pdflatex` — для PDF статей.
+### Clone
 
 ```bash
-# Клонировать репозиторий
-git clone <url-репозитория-ResearchOS> ReseachOS
+git clone git@github.com:ZoyaV/ReseacherOS.git ReseachOS
 cd ReseachOS
+```
 
-# Запустить API (8010) и UI (8080) одной командой
+### Option A — conda (recommended)
+
+```bash
+conda create -n researchos python=3.11 -y
+conda activate researchos
+pip install -r requirements.txt
+pip install -r requirements-dev.txt   # optional, for tests
+```
+
+### Option B — venv
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+### Start
+
+```bash
 ./scripts/koi-serve.sh start
-
-# Проверить
 ./scripts/koi-serve.sh status
 ```
 
-Открыть в браузере:
-
-| Сервис | URL |
-|--------|-----|
-| Веб-интерфейс | http://127.0.0.1:8080 |
+| Service | URL |
+|---------|-----|
+| Web UI | http://127.0.0.1:8080 |
 | API (Swagger) | http://127.0.0.1:8010/docs |
 
-Скрипт сам создаст `.venv`, установит зависимости из `requirements.txt` и при необходимости скачает tectonic в `.tools/tectonic`.
-
-**Управление сервером:**
+`koi-serve.sh` creates `.venv` if missing, installs dependencies, and downloads tectonic to `.tools/tectonic` when needed.
 
 ```bash
-./scripts/koi-serve.sh start    # поднять
-./scripts/koi-serve.sh stop     # остановить
-./scripts/koi-serve.sh restart  # перезапустить
-./scripts/koi-serve.sh status   # статус
+./scripts/koi-serve.sh stop      # stop
+./scripts/koi-serve.sh restart  # restart
 ```
 
-**Настройки и ключи** (Cursor API и др.) — через кнопку «Настройки» в UI или файл `.env` в корне `ReseachOS/` (в git не попадает).
+Settings and API keys — Settings button in the UI, or `.env` in the repo root (gitignored; see `.env.example`).
 
-**Ручной запуск** (два терминала, если нужен контроль):
+### Try the demo project
+
+The sample project lives on orphan branch `test_project`. Check it out as a sibling worktree:
+
+```bash
+cd ..                              # parent of ReseachOS/
+git -C ReseachOS worktree add bicycle_problem test_project
+./ReseachOS/scripts/koi-serve.sh restart
+```
+
+Open http://127.0.0.1:8080 — `bicycle_problem` appears in the sidebar.
+
+## Add a project
+
+ResearchOS scans the parent directory of the engine and discovers every folder with `koi-structure/project.md`. Extra roots: `KOI_SCAN_ROOTS=/path/a,/path/b`.
+
+```
+workspace/                    # any parent folder name
+├── ReseachOS/                # engine (this repo)
+├── my_experiment/            # your project
+│   ├── koi-structure/        # ← ResearchOS reads/writes here
+│   │   ├── project.md        # hypothesis tree + kanban
+│   │   ├── research.json     # experiment conclusions
+│   │   ├── reports/            # card reports
+│   │   └── knowledge/          # curated KB docs
+│   ├── projectcode/          # ← experiment code
+│   └── .git/                 # your project repo
+└── bicycle_problem/          # demo (optional worktree)
+```
+
+### Attach an existing code repository
+
+Use this when you already have a git repo with experiment code and want ResearchOS to manage `koi-structure/` on a separate orphan branch.
+
+Layout: clone or place your repo as a sibling of `ReseachOS/`. Add `koi-structure/project.md` (minimal frontmatter below).
+
+Agent prompt — paste into Cursor / Claude Code; the agent should read skill `koi-project-sync` and run the CLI:
+
+```
+Attach my existing experiment repo to ResearchOS with orphan-branch sync.
+
+Context:
+- Engine: ../ReseachOS/ (or absolute path to this ResearchOS clone)
+- My project repo: <path> (sibling of ReseachOS/)
+- Research data: <repo>/koi-structure/
+- Experiment code: <repo>/projectcode/ (or existing code paths)
+
+Steps:
+1. Ask me for: project title, folder/repo name, and preferred sync branch name
+   (default: koi/research).
+2. Create koi-structure/project.md with frontmatter:
+   id, title, format: koi/1, git_repo: true, git_sync_branch: <branch>
+   Plus koi-structure/research.json: {"version":1,"questions":[]}
+3. If the tree is empty, interview me briefly and draft a minimal problem → cause → method skeleton.
+4. From ReseachOS root, run:
+   python scripts/koi_project_sync.py init-sync-branch --project-id <id>
+   This creates the orphan branch on origin and seeds koi-structure/.
+5. On the CODE branch of my project repo:
+   - git rm -r --cached koi-structure  (if it was tracked)
+   - append to .gitignore:
+     koi-structure/
+     .koi-sync-worktree/
+     .koi-sync-bootstrap/
+   - commit: "chore: track koi-structure on orphan sync branch"
+6. Verify: python scripts/koi_project_sync.py status
+7. Restart serve: ./scripts/koi-serve.sh restart
+8. Do not change git config. Do not commit secrets (.env).
+
+If init-sync-branch reports "exists", the remote branch is already there — see next section.
+```
+
+Manual CLI (same result):
 
 ```bash
 cd ReseachOS
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn api.main:app --reload --host 127.0.0.1 --port 8010
+python scripts/koi_project_sync.py init-sync-branch --project-id <your-project-id>
 ```
+
+### Sync branch already exists
+
+If someone on your team (or CI) already created the orphan branch — e.g. `koi/research`, `test_project`, or a custom name — you only need to point your code branch at it.
+
+In `koi-structure/project.md` on your working branch:
+
+```yaml
+---
+id: my-project
+title: My Research Problem
+format: koi/1
+git_repo: true
+git_sync_branch: koi/research    # ← must match the existing orphan branch
+---
+```
+
+Then pull research data into your working tree:
 
 ```bash
-cd ReseachOS/web && python3 -m http.server 8080
+cd ReseachOS
+python scripts/koi_project_sync.py pull --project-id my-project
 ```
 
-При работе в Cursor с открытым workspace ResearchOS сервер поднимается автоматически через `.cursor/hooks.json`.
+Ongoing sync: UI Sync button, skill `koi-project-sync`, or:
 
-#### Промпт для агента (установка)
-
-Скопируйте в чат агента в Cursor / Claude Code:
-
-```
-Установи и запусти ResearchOS в этом репозитории.
-
-1. Проверь, что есть Python 3.10+ и git.
-2. Из корня ReseachOS выполни: ./scripts/koi-serve.sh start
-3. Дождись health на http://127.0.0.1:8010/health и открой UI http://127.0.0.1:8080
-4. Если порты заняты — сообщи и предложи альтернативные (см. docs/human/getting-started.md §2).
-5. При ошибках зависимостей — создай .venv и pip install -r requirements.txt, затем повтори start.
-
-Не меняй git config. Не коммить .env.
+```bash
+python scripts/koi_project_sync.py push --project-id my-project
+python scripts/koi_project_sync.py pull --project-id my-project
 ```
 
----
+### Start from scratch (no repo yet)
 
-### 2) Как создать проект
+#### Option 1 — Agent interview
 
-Есть два пути: **присоединить существующий репозиторий** (рекомендуется для кода экспериментов) или **создать через интерфейс**.
-
-#### в1) Проект рядом с ResearchOS (файловая структура)
-
-ResearchOS при старте сканирует **родительский каталог** engine'а и находит все п
-PaperVPN
-error-connection-configuration-fetchапки с `koi-structure/project.md`. Дополнительные корни — через `KOI_SCAN_ROOTS=/path/a,/path/b`.
-
-Целевая раскладка:
+Paste into your IDE agent:
 
 ```
-research_os_dev/              # общий родитель (имя любое)
-├── ReseachOS/                # engine (этот репозиторий)
-├── bicycle_problem/          # пример: git_repo: true
-│   ├── koi-structure/        # ← ResearchOS читает и пишет сюда
-│   │   ├── project.md        # дерево гипотез + канбан
-│   │   ├── research.json     # выводы по экспериментам
-│   │   ├── reports/          # отчёты карточек
-│   │   └── knowledge/        # курируемые документы БЗ
-│   ├── projectcode/          # ← код экспериментов
-│   └── .git/                 # опционально, если git_repo: true
-└── my_new_project/
-    ├── koi-structure/
-    └── projectcode/
+Create a new ResearchOS project from scratch.
+
+1. Interview me: research problem, domain, what we already know, what experiments are feasible.
+2. Propose a hypothesis tree: problem → causes → evidence/remediation hypotheses → methods.
+3. Ask for a folder tag (latin slug, e.g. protein_folding).
+4. Create sibling directory parent(ReseachOS)/<tag>/ with:
+   - koi-structure/project.md (frontmatter + tree nodes)
+   - koi-structure/research.json
+   - projectcode/README.md
+5. If I want git sync, init a git repo there, set git_repo: true, run init-sync-branch.
+6. Restart ./scripts/koi-serve.sh and tell me to open the UI.
+
+Follow koi-prose-style for all user-facing text. Do not commit without my explicit ask.
 ```
 
-**Минимальные шаги вручную:**
+#### Option 2 — Build the tree in the UI
 
-1. Создайте папку-соседа, например `research_os_dev/my_new_project/`.
-2. Внутри — `koi-structure/project.md` с frontmatter (`id`, `title`, `format: koi/1`) и узлом `problem`.
-3. Создайте `projectcode/` для скриптов экспериментов.
-4. Перезапустите API или вызовите rescan — проект появится в сайдбаре UI.
+1. Open http://127.0.0.1:8080
+2. Expand the project sidebar (`<` / `>` chevron)
+3. Click "+ New project"
+4. Fill in: Title, Description, Tag (folder name), Program
+5. Click Create
 
-Формат `project.md`: [docs/human/project-format.md](docs/human/project-format.md).  
-ADR по discovery: [docs/agent/adr-001-project-discovery.md](docs/agent/adr-001-project-discovery.md).
+The UI creates `parent(ReseachOS)/<tag>/` with `koi-structure/` and `projectcode/` automatically. A Problem node appears on the map.
 
-**Git-синхронизация** (опционально): в frontmatter `project.md` добавьте `git_repo: true` и инициализируйте `.git` в корне репозитория проекта. Тогда сработает скилл `koi-project-sync`.
+| Next step | Where |
+|-----------|-------|
+| Add cause / hypothesis / method | Dashed "+" under a node on the map |
+| Edit a node | Click node → Edit |
+| Create an experiment | Click method → kanban → + in a column |
+| Write a report | Click kanban card → report editor |
+| Ask the agent | Node panel or workspace chat button |
 
-##### Промпт для агента (интегрирующая папка)
+Where to write code: `projectcode/` (not inside `koi-structure/`).  
+Where research lives: tree + kanban in UI or `koi-structure/project.md`; reports in `koi-structure/reports/`.
 
-```
-Создай новый исследовательский проект ResearchOS рядом с engine.
+## Platform overview
 
-Контекст:
-- Engine: ReseachOS/ (этот репозиторий)
-- Родитель: parent(ReseachOS)/
-- Маркер проекта: <имя_папки>/koi-structure/project.md
-- Код экспериментов: <имя_папки>/projectcode/
+| Area | Highlights |
+|------|------------|
+| Hypothesis map | Radial tree: problem → cause → evidence / remediation → method |
+| Kanban | Per-method backlog / running / done columns |
+| Reports | Structured experiment reports with ingest → verdicts + insights |
+| Knowledge base | Auto-built from reports; curator skill for deep synthesis |
+| Related work | Literature search and review generation |
+| Paper export | NeurIPS LaTeX → PDF from the full project graph |
+| Agent skills | `.cursor/skills/koi-*` — card execution, sync, review, chat, paper |
 
-Задача:
-1. Спроси у меня название проблемы и желаемый тег папки (латиница, например mmrl_problem).
-2. Создай sibling-каталог parent(ReseachOS)/<тег>/ с:
-   - koi-structure/project.md — frontmatter (id, title, format: koi/1), корневой узел problem
-   - koi-structure/research.json — {"version":1,"questions":[]}
-   - projectcode/README.md — заглушка для кода
-3. Не трогай ReseachOS/.venv и не коммить без явной просьбы.
-4. После создания — ./scripts/koi-serve.sh restart (или скажи перезагрузить страницу UI).
-
-Если папка уже существует — предложи attach: только добавить koi-structure/ в существующий репозиторий.
-```
-
-#### в2) Создание через интерфейс
-
-1. Откройте http://127.0.0.1:8080.
-2. Слева — шеврон `<` / `>`: раскрывает **сайдбар проектов**.
-3. Внизу сайдбара — **«+ Новый проект»**.
-4. В модалке заполните:
-   - **Название** — формулировка проблемы;
-   - **Описание** — краткий контекст;
-   - **Тег** — имя папки проекта (`mmrl_problem`, латиница, без пробелов);
-   - **Программа** — существующая, новая или «без программы».
-5. Нажмите **«Создать»**.
-
-UI создаст sibling-каталог `parent(ReseachOS)/<тег>/` с `koi-structure/` и `projectcode/` автоматически. На карте появится узел «Проблема».
-
-**Где писать код:** в `projectcode/` созданного репозитория (не в `koi-structure/`).  
-**Где вести исследование:** дерево гипотез и канбан — в UI или в `koi-structure/project.md`; отчёты — `koi-structure/reports/`; выводы — `koi-structure/research.json`.
-
-**Дальнейшие шаги в UI:**
-
-| Действие | Где в интерфейсе |
-|----------|------------------|
-| Добавить причину / гипотезу / метод | Пунктирный кружок «Добавить +» под узлом на карте |
-| Редактировать узел | Клик по узлу → «Редактировать» |
-| Завести эксперимент | Клик по методу → канбан → «+» в колонке |
-| Написать отчёт | Клик по карточке канбана → редактор отчёта |
-| Спросить агента | Панель узла или кнопка чата в workspace |
-| База знаний | Кнопка «База знаний» в нижней панели |
-| Related Work | Ссылка «RelatedWork» → `literature.html` |
-| Статья (NeurIPS PDF) | Кнопка «Статья» в нижней панели |
-
-Эталонный заполненный проект для ориентира — **«Пример: решение квадратных уравнений»** в сайдбаре (см. [getting-started.md](docs/human/getting-started.md) §0).
-
----
-
-## Возможности системы
-
-### 1) Интерфейс
-
-| Раздел | Что делает |
-|--------|------------|
-| **Карта гипотез** | Радиальное дерево: problem → cause → cause_evidence / remediation → method; бейджи вердиктов ✔/✗ |
-| **Канбан** | У каждого метода — колонки backlog / running / done; карточки = эксперименты |
-| **Отчёты** | Редактор по клику на карточку; шаблон с id узлов и датой; вложения в `reports/.../assets/` |
-| **База знаний** | Оглавление вердиктов, инсайтов, документов; журнал пополнений |
-| **Related Work** | Поиск по библиотеке (`library/library.csv`), обзор статей, кластеры ответов на исследовательский вопрос |
-| **Статья** | Сборка NeurIPS preprint (LaTeX → PDF) из всего графа проекта |
-| **Чат с агентом** | Вопросы из UI → очередь агента; быстрый ответ из `research.json`, если совпадение точное |
-| **Открытия** | Колокольчик — новые ответы на исследовательские вопросы в `research.json` |
-| **Синхронизация** | Кнопка sync — git pull/push для проектов с `git_repo: true` |
-| **Режимы View** | Chief researcher / Team lead / Researcher — только представление, не права |
-| **О платформе** | Интерактивный тур: `web/tour.html` |
-
-### 2) Автоматические функции
-
-| Функция | Когда срабатывает | Результат |
-|---------|-------------------|-----------|
-| **Discovery проектов** | Старт API | Находит `*/koi-structure/project.md` в sibling-каталогах |
-| **Интеграция отчёта** | `koi_check_hypothesis.py --ingest-only` или сохранение валидного `.run.md` | Вердикт на cause, инсайты в `research.json`, карточка → done, пересборка БЗ |
-| **Автоген БЗ** | После save / ingest | `KNOWLEDGE.md`, `knowledge/hypotheses.md`, `KNOWLEDGE_LOG.md` |
-| **Очередь done-research** | Карточка переехала в done | Формулировка question/narrative в `research.json` (скилл `koi-done-research`) |
-| **Очередь agent-chat** | Вопрос из UI | Ответ агента в панели чата (скилл `koi-agent-chat`) |
-| **Очередь paper** | «Сгенерировать статью» | LaTeX + PDF в `koi-structure/paper/` (скилл `koi-paper`) |
-| **Очередь related-work** | Запрос на `literature.html` | Markdown-обзор в проекте (скилл `koi-related-work`) |
-| **Git sync** | Хуки Cursor, кнопка sync, после значимых изменений | commit + push / pull для проектов с `git_repo: true` |
-| **Хуки сессии** | Открытие / закрытие workspace в Cursor | Подъём сервера, pull, разбор очередей |
-| **Установка tectonic** | `koi-serve.sh start`, если нет LaTeX | Бинарь в `.tools/tectonic` |
-
-Детерминированные правила (без LLM): `koi/services/report_ingest.py`, `agent/bin/build_kb.py`.
-
-### 3) Реализованные скилы
-
-Плейбуки лежат в `.cursor/skills/*/SKILL.md`. Они не привязаны к Cursor — агент читает их как обычные инструкции.
-
-| Скилл | Назначение | Как работает (кратко) |
-|-------|------------|------------------------|
-| **koi-execute-card** | Выполнение карточки канбана | Читает карточку → ведёт чеклист подзадач в отчёте → `running` → `done` → затем `koi-done-research` |
-| **koi-done-research** | Вывод по завершённому эксперименту | Очередь `.run/done-research-queue.json`; читает отчёт → пишет question/answer/certainty в `research.json` |
-| **koi-report-review** | Ревью отчётов | 4 readonly-критика (стиль, постановка, подзадачи, результаты) до сохранения `.md` / `.run.md` |
-| **koi-prose-style** | Человекочитаемый текст | Ревью заголовков узлов, карточек, narrative — subagent PASS перед записью |
-| **koi-agent-chat** | Ответы из UI | Очередь `.run/agent-chat-queue.json`; сначала `research.json`, потом отчёты |
-| **koi-knowledge-curator** | Глубокая суммаризация БЗ | Кросс-анализ инсайтов → курируемые `knowledge/<тема>.md` |
-| **koi-project-sync** | Git sync проектов | Pull при старте сессии; commit+push значимых изменений в `koi-structure/` |
-| **koi-paper** | Статья NeurIPS | Очередь `.run/paper-queue.json` → LaTeX из графа → PDF через tectonic |
-| **koi-related-work** | Обзор литературы | Очередь `.run/related-work-queue.json` → markdown по библиотеке |
-| **koi-visual-qa** | Визуальная проверка UI | Playwright-скриншоты карты, канбана, модалок (dev) |
-| **koi-ui-design-review** | Ревью правок `web/` | Линт, a11y, визуальный проход после изменений интерфейса |
-
-**Типичный цикл агента** (см. [agent/AGENTS.md](agent/AGENTS.md)):
-
-1. При старте — проверить очереди: `koi_done_research.py pending`, agent-chat, paper, related-work.
-2. Выполнить карточку — **koi-execute-card** → отчёт по `agent/templates/experiment-report.md`.
-3. Интегрировать — `python scripts/koi_check_hypothesis.py <project> <card> --ingest-only`.
-4. При необходимости — **koi-report-review** для публичного отчёта, **koi-prose-style** для текстов в UI.
-
----
-
-## Контакты
+## Links
 
 | | |
 |---|---|
-| Документация | [docs/human/](docs/human/) · [docs/agent/](docs/agent/) |
-| Вопросы по платформе | *добавьте контакт команды* |
-| Баги и предложения | *добавьте issue tracker / email* |
+| Documentation | [docs/human/](docs/human/) · [docs/agent/](docs/agent/) |
+| Issues | [github.com/ZoyaV/ReseacherOS/issues](https://github.com/ZoyaV/ReseacherOS/issues) |
