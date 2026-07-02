@@ -105,6 +105,9 @@ DEFAULT_KANBAN_COLUMNS = [
     KanbanColumn(id="backlog", title="Backlog", order=0),
     KanbanColumn(id="running", title="Running", order=1),
     KanbanColumn(id="done", title="Done", order=2),
+    KanbanColumn(id="successful", title="Успешные", order=3),
 ]
+
+KANBAN_CONCLUSION_COLUMN_IDS = frozenset({"done", "successful"})
 
 LEGACY_COLUMN_PLANNED = "planned"

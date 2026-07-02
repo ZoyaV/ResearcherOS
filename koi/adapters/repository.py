@@ -17,7 +17,7 @@ from koi.adapters.project_mount import (
     rescan_projects,
     scan_roots,
 )
-from koi.core.migrate import ensure_project_structure
+from koi.core.migrate import ensure_project_structure, kanban_md_needs_upgrade
 from koi.core.md_io import normalize_kanban_board, parse_project_md, serialize_project_md
 from koi.adapters.research_store import (
     apply_research_to_project,
@@ -104,7 +104,8 @@ def load_project(project_id: str, *, sync_reports: bool = False) -> Optional[Pro
             migrated_research = True
     else:
         migrated_research = merge_research_from_md(project)
-    if ensure_project_structure(project) or migrated_research:
+    kanban_upgrade = kanban_md_needs_upgrade(text)
+    if ensure_project_structure(project) or migrated_research or kanban_upgrade:
         save_project(project)
     if sync_reports:
         from koi.adapters.card_reports import sync_reports_for_project

@@ -18,7 +18,7 @@ GIT_ROOT = _ws.git_root()
 
 PROJECTS_PREFIX = "projects/"
 KOI_STRUCTURE_PREFIX = "koi-structure/"
-KANBAN_COLUMNS = ("backlog", "running", "done")
+KANBAN_COLUMNS = ("backlog", "running", "done", "successful")
 CARD_ID_IN_CELL_RE = re.compile(r"<!--\s*id:(\S+)")
 
 

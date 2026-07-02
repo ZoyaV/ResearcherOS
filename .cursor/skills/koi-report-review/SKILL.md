@@ -44,7 +44,7 @@ description: >-
 | Берёшь карточку в работу (**первое действие**, до §1–§3) | `backlog` → `running` в таблице `<!-- koi:kanban … -->` в `koi-structure/project.md` или PATCH API `{"column_id": "running"}` |
 | Отчёт готов: все подзадачи `[x]`, §4/§5 заполнены (**последнее действие**, до koi-done-research) | `running` → `done` в том же `project.md` или PATCH API `{"column_id": "done"}` |
 
-Путь к канбану: `projects/<id>/koi-structure/project.md` или `<repo>/koi-structure/project.md` (discovery-монт). Колонки таблицы: `backlog | running | done` — переставь строку карточки в нужную ячейку и сохрани файл.
+Путь к канбану: `projects/<id>/koi-structure/project.md` или `<repo>/koi-structure/project.md` (discovery-монт). Колонки таблицы: `backlog | running | done | successful` — переставь строку карточки в нужную ячейку и сохрани файл. **`done`** = отчёт готов (терминальная точка для агента и done-research); **`successful`** = гипотеза подтверждена (опционально, вручную после `done`).
 
 Типичная ошибка: отчёт заполнен, а карточка осталась в `backlog` — перед ответом пользователю открой `project.md` и сверь колонку с фактом.
 

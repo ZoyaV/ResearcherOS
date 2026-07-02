@@ -18,6 +18,7 @@ const DEMO = {
         { id: "backlog", title: "Backlog" },
         { id: "running", title: "Running" },
         { id: "done", title: "Done" },
+        { id: "successful", title: "Успешные" },
       ],
       cards: [
         { id: "c1", column_id: "backlog", title: "ThT time-course", description: "Сравнить с контрольным GFP." },
@@ -30,6 +31,7 @@ const DEMO = {
         { id: "backlog", title: "Backlog" },
         { id: "running", title: "Running" },
         { id: "done", title: "Done" },
+        { id: "successful", title: "Успешные" },
       ],
       cards: [
         { id: "c4", column_id: "backlog", title: "MTT / Trypan blue", description: "Сравнить с пустым вектором." },
@@ -41,6 +43,7 @@ const DEMO = {
         { id: "backlog", title: "Backlog" },
         { id: "running", title: "Running" },
         { id: "done", title: "Done" },
+        { id: "successful", title: "Успешные" },
       ],
       cards: [
         { id: "c3", column_id: "running", title: "Ко-трансфекция HSP70", description: "Дозировка 1:1 и 1:2." },

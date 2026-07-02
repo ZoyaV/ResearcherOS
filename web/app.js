@@ -430,7 +430,7 @@ function kanbanStatsForNode(node, project = state.project) {
   if (!board) return null;
   const cards = board.cards || [];
   const inProc = cards.filter((c) => c.column_id === "running").length;
-  const done = cards.filter((c) => c.column_id === "done").length;
+  const done = cards.filter((c) => isKanbanCompletedColumn(c.column_id)).length;
   const tot = cards.length;
   return {
     tot,
@@ -2531,16 +2531,25 @@ function renderInlineDisplay(el, text, placeholder) {
 
 const CARD_DESC_PLACEHOLDER_PLAN = "План / заметка (двойной клик)";
 const CARD_DESC_PLACEHOLDER_CONCLUSION = "Краткий вывод (двойной клик)";
+const KANBAN_CONCLUSION_COLUMNS = new Set(["done", "successful"]);
+
+function isKanbanConclusionColumn(columnId) {
+  return KANBAN_CONCLUSION_COLUMNS.has(columnId);
+}
+
+function isKanbanCompletedColumn(columnId) {
+  return columnId === "done" || columnId === "successful";
+}
 
 function cardDescPlaceholder(columnId) {
-  return columnId === "done"
+  return isKanbanConclusionColumn(columnId)
     ? CARD_DESC_PLACEHOLDER_CONCLUSION
     : CARD_DESC_PLACEHOLDER_PLAN;
 }
 
 function syncCardDescConclusionClass(descEl, columnId) {
   if (!descEl) return;
-  descEl.classList.toggle("card-desc-conclusion", columnId === "done");
+  descEl.classList.toggle("card-desc-conclusion", isKanbanConclusionColumn(columnId));
 }
 
 async function patchNodeFields(nodeId, fields) {
@@ -3540,7 +3549,7 @@ function bindKanbanCardEvents(boardEl, board, context = {}) {
 
 function kanbanCardHtml(c, col, variant = "modal") {
   const descEmpty = !c.description?.trim();
-  const descConclusion = col.id === "done" ? " card-desc-conclusion" : "";
+  const descConclusion = isKanbanConclusionColumn(col.id) ? " card-desc-conclusion" : "";
   const descPlaceholder = cardDescPlaceholder(col.id);
   const map = variant === "map";
   const deleteBtn = map

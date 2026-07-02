@@ -50,7 +50,9 @@ export function getMethodActivityState(board) {
     return { running: [], recentDone: [], bubbles: [] };
   }
   const running = board.cards.filter((c) => c.column_id === "running");
-  const done = board.cards.filter((c) => c.column_id === "done");
+  const done = board.cards.filter(
+    (c) => c.column_id === "done" || c.column_id === "successful"
+  );
   const recentDone = done.slice(-3).reverse();
 
   /** @type {{ tag: string, text: string, kind: string }[]} */

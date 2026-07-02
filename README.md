@@ -2,7 +2,6 @@
   <img src="docs/assets/reseacheros_logo.png" alt="ResearchOS" width="480">
 </p>
 
-
 ## About
 
 ResearchOS is a research organization platform built around knowledge extraction: from a problem and hypothesis tree, through kanban experiments and structured reports, to verdicts and insights that accumulate in a curated knowledge base.
@@ -25,6 +24,7 @@ All research data lives in Markdown files — no database required. The engine i
 
 | Date | What shipped |
 |------|----------------|
+| 2026-07-02 | Kanban **Успешные** (`successful`) — 4th column after Done for confirmed experiments; `done` stays the agent/report terminal state; auto-migration of `project.md` on load. |
 | 2026-07-01 | Open-source release on GitHub (`main` = engine, `test_project` = demo sample). |
 | 2026-07-01 | Orphan-branch sync — `koi-structure/` can live on a dedicated git branch (`koi/research` or custom) while your code branch stays clean. CLI: `scripts/koi_project_sync.py init-sync-branch`. |
 | 2026-07-01 | Stable local serve — `koi-serve.sh` works reliably on macOS; web port proxies `/api` so one URL is enough. |
@@ -237,7 +237,7 @@ Where research lives: tree + kanban in UI or `koi-structure/project.md`; reports
 | Area | Highlights |
 |------|------------|
 | Hypothesis map | Radial tree: problem → cause → evidence / remediation → method |
-| Kanban | Per-method backlog / running / done columns |
+| Kanban | Per-method backlog / running / done / successful columns |
 | Reports | Structured experiment reports with ingest → verdicts + insights |
 | Knowledge base | Auto-built from reports; curator skill for deep synthesis |
 | Related work | Literature search and review generation |

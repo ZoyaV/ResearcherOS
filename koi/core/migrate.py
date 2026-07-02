@@ -50,6 +50,17 @@ def migrate_legacy_kanban_owners(project: Project) -> bool:
     return changed
 
 
+def kanban_md_needs_upgrade(text: str) -> bool:
+    """True when project.md has kanban tables still on the 3-column schema."""
+    for line in text.splitlines():
+        stripped = line.strip().lower()
+        if not stripped.startswith("|"):
+            continue
+        if "backlog" in stripped and "running" in stripped and "done" in stripped:
+            return "successful" not in stripped
+    return False
+
+
 def ensure_project_structure(project: Project) -> bool:
     """Apply all structural migrations; return True if project was modified."""
     return migrate_legacy_kanban_owners(project)

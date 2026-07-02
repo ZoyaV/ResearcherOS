@@ -4590,6 +4590,7 @@ textarea.inline-edit-field {
   border-radius: 14px;
   background: var(--surface-board);
   border: 1px solid var(--border);
+  overflow-x: auto;
 }
 
 .kanban-col {
@@ -4640,6 +4641,7 @@ textarea.inline-edit-field {
 .kanban-col[data-col="backlog"]::before { background: var(--purple); }
 .kanban-col[data-col="running"]::before { background: var(--orange); }
 .kanban-col[data-col="done"]::before { background: var(--lime); }
+.kanban-col[data-col="successful"]::before { background: var(--cyan); }
 
 .kanban-col-head {
   display: flex;

@@ -58,13 +58,13 @@ ThT и TEM
 
 ```markdown
 <!-- koi:kanban board-ev-fold -->
-| backlog | running | done |
-| --- | --- | --- |
+| backlog | running | done | successful |
+| --- | --- | --- | --- |
 | TEM инклюзий <!-- id:c2 desc:n=3 повторности --> | ThT time-course <!-- id:c1 --> | |
 ```
 
 - Имя доски в комментарии: `board-<node-id>` или своё.
-- Заголовки колонок — id колонок (латиница, lowercase).
+- Заголовки колонок — id колонок (латиница, lowercase): `backlog`, `running`, `done`, `successful` (опционально — «Успешные», после `done`).
 - Ячейки: текст карточки; метаданные в HTML-комментарии `<!-- id:... desc:... -->`.
 
 ## Исследовательские вопросы по методу
