@@ -24,7 +24,7 @@ All research data lives in Markdown files — no database required. The engine i
 
 | Date | What shipped |
 |------|----------------|
-| 2026-07-02 | Kanban **Успешные** (`successful`) — 4th column after Done for confirmed experiments; `done` stays the agent/report terminal state; auto-migration of `project.md` on load. |
+| 2026-07-02 | Kanban **Successful** column (`successful`) — 4th column after Done for confirmed experiments; `done` stays the agent/report terminal state; auto-migration of `project.md` on load. |
 | 2026-07-01 | Open-source release on GitHub (`main` = engine, `test_project` = demo sample). |
 | 2026-07-01 | Orphan-branch sync — `koi-structure/` can live on a dedicated git branch (`koi/research` or custom) while your code branch stays clean. CLI: `scripts/koi_project_sync.py init-sync-branch`. |
 | 2026-07-01 | Stable local serve — `koi-serve.sh` works reliably on macOS; web port proxies `/api` so one URL is enough. |
