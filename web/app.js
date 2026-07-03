@@ -5706,7 +5706,13 @@ function openKnowledgeModal() {
 
 /* --------------------- Статья по проекту (NeurIPS PDF) --------------------- */
 
-const paperState = { pollTimer: null, lastPdfStamp: null };
+const paperState = {
+  pollTimer: null,
+  lastPdfStamp: null,
+  lastPdfKey: null,
+  activeKey: null,
+  papers: [],
+};
 const PAPER_INBOX_CONFIGURED_KEY = "koi_paper_inbox_configured";
 let paperInboxBootstrapCopied = false;
 let lastPaperInboxMessage = "";
@@ -5797,10 +5803,45 @@ async function markPaperInboxConfigured() {
   }
 }
 
+function paperScopeProjectIds() {
+  if (isCompositeView() && state.project?.members?.length) {
+    return state.project.members.map((member) => member.project_id).filter(Boolean);
+  }
+  const pid = state.project?.id;
+  if (pid && !isCompositeVirtualId(pid)) return [pid];
+  return [];
+}
+
+function paperTabKey(paper) {
+  return `${paper.project_id}:${paper.slug}`;
+}
+
+function activePaperEntry() {
+  if (!paperState.papers.length) return null;
+  return (
+    paperState.papers.find((paper) => paperTabKey(paper) === paperState.activeKey) ||
+    paperState.papers[0]
+  );
+}
+
+function paperTabLabel(paper) {
+  const title = paper.title || paper.slug;
+  if (isCompositeView() && paper.project_id) {
+    const member = state.project?.members?.find((m) => m.project_id === paper.project_id);
+    const short =
+      member?.title?.split(/[—\-·]/)[0]?.trim() ||
+      member?.title ||
+      paper.project_id;
+    return `${short} · ${title}`;
+  }
+  return title;
+}
+
 function paperEls() {
   return {
     modal: document.getElementById("paper-modal"),
     title: document.getElementById("paper-modal-title"),
+    tabs: document.getElementById("paper-tabs"),
     generate: document.getElementById("btn-paper-generate"),
     regenerate: document.getElementById("btn-paper-regenerate"),
     pdfLink: document.getElementById("paper-pdf-link"),
@@ -5809,6 +5850,86 @@ function paperEls() {
     empty: document.getElementById("paper-empty"),
     frame: document.getElementById("paper-frame"),
   };
+}
+
+function renderPaperTabs() {
+  const { tabs } = paperEls();
+  if (!tabs) return;
+  const papers = paperState.papers || [];
+  if (!papers.length) {
+    tabs.innerHTML = `<p class="card-live-empty card-live-empty--tabs">Нет статей — добавьте <code>paper/&lt;slug&gt;/</code> в member-проекте или сгенерируйте черновик</p>`;
+    return;
+  }
+  tabs.innerHTML = papers
+    .map((paper) => {
+      const key = paperTabKey(paper);
+      const active = key === paperState.activeKey;
+      return `<button type="button" class="card-live-card-tab${active ? " is-active" : ""}${paper.pdf_exists ? "" : " paper-tab--no-pdf"}" data-paper-key="${escapeHtml(key)}" role="tab" aria-selected="${active}" title="${escapeHtml(paper.pdf_exists ? "" : "PDF не собран")}">
+        <span class="card-live-card-tab__dot" aria-hidden="true"></span>
+        <span class="card-live-card-tab__title">${escapeHtml(paperTabLabel(paper))}</span>
+      </button>`;
+    })
+    .join("");
+  tabs.querySelectorAll("[data-paper-key]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const key = btn.getAttribute("data-paper-key");
+      if (!key || key === paperState.activeKey) return;
+      paperState.activeKey = key;
+      paperState.lastPdfStamp = null;
+      paperState.lastPdfKey = null;
+      if (paperEls().frame) paperEls().frame.src = "about:blank";
+      renderPaperTabs();
+      renderPaperFromEntry(activePaperEntry());
+      void refreshPaperStatus({ quiet: true });
+    });
+  });
+}
+
+async function loadProjectPapers() {
+  const projectIds = paperScopeProjectIds();
+  if (!projectIds.length) {
+    paperState.papers = [];
+    paperState.activeKey = null;
+    return;
+  }
+  const payloads = await Promise.all(projectIds.map((id) => KoiApi.listProjectPapers(id)));
+  const merged = [];
+  projectIds.forEach((projectId, index) => {
+    for (const paper of payloads[index]?.papers || []) {
+      merged.push({ ...paper, project_id: projectId });
+    }
+  });
+  paperState.papers = merged;
+  if (!merged.length) {
+    paperState.activeKey = `${projectIds[0]}:default`;
+    return;
+  }
+  if (!paperState.activeKey || !merged.some((paper) => paperTabKey(paper) === paperState.activeKey)) {
+    const withPdf = merged.find((paper) => paper.pdf_exists);
+    paperState.activeKey = paperTabKey(withPdf || merged[0]);
+  }
+}
+
+function renderPaperFromEntry(entry) {
+  if (!entry) return;
+  renderPaperState({ ...entry, slug: entry.slug });
+}
+
+function bindPaperFrameLoad() {
+  const { frame } = paperEls();
+  if (!frame || frame.dataset.paperLoadBound === "1") return;
+  frame.dataset.paperLoadBound = "1";
+  frame.addEventListener("load", () => {
+    if (!frame.src || frame.src === "about:blank") return;
+    hidePaperLoader();
+    frame.classList.remove("hidden");
+  });
+  frame.addEventListener("error", () => {
+    hidePaperLoader();
+    const { status, empty } = paperEls();
+    if (status) status.textContent = "Не удалось загрузить PDF в просмотрщике — откройте ссылку «Открыть PDF».";
+    if (empty) empty.classList.remove("hidden");
+  });
 }
 
 function stopPaperPolling() {
@@ -5826,26 +5947,42 @@ function hidePaperLoader() {
   hideKoiLoader("paper-loader");
 }
 
-function showPaperPdf(projectId, stamp) {
+function showPaperPdf(projectId, slug, stamp) {
   const els = paperEls();
-  const url = `${KoiApi.paperPdfUrl(projectId)}#view=FitH`;
-  const cacheKey = stamp || "";
-  if (paperState.lastPdfStamp !== cacheKey || !els.frame.src) {
-    els.frame.src = `${KoiApi.paperPdfUrl(projectId)}?t=${encodeURIComponent(cacheKey)}#view=FitH`;
-    paperState.lastPdfStamp = cacheKey;
+  bindPaperFrameLoad();
+  const url = `${KoiApi.paperPdfUrl(projectId, slug)}#view=FitH`;
+  const cacheKey = `${projectId}:${slug}:${stamp || ""}`;
+  const tabKey = paperTabKey({ project_id: projectId, slug });
+  if (paperState.lastPdfStamp === cacheKey && paperState.lastPdfKey === tabKey && els.frame.src && els.frame.src !== "about:blank") {
+    els.frame.classList.remove("hidden");
+    els.empty.classList.add("hidden");
+    els.pdfLink.href = url;
+    els.pdfLink.classList.remove("hidden");
+    els.texLink.href = KoiApi.paperTexUrl(projectId, slug);
+    els.texLink.classList.remove("hidden");
+    return;
   }
-  els.frame.classList.remove("hidden");
+  showPaperLoader("Загрузка PDF…");
+  els.frame.classList.add("hidden");
+  els.frame.src = `${KoiApi.paperPdfUrl(projectId, slug)}?t=${encodeURIComponent(stamp || "")}#view=FitH`;
+  paperState.lastPdfStamp = cacheKey;
+  paperState.lastPdfKey = tabKey;
   els.empty.classList.add("hidden");
   els.pdfLink.href = url;
   els.pdfLink.classList.remove("hidden");
-  els.texLink.href = KoiApi.paperTexUrl(projectId);
+  els.texLink.href = KoiApi.paperTexUrl(projectId, slug);
   els.texLink.classList.remove("hidden");
 }
 
 function renderPaperState(st) {
   const els = paperEls();
-  const projectId = state.project?.id;
-  if (!projectId || !els.modal) return;
+  const entry = activePaperEntry();
+  if (!entry || !els.modal) return;
+
+  const projectId = entry.project_id;
+  const slug = st.slug || entry.slug || "default";
+  paperState.activeKey = paperTabKey({ ...entry, slug });
+  if (els.title) els.title.textContent = entry.title || state.project.title;
 
   const running = st.state === "running";
   els.generate.disabled = running;
@@ -5862,19 +5999,19 @@ function renderPaperState(st) {
     els.empty.classList.add("hidden");
     els.status.textContent = "";
     if (st.tex_exists) {
-      els.texLink.href = KoiApi.paperTexUrl(projectId);
+      els.texLink.href = KoiApi.paperTexUrl(projectId, slug);
       els.texLink.classList.remove("hidden");
     }
   } else {
     hidePaperLoader();
     if (st.pdf_exists) {
-      showPaperPdf(projectId, st.pdf_mtime);
+      showPaperPdf(projectId, slug, st.pdf_mtime);
     } else {
       els.frame.classList.add("hidden");
       els.empty.classList.remove("hidden");
       els.pdfLink.classList.add("hidden");
       els.texLink.classList.toggle("hidden", !st.tex_exists);
-      if (st.tex_exists) els.texLink.href = KoiApi.paperTexUrl(projectId);
+      if (st.tex_exists) els.texLink.href = KoiApi.paperTexUrl(projectId, slug);
     }
   }
 
@@ -5888,21 +6025,38 @@ function renderPaperState(st) {
     els.status.textContent = `Готово: ${how}${when}`;
   } else if (!running) {
     els.status.textContent = "";
-    els.empty.textContent = "Статья ещё не генерировалась.";
+    if (st.tex_exists && !st.pdf_exists) {
+      els.empty.textContent =
+        entry.description ||
+        "PDF не найден — откройте main.tex или положите paper.pdf в папку статьи.";
+      els.texLink.href = KoiApi.paperTexUrl(projectId, slug);
+      els.texLink.classList.remove("hidden");
+    } else {
+      els.empty.textContent = entry.description || "Статья ещё не генерировалась.";
+    }
   }
 }
 
-async function refreshPaperStatus() {
-  const projectId = state.project?.id;
-  if (!projectId) return;
+async function refreshPaperStatus({ quiet = false } = {}) {
+  const entry = activePaperEntry();
+  if (!entry) return;
+  if (!quiet) {
+    const cached = paperState.papers.find((paper) => paperTabKey(paper) === paperTabKey(entry));
+    if (cached) renderPaperFromEntry(cached);
+  }
   try {
-    const st = await KoiApi.getPaperStatus(projectId);
+    const st = await KoiApi.getPaperStatus(entry.project_id, entry.slug);
+    const idx = paperState.papers.findIndex((paper) => paperTabKey(paper) === paperTabKey(entry));
+    if (idx >= 0) {
+      paperState.papers[idx] = { ...paperState.papers[idx], ...st, project_id: entry.project_id };
+    }
+    renderPaperTabs();
     renderPaperState(st);
     const modalOpen = !paperEls().modal?.classList.contains("hidden");
     if (st.state === "running" && modalOpen) {
       if (!paperState.pollTimer) {
         paperState.pollTimer = setInterval(() => {
-          void refreshPaperStatus();
+          void refreshPaperStatus({ quiet: true });
         }, 4000);
       }
     } else {
@@ -5917,8 +6071,10 @@ async function refreshPaperStatus() {
 }
 
 async function requestPaperGeneration() {
-  const projectId = state.project?.id;
+  const entry = activePaperEntry();
+  const projectId = entry?.project_id || paperScopeProjectIds()[0];
   if (!projectId) return;
+  const slug = entry?.slug || "default";
   const els = paperEls();
   els.generate.disabled = true;
   els.regenerate.disabled = true;
@@ -5927,13 +6083,16 @@ async function requestPaperGeneration() {
   els.frame.classList.add("hidden");
   els.empty.classList.add("hidden");
   try {
-    const res = await KoiApi.generatePaper(projectId);
+    const res = await KoiApi.generatePaper(projectId, slug);
     if (res?.inbox_message && isInboxAgentMode() && !isPaperInboxConfigured()) {
       lastPaperInboxMessage = res.inbox_message;
       paperInboxBootstrapCopied = false;
       updatePaperInboxNotice();
       void copyPaperInboxBootstrap(document.getElementById("paper-inbox-message-status"));
     }
+    await loadProjectPapers();
+    if (res?.slug) paperState.activeKey = `${projectId}:${res.slug}`;
+    renderPaperTabs();
   } catch (err) {
     hidePaperLoader();
     els.empty.classList.remove("hidden");
@@ -5948,9 +6107,11 @@ async function requestPaperGeneration() {
 function openPaperModal() {
   if (!state.project) return;
   const els = paperEls();
-  if (els.title) els.title.textContent = state.project.title;
+  bindPaperFrameLoad();
   paperState.lastPdfStamp = null;
-  if (els.frame) els.frame.src = "";
+  paperState.lastPdfKey = null;
+  if (els.frame) els.frame.src = "about:blank";
+  showPaperLoader("Загрузка статей…");
   void refreshAppSettings().then(() => {
     if (isInboxAgentMode() && !isPaperInboxConfigured() && appSettings.paper_inbox_bootstrap_prompt) {
       lastPaperInboxMessage = appSettings.paper_inbox_bootstrap_prompt;
@@ -5958,7 +6119,18 @@ function openPaperModal() {
     updatePaperInboxNotice();
   });
   showModal("paper-modal");
-  void refreshPaperStatus();
+  void loadProjectPapers()
+    .then(() => {
+      hidePaperLoader();
+      renderPaperTabs();
+      renderPaperFromEntry(activePaperEntry());
+      return refreshPaperStatus({ quiet: true });
+    })
+    .catch((err) => {
+      hidePaperLoader();
+      const statusEl = paperEls().status;
+      if (statusEl) statusEl.textContent = `Не удалось загрузить статьи: ${err.message}`;
+    });
 }
 
 function initPaper() {

@@ -3758,6 +3758,15 @@ textarea.inline-edit-field {
 
 /* --------------------- Статья по проекту (NeurIPS PDF) --------------------- */
 
+.paper-tabs {
+  margin-top: 0.35rem;
+}
+
+.paper-tab--no-pdf .card-live-card-tab__dot {
+  background: var(--text-muted);
+  box-shadow: none;
+}
+
 .paper-toolbar {
   display: flex;
   align-items: center;

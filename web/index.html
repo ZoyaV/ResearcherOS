@@ -468,6 +468,7 @@
       <button type="button" class="modal-close" data-close="paper-modal" aria-label="Закрыть">×</button>
       <p class="modal-type">Статья · NeurIPS preprint</p>
       <h2 id="paper-modal-title" class="inline-edit-title">Статья</h2>
+      <div id="paper-tabs" class="card-live-card-tabs paper-tabs" role="tablist" aria-label="Статьи проекта"></div>
       <div class="paper-toolbar">
         <button type="button" id="btn-paper-generate" class="btn btn-primary">Сгенерировать статью</button>
         <button type="button" id="btn-paper-regenerate" class="btn hidden">Перегенерировать</button>
@@ -508,7 +509,7 @@
       <p class="card-report-hint">
         Статья собирается агентом из всего графа исследования: дерево гипотез, выводы
         <code>research.json</code>, отчёты экспериментов и графики из <code>assets/</code> ·
-        LaTeX-исходник и PDF — в <code>projects/&lt;id&gt;/paper/</code>
+        LaTeX-исходник и PDF — в <code>koi-structure/paper/&lt;slug&gt;/</code>
       </p>
     </div>
   </div>
@@ -570,6 +571,6 @@
     aria-relevant="additions"
   ></div>
 
-  <script type="module" src="app.js?v=20260703b"></script>
+  <script type="module" src="app.js?v=20260703e"></script>
 </body>
 </html>

@@ -15,6 +15,7 @@ from koi.adapters.paper_queue import (
 from koi.adapters.repository import load_project
 from koi.adapters.settings_store import get_agent_chat_mode
 from koi.adapters.workspace import get_workspace
+from koi.services.paper_catalog import DEFAULT_PAPER_SLUG
 from koi.services.paper_generator import (
     build_paper_from_agent_text,
     collect_paper_context,
@@ -75,21 +76,26 @@ def _public_item(item: PaperItem) -> dict[str, object]:
     }
 
 
-def submit_paper_request(project_id: str) -> dict[str, object]:
+def submit_paper_request(
+    project_id: str,
+    *,
+    paper_slug: str = DEFAULT_PAPER_SLUG,
+) -> dict[str, object]:
     """Enqueue for Paper Inbox (cursor_inbox) or signal background generation."""
     project = load_project(project_id, sync_reports=False)
     if project is None:
         raise KeyError(f"Project not found: {project_id}")
 
-    if not start_paper_generation(project_id):
+    if not start_paper_generation(project_id, paper_slug):
         raise RuntimeError("Генерация статьи уже идёт — дождитесь завершения")
 
     mode = get_agent_chat_mode()
     if mode != "cursor_inbox":
         return {
             "project_id": project_id,
+            "paper_slug": paper_slug,
             "mode": "background",
-            "status": paper_status(project_id),
+            "status": paper_status(project_id, paper_slug),
             "agent_chat_mode": mode,
         }
 
@@ -98,6 +104,7 @@ def submit_paper_request(project_id: str) -> dict[str, object]:
     inbox_message = paper_inbox_task_message(paper_id=item["id"])
     return {
         "project_id": project_id,
+        "paper_slug": paper_slug,
         "mode": "inbox",
         "status": "pending",
         "item_id": item["id"],
@@ -105,7 +112,7 @@ def submit_paper_request(project_id: str) -> dict[str, object]:
         "agent_chat_mode": mode,
         "cursor_message": cursor_chat_message(item["id"]),
         "inbox_message": inbox_message,
-        "paper_status": paper_status(project_id),
+        "paper_status": paper_status(project_id, paper_slug),
     }
 
 

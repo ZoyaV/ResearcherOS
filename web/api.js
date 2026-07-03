@@ -212,11 +212,15 @@ export const KoiApi = {
       .replace(/^\/+/, "");
     return `${apiBase()}/projects/${projectId}/boards/${boardId}/cards/${cardId}/report/assets/${encodeURIComponent(name)}`;
   },
-  generatePaper: (projectId) =>
-    api(`/projects/${projectId}/paper`, { method: "POST" }),
-  getPaperStatus: (projectId) => api(`/projects/${projectId}/paper/status`),
-  paperPdfUrl: (projectId) => `${apiBase()}/projects/${projectId}/paper/pdf`,
-  paperTexUrl: (projectId) => `${apiBase()}/projects/${projectId}/paper/tex`,
+  listProjectPapers: (projectId) => api(`/projects/${projectId}/papers`),
+  generatePaper: (projectId, slug = "default") =>
+    api(`/projects/${projectId}/paper?slug=${encodeURIComponent(slug)}`, { method: "POST" }),
+  getPaperStatus: (projectId, slug = "default") =>
+    api(`/projects/${projectId}/papers/${encodeURIComponent(slug)}/status`),
+  paperPdfUrl: (projectId, slug = "default") =>
+    `${apiBase()}/projects/${projectId}/papers/${encodeURIComponent(slug)}/pdf`,
+  paperTexUrl: (projectId, slug = "default") =>
+    `${apiBase()}/projects/${projectId}/papers/${encodeURIComponent(slug)}/tex`,
   getKnowledge: (projectId) => apiText(`/projects/${projectId}/knowledge`),
   getKnowledgeSummary: (projectId) => api(`/projects/${projectId}/knowledge/summary`),
   getKnowledgeLog: (projectId) => apiText(`/projects/${projectId}/knowledge/log`),

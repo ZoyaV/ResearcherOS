@@ -17,7 +17,8 @@ knowledge/*.md.
   4. при сбое агента или компиляции — детерминированный fallback, который
      верстает статью напрямую из структурированных данных.
 
-Результат: projects/<id>/paper/{main.tex, paper.pdf, figures/, status.json}.
+Результат: ``paper/`` (legacy slug ``default``) или ``paper/<slug>/`` с
+``{main.tex, paper.pdf, figures/, status.json, paper.json}``.
 """
 
 from __future__ import annotations
@@ -37,6 +38,12 @@ from koi.core.models import NodeType, Project, Verdict
 from koi.adapters.repository import load_project
 from koi.adapters.paths import knowledge_dir, paper_dir
 from koi.adapters.workspace import get_workspace
+from koi.services.paper_catalog import (
+    DEFAULT_PAPER_SLUG,
+    list_project_papers,
+    prepare_paper_slot_dir,
+    read_paper_status,
+)
 
 _ws = get_workspace()
 STY_NAME = "neurips_2025.sty"
@@ -83,27 +90,19 @@ PREAMBLE = r"""\documentclass{article}
 # Пути и статус
 
 
-def _status_path(project_id: str) -> Path:
-    return paper_dir(project_id) / STATUS_NAME
+def _status_path(project_id: str, paper_slug: str = DEFAULT_PAPER_SLUG) -> Path:
+    return prepare_paper_slot_dir(project_id, paper_slug) / STATUS_NAME
 
 
-def _read_status_file(project_id: str) -> dict:
-    path = _status_path(project_id)
-    if not path.exists():
-        return {}
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-        return data if isinstance(data, dict) else {}
-    except (json.JSONDecodeError, OSError):
-        return {}
+def _read_status_file(project_id: str, paper_slug: str = DEFAULT_PAPER_SLUG) -> dict:
+    return read_paper_status(prepare_paper_slot_dir(project_id, paper_slug))
 
 
-def _write_status(project_id: str, **fields) -> dict:
-    d = paper_dir(project_id)
-    d.mkdir(parents=True, exist_ok=True)
-    status = _read_status_file(project_id)
+def _write_status(project_id: str, *, paper_slug: str = DEFAULT_PAPER_SLUG, **fields) -> dict:
+    slot_dir = prepare_paper_slot_dir(project_id, paper_slug)
+    status = read_paper_status(slot_dir)
     status.update(fields)
-    _status_path(project_id).write_text(
+    (slot_dir / STATUS_NAME).write_text(
         json.dumps(status, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
     return status
@@ -124,40 +123,50 @@ def _is_running(status: dict) -> bool:
     return (datetime.now(timezone.utc) - dt).total_seconds() < RUNNING_STALE_S
 
 
-def paper_status(project_id: str) -> dict:
+def paper_status(project_id: str, paper_slug: str = DEFAULT_PAPER_SLUG) -> dict:
     """Состояние статьи: status.json + наличие артефактов."""
-    status = _read_status_file(project_id)
-    d = paper_dir(project_id)
-    pdf = d / PDF_NAME
-    tex = d / TEX_NAME
-    out = {
-        "state": status.get("state", "none"),
-        "started_at": status.get("started_at"),
-        "finished_at": status.get("finished_at"),
-        "backend": status.get("backend"),
-        "engine": status.get("engine"),
-        "mode": status.get("mode"),
-        "error": status.get("error"),
-        "log_tail": status.get("log_tail"),
-        "pdf_exists": pdf.is_file(),
-        "tex_exists": tex.is_file(),
-    }
-    if not _is_running(status) and out["state"] == "running":
+    papers = list_project_papers(project_id)
+    match = next((item for item in papers if item["slug"] == paper_slug), None)
+    if match is not None:
+        out = dict(match)
+    else:
+        status = _read_status_file(project_id, paper_slug)
+        slot_dir = prepare_paper_slot_dir(project_id, paper_slug)
+        pdf = slot_dir / PDF_NAME
+        tex = slot_dir / TEX_NAME
+        out = {
+            "slug": paper_slug,
+            "title": paper_slug,
+            "state": status.get("state", "none"),
+            "started_at": status.get("started_at"),
+            "finished_at": status.get("finished_at"),
+            "backend": status.get("backend"),
+            "engine": status.get("engine"),
+            "mode": status.get("mode"),
+            "error": status.get("error"),
+            "log_tail": status.get("log_tail"),
+            "pdf_exists": pdf.is_file(),
+            "tex_exists": tex.is_file(),
+        }
+        if pdf.is_file():
+            out["pdf_mtime"] = datetime.fromtimestamp(
+                pdf.stat().st_mtime, tz=timezone.utc
+            ).isoformat(timespec="seconds")
+
+    status = _read_status_file(project_id, paper_slug)
+    if not _is_running(status) and out.get("state") == "running":
         out["state"] = "error"
         out["error"] = out.get("error") or "Генерация прервана (устаревший running-статус)."
-    if pdf.is_file():
-        out["pdf_mtime"] = datetime.fromtimestamp(
-            pdf.stat().st_mtime, tz=timezone.utc
-        ).isoformat(timespec="seconds")
     return out
 
 
-def start_paper_generation(project_id: str) -> bool:
+def start_paper_generation(project_id: str, paper_slug: str = DEFAULT_PAPER_SLUG) -> bool:
     """Пометить генерацию запущенной. False — уже идёт другая генерация."""
-    if _is_running(_read_status_file(project_id)):
+    if _is_running(_read_status_file(project_id, paper_slug)):
         return False
     _write_status(
         project_id,
+        paper_slug=paper_slug,
         state="running",
         started_at=_now_iso(),
         finished_at=None,
@@ -332,8 +341,13 @@ def _collect_figures(project: Project, dest: Path) -> list[dict]:
     return figures
 
 
-def collect_paper_context(project: Project) -> dict:
-    figures = _collect_figures(project, paper_dir(project.id) / FIGURES_DIRNAME)
+def collect_paper_context(
+    project: Project,
+    *,
+    paper_slug: str = DEFAULT_PAPER_SLUG,
+) -> dict:
+    slot_dir = prepare_paper_slot_dir(project.id, paper_slug)
+    figures = _collect_figures(project, slot_dir / FIGURES_DIRNAME)
     return {
         "title": project.title,
         "description": project.description or "",
@@ -621,9 +635,11 @@ def _compile_tex(tex_dir: Path) -> tuple[bool, str, str]:
 # Оркестратор
 
 
-def _prepare_paper_dir(project_id: str) -> Path:
-    d = paper_dir(project_id)
-    d.mkdir(parents=True, exist_ok=True)
+def _prepare_paper_dir(
+    project_id: str,
+    paper_slug: str = DEFAULT_PAPER_SLUG,
+) -> Path:
+    d = prepare_paper_slot_dir(project_id, paper_slug)
     shutil.copyfile(STY_SOURCE, d / STY_NAME)
     return d
 
@@ -633,14 +649,15 @@ def build_paper_from_agent_text(
     agent_text: str,
     *,
     backend: str | None = None,
+    paper_slug: str = DEFAULT_PAPER_SLUG,
 ) -> dict:
     """Собрать main.tex и PDF из ответа агента (Paper Inbox или headless)."""
     project = load_project(project_id, sync_reports=False)
     if project is None:
         raise KeyError(f"Project not found: {project_id}")
 
-    d = _prepare_paper_dir(project_id)
-    context = collect_paper_context(project)
+    d = _prepare_paper_dir(project_id, paper_slug)
+    context = collect_paper_context(project, paper_slug=paper_slug)
     parsed = _parse_agent_response(agent_text) if agent_text else None
 
     attempts: list[tuple[str, str, str, Optional[str]]] = []
@@ -657,6 +674,7 @@ def build_paper_from_agent_text(
         if ok:
             return _write_status(
                 project_id,
+                paper_slug=paper_slug,
                 state="done",
                 finished_at=_now_iso(),
                 backend=used_backend,
@@ -674,6 +692,7 @@ def build_paper_from_agent_text(
         error += " Ответ агента не распознан (нужны TITLE: и ===LATEX===)."
     _write_status(
         project_id,
+        paper_slug=paper_slug,
         state="error",
         finished_at=_now_iso(),
         backend=backend,
@@ -684,28 +703,37 @@ def build_paper_from_agent_text(
     raise RuntimeError(error)
 
 
-def generate_paper(project_id: str) -> dict:
+def generate_paper(project_id: str, paper_slug: str = DEFAULT_PAPER_SLUG) -> dict:
     """Полный цикл генерации. Вызывается из фоновой задачи API."""
     try:
-        return _generate_paper_inner(project_id)
+        return _generate_paper_inner(project_id, paper_slug=paper_slug)
     except Exception as e:  # noqa: BLE001 — фоновую задачу нельзя ронять молча
         return _write_status(
             project_id,
+            paper_slug=paper_slug,
             state="error",
             finished_at=_now_iso(),
             error=f"Внутренняя ошибка генерации: {e}",
         )
 
 
-def _generate_paper_inner(project_id: str) -> dict:
+def _generate_paper_inner(
+    project_id: str,
+    *,
+    paper_slug: str = DEFAULT_PAPER_SLUG,
+) -> dict:
     project = load_project(project_id, sync_reports=False)
     if project is None:
         return _write_status(
-            project_id, state="error", finished_at=_now_iso(), error="Проект не найден"
+            project_id,
+            paper_slug=paper_slug,
+            state="error",
+            finished_at=_now_iso(),
+            error="Проект не найден",
         )
 
-    _prepare_paper_dir(project_id)
-    context = collect_paper_context(project)
+    d = _prepare_paper_dir(project_id, paper_slug)
+    context = collect_paper_context(project, paper_slug=paper_slug)
 
     agent_text, backend = run_agent(
         _build_agent_prompt(context), cwd=_ws.agent_cwd(), timeout=AGENT_TIMEOUT_S
@@ -714,12 +742,12 @@ def _generate_paper_inner(project_id: str) -> dict:
         project = load_project(project_id, sync_reports=False)
         assert project is not None
         body = build_fallback_body(context)
-        d = paper_dir(project_id)
         (d / TEX_NAME).write_text(_assemble_tex(project.title, body), encoding="utf-8")
         ok, engine, log_tail = _compile_tex(d)
         if ok:
             return _write_status(
                 project_id,
+                paper_slug=paper_slug,
                 state="done",
                 finished_at=_now_iso(),
                 backend=None,
@@ -730,6 +758,7 @@ def _generate_paper_inner(project_id: str) -> dict:
             )
         return _write_status(
             project_id,
+            paper_slug=paper_slug,
             state="error",
             finished_at=_now_iso(),
             backend=None,
@@ -739,6 +768,11 @@ def _generate_paper_inner(project_id: str) -> dict:
         )
 
     try:
-        return build_paper_from_agent_text(project_id, agent_text, backend=backend)
+        return build_paper_from_agent_text(
+            project_id,
+            agent_text,
+            backend=backend,
+            paper_slug=paper_slug,
+        )
     except RuntimeError:
-        return paper_status(project_id)
+        return paper_status(project_id, paper_slug)
