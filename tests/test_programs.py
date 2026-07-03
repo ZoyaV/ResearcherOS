@@ -76,3 +76,4 @@ def test_grouped_projects(program_layout: None):
     assigned = {p["id"] for g in data["groups"] for p in g["projects"]}
     assert "proj-a" in assigned
     assert "proj-b" in assigned
+    assert "composites" in data

@@ -507,7 +507,7 @@ function bindMethodLiveInspect(root, node, board, project) {
   bindLiveInspectButtons(
     root,
     {
-      projectId: project.id,
+      projectId: nodeWriteProjectId(node) || project.id,
       projectTitle: project.title || project.id,
       boardId: board.id,
       cards: running,
@@ -554,7 +554,10 @@ function runningActivityProjectIds() {
     const ids = new Set();
     for (const g of grouped.groups || []) {
       if (g.id !== programId) continue;
-      for (const p of g.projects || []) ids.add(p.id);
+      for (const c of g.composites || []) ids.add(compositeVirtualId(c.id));
+      for (const p of g.projects || []) {
+        if (!state.lab?.hiddenMemberIds?.has(p.id)) ids.add(p.id);
+      }
     }
     if (programId === "") {
       for (const p of grouped.ungrouped || []) ids.add(p.id);
@@ -838,7 +841,7 @@ function setSyncError(msg) {
 function updatePaperReviewLink() {
   const link = document.getElementById("btn-related-work");
   if (!link) return;
-  const pid = state.project?.id;
+  const pid = primaryMemberProjectId();
   link.href = pid
     ? `literature.html?project=${encodeURIComponent(pid)}`
     : "literature.html";
@@ -1374,14 +1377,14 @@ function computeProjectLayout(project) {
   });
 }
 
-function layoutProgramRow(group, projectsById, startY, startX) {
+function layoutProgramRow(group, projectsById, startY, startX, hiddenMemberIds = new Set()) {
   const placements = [];
   const projectRegions = {};
   let cursorX = startX;
   let rowMaxH = 0;
 
-  for (const meta of group.projects || []) {
-    const project = projectsById[meta.id];
+  for (const item of programLayoutItems(group, hiddenMemberIds)) {
+    const project = projectsById[item.id];
     if (!project) continue;
     const layout = computeProjectLayout(project);
     if (!layout) continue;
@@ -1394,10 +1397,10 @@ function layoutProgramRow(group, projectsById, startY, startX) {
     const innerW = layout.bbox.width + LAB_LAYOUT.framePad * 2;
     const innerH = layout.bbox.height + LAB_LAYOUT.framePad * 2;
 
-    projectRegions[meta.id] = {
-      projectId: meta.id,
+    projectRegions[item.id] = {
+      projectId: item.id,
       programId: group.id || "",
-      title: meta.title,
+      title: item.title,
       x: frameX,
       y: frameY,
       width: innerW,
@@ -1408,7 +1411,7 @@ function layoutProgramRow(group, projectsById, startY, startX) {
       project,
       positions: shifted,
       nodeSizes: layout.nodeSizes,
-      region: projectRegions[meta.id],
+      region: projectRegions[item.id],
     });
 
     cursorX += innerW + LAB_LAYOUT.projectGap;
@@ -1439,8 +1442,12 @@ function getViewMode() {
 
 function findProgramIdForProject(grouped, projectId) {
   if (!grouped || !projectId) return null;
+  const compositeKey = isCompositeVirtualId(projectId)
+    ? projectId.slice("composite:".length)
+    : null;
   for (const g of grouped.groups || []) {
     if (g.projects?.some((p) => p.id === projectId)) return g.id;
+    if (compositeKey && g.composites?.some((c) => c.id === compositeKey)) return g.id;
   }
   if (grouped.ungrouped?.some((p) => p.id === projectId)) return "";
   return grouped.groups?.[0]?.id ?? "";
@@ -1460,13 +1467,26 @@ function findProgramRegion(layout, programId) {
 function filterGroupedForView(grouped) {
   if (!grouped) return grouped;
   const mode = getViewMode();
+  const hiddenMemberIds = hiddenCompositeMemberIds(grouped);
 
-  if (mode === "chief") return grouped;
+  if (mode === "chief") {
+    return {
+      ...grouped,
+      groups: (grouped.groups || []).map((g) => ({
+        ...g,
+        projects: visibleProjectsForGroup(g, hiddenMemberIds),
+      })),
+    };
+  }
 
   if (mode === "teamlead") {
-    const programId =
-      findProgramIdForProject(grouped, state.project?.id) ?? "";
-    const groups = (grouped.groups || []).filter((g) => g.id === programId);
+    const programId = findProgramIdForProject(grouped, state.project?.id) ?? "";
+    const groups = (grouped.groups || [])
+      .filter((g) => g.id === programId)
+      .map((g) => ({
+        ...g,
+        projects: visibleProjectsForGroup(g, hiddenMemberIds),
+      }));
     const ungrouped = programId === "" ? [...(grouped.ungrouped || [])] : [];
     return { ...grouped, groups, ungrouped };
   }
@@ -1476,11 +1496,19 @@ function filterGroupedForView(grouped) {
     return { ...grouped, groups: [], ungrouped: [] };
   }
   const groups = (grouped.groups || [])
-    .map((g) => ({
-      ...g,
-      projects: (g.projects || []).filter((p) => p.id === projectId),
-    }))
-    .filter((g) => g.projects.length);
+    .map((g) => {
+      const composites = (g.composites || []).filter(
+        (c) => compositeVirtualId(c.id) === projectId
+      );
+      const projects = (g.projects || []).filter((p) => p.id === projectId);
+      if (!composites.length && !projects.length) return null;
+      return {
+        ...g,
+        composites,
+        projects: projects.filter((p) => !hiddenMemberIds.has(p.id)),
+      };
+    })
+    .filter(Boolean);
   const ungrouped = (grouped.ungrouped || []).filter((p) => p.id === projectId);
   return { ...grouped, groups, ungrouped };
 }
@@ -1492,8 +1520,12 @@ function getFilteredGrouped() {
 function projectIdsInGrouped(grouped) {
   const ids = new Set();
   if (!grouped) return ids;
+  const hidden = hiddenCompositeMemberIds(grouped);
   for (const g of grouped.groups || []) {
-    for (const p of g.projects || []) ids.add(p.id);
+    for (const c of g.composites || []) ids.add(compositeVirtualId(c.id));
+    for (const p of g.projects || []) {
+      if (!hidden.has(p.id)) ids.add(p.id);
+    }
   }
   for (const p of grouped.ungrouped || []) ids.add(p.id);
   return ids;
@@ -1505,6 +1537,7 @@ function layoutLaboratory(grouped, projectsById) {
   const projectRegions = {};
   let y = LAYOUT.topPad;
   let maxX = LAYOUT.pad;
+  const hiddenMemberIds = hiddenCompositeMemberIds(grouped);
 
   const groups = [...(grouped.groups || [])];
   if (grouped.ungrouped?.length) {
@@ -1513,11 +1546,12 @@ function layoutLaboratory(grouped, projectsById) {
       title: grouped.groups?.length ? "Без программы" : "Проекты",
       description: "",
       projects: grouped.ungrouped,
+      composites: [],
     });
   }
 
   for (const group of groups) {
-    const row = layoutProgramRow(group, projectsById, y, LAYOUT.pad);
+    const row = layoutProgramRow(group, projectsById, y, LAYOUT.pad, hiddenMemberIds);
     programs.push(row.program);
     placements.push(...row.placements);
     Object.assign(projectRegions, row.projectRegions);
@@ -1571,15 +1605,32 @@ function ensureLabCamera() {
 
 async function loadLab() {
   const grouped = await KoiApi.listProjectsGrouped();
+  const hiddenMemberIds = hiddenCompositeMemberIds(grouped);
   const ids = new Set();
   for (const g of grouped.groups || []) {
     for (const p of g.projects || []) ids.add(p.id);
   }
   for (const p of grouped.ungrouped || []) ids.add(p.id);
-  const projects = await Promise.all([...ids].map((id) => KoiApi.getProject(id)));
+
+  const compositeSlugs = new Set();
+  for (const g of grouped.groups || []) {
+    for (const c of g.composites || []) compositeSlugs.add(c.id);
+  }
+
+  const [projects, composites] = await Promise.all([
+    Promise.all([...ids].map((id) => KoiApi.getProject(id))),
+    Promise.all([...compositeSlugs].map((id) => KoiApi.getComposite(id))),
+  ]);
+
+  const projectsById = Object.fromEntries(projects.map((p) => [p.id, p]));
+  for (const composite of composites) {
+    projectsById[composite.id] = composite;
+  }
+
   state.lab = {
     grouped,
-    projectsById: Object.fromEntries(projects.map((p) => [p.id, p])),
+    projectsById,
+    hiddenMemberIds,
   };
   runningAuthorsByProject.clear();
   syncRunningSeedProvider();
@@ -1957,7 +2008,12 @@ function initViewControls() {
 async function focusLabProject(projectId, { animate = false, reload = false } = {}) {
   if (!state.lab?.projectsById) return;
   if (reload || !state.lab.projectsById[projectId]) {
-    state.lab.projectsById[projectId] = await KoiApi.getProject(projectId);
+    if (isCompositeVirtualId(projectId)) {
+      const compositeId = projectId.slice("composite:".length);
+      state.lab.projectsById[projectId] = await KoiApi.getComposite(compositeId);
+    } else {
+      state.lab.projectsById[projectId] = await KoiApi.getProject(projectId);
+    }
   }
   state.project = state.lab.projectsById[projectId];
   setActiveProjectInList(projectId);
@@ -2202,16 +2258,21 @@ function setReportViewMode(mode) {
   }
 }
 
+function reportWriteProjectId() {
+  return state.reportProjectId || primaryMemberProjectId() || state.project?.id;
+}
+
 function reportAssetUrlFn(markdownPath) {
-  if (!state.project?.id) return markdownPath;
+  const pid = reportWriteProjectId();
+  if (!pid) return markdownPath;
   const rel = state.reportRelativePath || "";
   if (String(markdownPath || "").startsWith("assets/") && rel.startsWith("reports/")) {
     const dir = rel.replace(/\/[^/]+\.md$/i, "");
-    return KoiApi.knowledgeAssetUrl(state.project.id, `${dir}/${markdownPath}`);
+    return KoiApi.knowledgeAssetUrl(pid, `${dir}/${markdownPath}`);
   }
   if (!state.reportBoardId || !state.reportCardId) return markdownPath;
   return KoiApi.reportAssetUrl(
-    state.project.id,
+    pid,
     state.reportBoardId,
     state.reportCardId,
     markdownPath
@@ -2317,7 +2378,7 @@ async function onReportEditorPaste(e) {
   setStatus("Загрузка изображения…");
   try {
     const data = await KoiApi.uploadReportAsset(
-      state.project.id,
+      reportWriteProjectId(),
       state.reportBoardId,
       state.reportCardId,
       file
@@ -2347,6 +2408,7 @@ function closeCardReport() {
   hideModal("card-report-modal");
   state.reportCardId = null;
   state.reportBoardId = null;
+  state.reportProjectId = null;
   state.reportRelativePath = null;
   state.reportDirty = false;
 }
@@ -2358,7 +2420,7 @@ async function saveCardReport(force = false) {
   setStatus("Сохранение отчёта…");
   try {
     const data = await KoiApi.saveCardReport(
-      state.project.id,
+      reportWriteProjectId(),
       state.reportBoardId,
       state.reportCardId,
       editor.value
@@ -2379,6 +2441,7 @@ async function openCardReport(card, board) {
   }
   state.reportCardId = card.id;
   state.reportBoardId = board.id;
+  state.reportProjectId = boardWriteProjectId(board);
   const editor = document.getElementById("card-report-editor");
   if (!editor) {
     setStatus("Модалка отчёта не найдена в DOM", true);
@@ -2391,7 +2454,7 @@ async function openCardReport(card, board) {
   setStatus("Загрузка отчёта…");
   try {
     const data = await KoiApi.getCardReport(
-      state.project.id,
+      reportWriteProjectId(),
       board.id,
       card.id
     );
@@ -2434,7 +2497,7 @@ async function refreshReportFilenameIfOpen(cardId) {
   if (!card) return;
   try {
     const data = await KoiApi.getCardReport(
-      state.project.id,
+      reportWriteProjectId(),
       state.reportBoardId,
       cardId
     );
@@ -2558,7 +2621,8 @@ async function patchNodeFields(nodeId, fields) {
   if (!node) return null;
   setStatus("Сохранение…");
   try {
-    state.project = await KoiApi.patchNode(state.project.id, nodeId, fields);
+    await KoiApi.patchNode(nodeWriteProjectId(node), nodeId, fields);
+    state.project = await reloadProjectView();
     syncLabProject(state.project);
     setStatus("Сохранено в project.md");
     renderMindmap();
@@ -2792,12 +2856,14 @@ async function onAddChildSubmit(e) {
   }
   setStatus("Добавление…");
   try {
-    state.project = await KoiApi.addNode(state.project.id, {
+    await KoiApi.addNode(nodeWriteProjectId(parent), {
       parent_id: parentId,
       node_type: nodeType,
       title,
       description: "",
     });
+    state.project = await reloadProjectView();
+    syncLabProject(state.project);
     e.target.reset();
     setStatus("Сохранено в project.md");
     hideModal("node-modal");
@@ -2814,7 +2880,9 @@ async function onDeleteNode() {
   if (!confirm(`Удалить узел «${node.title}» и всех потомков?`)) return;
   setStatus("Удаление…");
   try {
-    state.project = await KoiApi.deleteNode(state.project.id, node.id);
+    await KoiApi.deleteNode(nodeWriteProjectId(node), node.id);
+    state.project = await reloadProjectView();
+    syncLabProject(state.project);
     setStatus("Сохранено в project.md");
     hideModal("node-modal");
     renderMindmap();
@@ -3318,12 +3386,8 @@ async function persistCard(board, cardId, fields, opts = {}) {
   const { rerenderKanban = false, refreshMapStats = false } = opts;
   setStatus("Сохранение…");
   try {
-    state.project = await KoiApi.patchCard(
-      state.project.id,
-      board.id,
-      cardId,
-      fields
-    );
+    await KoiApi.patchCard(boardWriteProjectId(board), board.id, cardId, fields);
+    state.project = await reloadProjectView();
     syncLabProject(state.project);
     setStatus("Сохранено в project.md");
     if (rerenderKanban) {
@@ -3488,7 +3552,7 @@ async function copyCardReportPath(card, board) {
   if (!state.project) return;
   try {
     const data = await KoiApi.getCardReportPath(
-      state.project.id,
+      boardWriteProjectId(board),
       board.id,
       card.id
     );
@@ -3528,11 +3592,8 @@ function bindKanbanCardEvents(boardEl, board, context = {}) {
       if (!confirm("Удалить карточку?")) return;
       setStatus("Удаление…");
       try {
-        state.project = await KoiApi.deleteCard(
-          state.project.id,
-          board.id,
-          cardId
-        );
+        await KoiApi.deleteCard(boardWriteProjectId(board), board.id, cardId);
+        state.project = await reloadProjectView();
         syncLabProject(state.project);
         setStatus("Сохранено в project.md");
         const node = state.project.nodes.find((n) => n.id === state.kanbanNodeId);
@@ -3664,11 +3725,13 @@ async function addCardToColumn(board, columnId, context = {}) {
   const beforeIds = new Set(board.cards.map((c) => c.id));
   setStatus("Добавление…");
   try {
-    state.project = await KoiApi.addCard(state.project.id, node.board_id, {
+    await KoiApi.addCard(boardWriteProjectId(board), node.board_id, {
       title: "Новый эксперимент",
       column_id: columnId,
       description: "",
     });
+    state.project = await reloadProjectView();
+    syncLabProject(state.project);
     setStatus("Сохранено в project.md");
     const updatedBoard = state.project.boards[node.board_id];
     renderKanbanBoard(updatedBoard);
@@ -3717,12 +3780,29 @@ state.view = {
 
 function renderProjectListButton(p, currentId) {
   const active = p.id === currentId;
+  const compositeHint = p.composite_id
+    ? ` title="composite: ${escapeHtml(p.composite_id)}"`
+    : "";
   return (
     `<li class="project-list__item">` +
     `<button type="button" class="project-list__btn${active ? " is-active" : ""}"` +
     ` data-project-id="${escapeHtml(p.id)}"` +
+    compositeHint +
     (active ? ' aria-current="true"' : "") +
     `>${escapeHtml(p.title)}</button>` +
+    `</li>`
+  );
+}
+
+function renderCompositeListButton(c, currentId) {
+  const virtualId = `composite:${c.id}`;
+  const active = currentId === virtualId;
+  return (
+    `<li class="project-list__item project-list__item--composite">` +
+    `<button type="button" class="project-list__btn project-list__btn--composite${active ? " is-active" : ""}"` +
+    ` data-composite-id="${escapeHtml(c.id)}"` +
+    (active ? ' aria-current="true"' : "") +
+    `><span class="project-list__composite-mark" aria-hidden="true">⎇</span> ${escapeHtml(c.title)}</button>` +
     `</li>`
   );
 }
@@ -3737,17 +3817,132 @@ function renderProgramGroupHeader(group) {
 }
 
 function renderProgramGroup(group, currentId) {
-  const projects = group.projects || [];
+  const hiddenMemberIds = state.lab?.hiddenMemberIds || hiddenCompositeMemberIds({ groups: [group] });
+  const projects = visibleProjectsForGroup(group, hiddenMemberIds);
+  const composites = group.composites || [];
   return (
     `<li class="program-group">` +
     renderProgramGroupHeader(group) +
     `<ul class="project-list project-list--nested" role="list">` +
+    (composites.length
+      ? composites.map((c) => renderCompositeListButton(c, currentId)).join("")
+      : "") +
     (projects.length
       ? projects.map((p) => renderProjectListButton(p, currentId)).join("")
-      : `<li class="program-group__empty">Нет проектов</li>`) +
+      : !composites.length
+        ? `<li class="program-group__empty">Нет проектов</li>`
+        : "") +
     `</ul>` +
     `</li>`
   );
+}
+
+function isCompositeView() {
+  return Boolean(state.project?.is_composite);
+}
+
+function compositeVirtualId(compositeId) {
+  return `composite:${compositeId}`;
+}
+
+function resolvePreferredProjectId(requestedId, grouped, projectsById) {
+  const memberToComposite = new Map();
+  for (const g of grouped?.groups || []) {
+    for (const c of g.composites || []) {
+      for (const mid of c.member_ids || []) {
+        memberToComposite.set(mid, compositeVirtualId(c.id));
+      }
+    }
+  }
+
+  if (requestedId && projectsById[requestedId]) {
+    return memberToComposite.get(requestedId) || requestedId;
+  }
+  if (requestedId && memberToComposite.has(requestedId)) {
+    const compositeId = memberToComposite.get(requestedId);
+    if (projectsById[compositeId]) return compositeId;
+  }
+
+  for (const g of grouped?.groups || []) {
+    for (const c of g.composites || []) {
+      const virtualId = compositeVirtualId(c.id);
+      if (projectsById[virtualId]) return virtualId;
+    }
+  }
+
+  if (projectsById["ai-agents-embodied"]) return "ai-agents-embodied";
+
+  const hidden = hiddenCompositeMemberIds(grouped);
+  for (const id of Object.keys(projectsById || {})) {
+    if (!hidden.has(id) && !isCompositeVirtualId(id)) return id;
+  }
+  return Object.keys(projectsById || {})[0] || null;
+}
+
+function isCompositeVirtualId(id) {
+  return String(id || "").startsWith("composite:");
+}
+
+function compositeIdsFromGroup(group) {
+  return new Set((group?.composites || []).map((c) => c.id));
+}
+
+function hiddenCompositeMemberIds(grouped) {
+  const hidden = new Set();
+  for (const g of grouped?.groups || []) {
+    for (const c of g.composites || []) {
+      for (const mid of c.member_ids || []) hidden.add(mid);
+    }
+  }
+  return hidden;
+}
+
+function visibleProjectsForGroup(group, hiddenMemberIds) {
+  return (group?.projects || []).filter((p) => !hiddenMemberIds.has(p.id));
+}
+
+function programLayoutItems(group, hiddenMemberIds) {
+  const items = [];
+  for (const c of group?.composites || []) {
+    items.push({
+      kind: "composite",
+      id: compositeVirtualId(c.id),
+      title: c.title || c.id,
+    });
+  }
+  for (const meta of visibleProjectsForGroup(group, hiddenMemberIds)) {
+    items.push({ kind: "project", id: meta.id, title: meta.title || meta.id });
+  }
+  return items;
+}
+
+function nodeWriteProjectId(node) {
+  if (!node) return state.project?.id;
+  return node.source_project_id || node.project_id || state.project?.id;
+}
+
+function boardWriteProjectId(board) {
+  if (!board || !isCompositeView()) return state.project?.id;
+  if (board.source_project_id) return board.source_project_id;
+  const owner = state.project?.nodes?.find((n) => n.id === board.owner_node_id);
+  return nodeWriteProjectId(owner);
+}
+
+function primaryMemberProjectId() {
+  if (isCompositeView() && state.project?.members?.length) {
+    return state.project.members[0].project_id;
+  }
+  return state.project?.id;
+}
+
+async function reloadProjectView() {
+  if (isCompositeView() && state.project?.composite_id) {
+    return KoiApi.getComposite(state.project.composite_id);
+  }
+  if (state.project?.id) {
+    return KoiApi.getProject(state.project.id);
+  }
+  return null;
 }
 
 async function loadProjectList(activeId) {
@@ -3786,7 +3981,11 @@ async function loadProjectList(activeId) {
     const parts = [];
 
     for (const group of grouped.groups || []) {
-      list.push(...(group.projects || []));
+      const hidden = state.lab?.hiddenMemberIds || hiddenCompositeMemberIds(grouped);
+      for (const c of group.composites || []) {
+        list.push({ id: compositeVirtualId(c.id), title: c.title || c.id });
+      }
+      list.push(...visibleProjectsForGroup(group, hidden));
       parts.push(renderProgramGroup(group, currentId));
     }
 
@@ -3812,7 +4011,9 @@ async function loadProjectList(activeId) {
 
 function setActiveProjectInList(id) {
   document.querySelectorAll(".project-list__btn").forEach((btn) => {
-    const active = btn.dataset.projectId === id;
+    const active =
+      btn.dataset.projectId === id ||
+      (id?.startsWith("composite:") && btn.dataset.compositeId === id.slice("composite:".length));
     btn.classList.toggle("is-active", active);
     if (active) btn.setAttribute("aria-current", "true");
     else btn.removeAttribute("aria-current");
@@ -4003,6 +4204,15 @@ function initProjectsSidebar() {
   });
 
   document.getElementById("project-list")?.addEventListener("click", (e) => {
+    const compositeBtn = e.target.closest("[data-composite-id]");
+    if (compositeBtn) {
+      const compositeId = compositeBtn.dataset.compositeId;
+      if (!compositeId) return;
+      const virtualId = `composite:${compositeId}`;
+      if (virtualId !== state.project?.id) void switchComposite(compositeId);
+      else if (state.lab?.projectsById) void focusLabProject(virtualId, { animate: true });
+      return;
+    }
     const btn = e.target.closest(".project-list__btn");
     if (!btn) return;
     const id = btn.dataset.projectId;
@@ -4010,6 +4220,26 @@ function initProjectsSidebar() {
     if (id !== state.project?.id) void switchProject(id);
     else if (state.lab?.projectsById) void focusLabProject(id, { animate: true });
   });
+}
+
+async function switchComposite(compositeId) {
+  const virtualId = compositeVirtualId(compositeId);
+  setStatus("Загрузка…");
+  try {
+    if (state.lab?.projectsById) {
+      await focusLabProject(virtualId, { animate: true, reload: true });
+    } else {
+      state.project = await KoiApi.getComposite(compositeId);
+      setActiveProjectInList(virtualId);
+      renderMindmap();
+    }
+    setStatus("");
+    updatePaperReviewLink();
+    updateAgentChatScope();
+    void refreshAgentChat();
+  } catch (err) {
+    setStatus(err.message, true);
+  }
 }
 
 async function switchProject(id) {
@@ -4376,9 +4606,10 @@ function renderAgentChatLog({ scrollToBottom = false } = {}) {
 }
 
 async function refreshAgentChat({ scrollToBottom = false } = {}) {
-  if (!state.project?.id) return;
+  const pid = primaryMemberProjectId();
+  if (!pid) return;
   try {
-    const data = await KoiApi.listAgentChat(state.project.id);
+    const data = await KoiApi.listAgentChat(pid);
     agentChatItems = data.items || [];
     renderAgentChatLog({ scrollToBottom });
     syncAgentChatPolling();
@@ -4453,7 +4684,7 @@ async function submitAgentQuestion(e) {
 
   try {
     const res = await KoiApi.sendAgentQuestion({
-      project_id: state.project.id,
+      project_id: primaryMemberProjectId(),
       question: text,
       method_id: method_id || undefined,
       node_id: node_id || undefined,
@@ -5867,19 +6098,22 @@ async function init() {
     state.meta = await KoiApi.meta();
     await loadLab();
     const requestedProjectId = new URLSearchParams(window.location.search).get("project");
-    const allIds = Object.keys(state.lab.projectsById || {});
-    const preferred =
-      (requestedProjectId && state.lab.projectsById[requestedProjectId]
-        ? requestedProjectId
-        : null) ||
-      (state.lab.projectsById["ai-agents-embodied"] ? "ai-agents-embodied" : null) ||
-      allIds[0];
+    const preferred = resolvePreferredProjectId(
+      requestedProjectId,
+      state.lab.grouped,
+      state.lab.projectsById
+    );
     if (!preferred) {
       setStatus("Нет обнаруженных проектов (ищем */koi-structure/)", true);
       return;
     }
-    state.project =
-      state.lab.projectsById[preferred] || (await KoiApi.getProject(preferred));
+    state.project = state.lab.projectsById[preferred];
+    if (!state.project) {
+      state.project = isCompositeVirtualId(preferred)
+        ? await KoiApi.getComposite(preferred.slice("composite:".length))
+        : await KoiApi.getProject(preferred);
+      state.lab.projectsById[preferred] = state.project;
+    }
     syncLabProject(state.project);
     const list = await loadProjectList(preferred);
     if (!list.length) {

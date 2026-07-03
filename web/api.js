@@ -121,6 +121,8 @@ export const KoiApi = {
     }),
   listProjects: () => api("/projects"),
   listProjectsGrouped: () => api("/projects/grouped"),
+  listComposites: () => api("/composites"),
+  getComposite: (id) => api(`/composites/${encodeURIComponent(id)}`),
   listPrograms: () => api("/programs"),
   createProgram: (title, description = "") =>
     api("/programs", {

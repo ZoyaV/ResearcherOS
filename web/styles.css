@@ -647,6 +647,15 @@ a.btn {
   box-shadow: inset 3px 0 0 var(--purple);
 }
 
+.project-list__btn--composite {
+  font-style: normal;
+}
+
+.project-list__composite-mark {
+  opacity: 0.72;
+  font-size: 0.92em;
+}
+
 .projects-sidebar__add {
   width: 100%;
 }

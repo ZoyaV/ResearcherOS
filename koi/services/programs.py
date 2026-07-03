@@ -232,18 +232,38 @@ def programs_for_project(project_id: str) -> list[str]:
 
 
 def enrich_projects(projects: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    return [{**p, "programs": programs_for_project(p["id"])} for p in projects]
+    from koi.services.composite import read_composite_id
+
+    out: list[dict[str, Any]] = []
+    for p in projects:
+        cid = read_composite_id(p["id"])
+        entry = {**p, "programs": programs_for_project(p["id"])}
+        if cid:
+            entry["composite_id"] = cid
+        out.append(entry)
+    return out
 
 
 def grouped_projects() -> dict[str, Any]:
     """Projects grouped by program for UI; unassigned projects go to ``ungrouped``."""
+    from koi.services.composite import list_composites_summary
+
     all_projects = {p["id"]: p for p in enrich_projects(list_projects())}
+    composites = list_composites_summary()
+    composite_member_ids: set[str] = set()
+    for comp in composites:
+        composite_member_ids.update(comp.get("member_ids") or [])
+
     lab = load_laboratory()
     groups: list[dict[str, Any]] = []
     assigned: set[str] = set()
 
     for program in list_programs():
         projects = []
+        program_composites = []
+        for comp in composites:
+            if program["id"] in (comp.get("programs") or []):
+                program_composites.append(comp)
         for project_id in program["projects"]:
             if project_id in all_projects:
                 projects.append(all_projects[project_id])
@@ -253,6 +273,7 @@ def grouped_projects() -> dict[str, Any]:
                 "id": program["id"],
                 "title": program["title"],
                 "description": program["description"],
+                "composites": program_composites,
                 "projects": projects,
             }
         )
@@ -264,6 +285,7 @@ def grouped_projects() -> dict[str, Any]:
             "title": lab["title"],
             "description": lab.get("description", ""),
         },
+        "composites": composites,
         "groups": groups,
         "ungrouped": ungrouped,
     }

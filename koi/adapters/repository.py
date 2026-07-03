@@ -123,7 +123,7 @@ def _merge_preserved_frontmatter(text: str, path: Path) -> str:
         return text
     old_meta, _ = _split_frontmatter(path.read_text(encoding="utf-8"))
     meta, body = _split_frontmatter(text)
-    for key in ("programs", "code_root", "literature_keywords"):
+    for key in ("programs", "code_root", "literature_keywords", "composite_id", "git_repo", "git_sync_branch"):
         if key in old_meta and key not in meta:
             meta[key] = old_meta[key]
     return (

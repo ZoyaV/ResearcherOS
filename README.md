@@ -24,6 +24,7 @@ All research data lives in Markdown files — no database required. The engine i
 
 | Date | What shipped |
 |------|----------------|
+| 2026-07-03 | **Composite view** — projects with the same `composite_id` merge into one hypothesis tree at read time; virtual program entry in the sidebar; writes route to the owning repo via `node.project_id`. API: `GET /composites`, `GET /composites/{id}`. ADR: [docs/agent/adr-002-composite-view.md](docs/agent/adr-002-composite-view.md). |
 | 2026-07-02 | Kanban **Successful** column (`successful`) — 4th column after Done for confirmed experiments; `done` stays the agent/report terminal state; auto-migration of `project.md` on load. |
 | 2026-07-01 | Open-source release on GitHub (`main` = engine, `test_project` = demo sample). |
 | 2026-07-01 | Orphan-branch sync — `koi-structure/` can live on a dedicated git branch (`koi/research` or custom) while your code branch stays clean. CLI: `scripts/koi_project_sync.py init-sync-branch`. |
