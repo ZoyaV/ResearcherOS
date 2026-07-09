@@ -2,6 +2,7 @@ import {
   bindCardLiveModal,
   bindLiveInspectButtons,
   cardHasLiveHints,
+  cardHasLiveHintsFromSources,
   runningCardContextsFromProjects,
   setRunningSeedProvider,
 } from "./card-live.js";
@@ -4111,20 +4112,27 @@ function syncKanbanCardTodoProgress(cardEl, card, reportContent = "") {
   applyKanbanCardTodoProgress(cardEl, card, reportContent || cached);
 }
 
-async function hydrateKanbanCardTodoFromReports(boardEl, board, project) {
+async function hydrateKanbanCardTodoFromReports(boardEl, board, project, liveCtx = null) {
   if (!boardEl || !board) return;
   const projectId = boardWriteProjectId(board);
   const running = (board.cards || []).filter((c) => c.column_id === "running");
+  let addedLiveBtn = false;
   await Promise.all(
     running.map(async (card) => {
       const cardEl = boardEl.querySelector(`.kanban-card[data-card-id="${card.id}"]`);
       if (!cardEl) return;
-      let reportContent = "";
-      if (!cardHasSubtasks(card.description)) {
+      let reportContent = cardEl.dataset.reportTodoSource || "";
+      const needsTodoFromReport = !cardHasSubtasks(card.description);
+      const needsLiveFromReport =
+        !cardHasLiveHints(card.description) && !cardEl.querySelector(".card-live-inspect");
+      if (needsTodoFromReport || needsLiveFromReport) {
         try {
           const data = await KoiApi.getCardReport(projectId, board.id, card.id);
           reportContent = data.content || "";
-          if (reportContent) cardEl.dataset.reportTodoSource = reportContent;
+          if (reportContent) {
+            cardEl.dataset.reportTodoSource = reportContent;
+            cardEl.dataset.reportLiveSource = reportContent;
+          }
         } catch {
           /* no report yet */
         }
@@ -4132,8 +4140,40 @@ async function hydrateKanbanCardTodoFromReports(boardEl, board, project) {
       applyKanbanCardTodoProgress(cardEl, card, reportContent);
       const descEl = cardEl.querySelector(".card-desc-display");
       if (descEl) syncCardDescTodoOnlyState(descEl, card.description, reportContent);
+      if (syncKanbanCardLiveInspect(cardEl, card, reportContent)) addedLiveBtn = true;
     })
   );
+  if (addedLiveBtn && liveCtx) {
+    bindLiveInspectButtons(boardEl, liveCtx, cardLiveUi);
+  }
+}
+
+function kanbanCardLiveInspectBtnHtml(cardId) {
+  return `<button type="button" class="card-live-inspect" data-card-id="${escapeHtml(cardId)}" title="Live монитор" aria-label="Live монитор">
+              <svg class="card-live-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+            </button>`;
+}
+
+function syncKanbanCardLiveInspect(cardEl, card, reportContent = "") {
+  if (!cardEl || card.column_id !== "running") return false;
+  if (cardEl.querySelector(".card-live-inspect")) return false;
+  const reportText =
+    reportContent || cardEl.dataset.reportLiveSource || cardEl.dataset.reportTodoSource || "";
+  if (!cardHasLiveHintsFromSources(card.description, reportText)) return false;
+
+  const textBlock = cardEl.querySelector(".card-text-block");
+  const titleDisplay = textBlock?.querySelector(":scope > .card-title-display");
+  const titleInput = textBlock?.querySelector(":scope > .card-title-input");
+  if (!textBlock || !titleDisplay || textBlock.querySelector(".kanban-card-title-row")) return false;
+
+  const row = document.createElement("div");
+  row.className = "kanban-card-title-row";
+  row.insertAdjacentHTML("afterbegin", kanbanCardLiveInspectBtnHtml(card.id));
+  row.appendChild(titleDisplay);
+  if (titleInput) row.appendChild(titleInput);
+  textBlock.insertBefore(row, textBlock.firstChild);
+  cardEl.classList.add("has-live");
+  return true;
 }
 
 function kanbanCardHtml(c, col, variant = "modal") {
@@ -4153,9 +4193,7 @@ function kanbanCardHtml(c, col, variant = "modal") {
             </button>`;
   const liveBtn =
     col.id === "running" && !map && cardHasLiveHints(c.description)
-      ? `<button type="button" class="card-live-inspect" data-card-id="${c.id}" title="Live монитор" aria-label="Live монитор">
-              <svg class="card-live-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/></svg>
-            </button>`
+      ? kanbanCardLiveInspectBtnHtml(c.id)
       : "";
   const accentStyle = c.tags?.[0] ? cardTagHueStyle(c.tags[0]) : "";
   const hasTags = (c.tags || []).length > 0;
@@ -4224,24 +4262,22 @@ function renderKanbanBoardInto(boardEl, board, { variant = "modal", node = null,
   const ctx = { variant, node, project: project || state.project };
   bindKanbanCardEvents(boardEl, board, ctx);
   bindKanbanColumnActions(boardEl, board, ctx);
-  void hydrateKanbanCardTodoFromReports(boardEl, board, ctx.project);
   const proj = ctx.project;
-  if (proj?.id && board.id) {
-    const running = (board.cards || []).filter((c) => c.column_id === "running");
-    if (running.length) {
-      bindLiveInspectButtons(
-        boardEl,
-        {
+  const running = (board.cards || []).filter((c) => c.column_id === "running");
+  const liveCtx =
+    proj?.id && board.id && running.length
+      ? {
           projectId: proj.id,
           projectTitle: proj.title || proj.id,
           boardId: board.id,
           cards: running,
           card: running[0],
           methodTitle: node?.title || "",
-        },
-        cardLiveUi
-      );
-    }
+        }
+      : null;
+  void hydrateKanbanCardTodoFromReports(boardEl, board, ctx.project, liveCtx);
+  if (liveCtx) {
+    bindLiveInspectButtons(boardEl, liveCtx, cardLiveUi);
   }
 }
 

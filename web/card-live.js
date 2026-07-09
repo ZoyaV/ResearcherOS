@@ -10,6 +10,11 @@ export function cardHasLiveHints(text) {
   return LIVE_HINT_RE.test(String(text || "").replace(/\\n/g, "\n"));
 }
 
+/** @param {string} [description] @param {string} [reportContent] */
+export function cardHasLiveHintsFromSources(description, reportContent) {
+  return cardHasLiveHints(description) || cardHasLiveHints(reportContent);
+}
+
 const POLL_MS = 3000;
 const DEFAULT_VIEW = "metrics";
 
