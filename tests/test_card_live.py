@@ -26,6 +26,19 @@ def test_parse_subtasks_inline_and_multiline() -> None:
     assert subs_inline["open"] == ["B"]
 
 
+def test_parse_subtasks_last_item_before_section() -> None:
+    text = """## 3. Подзадачи
+
+- [X] Done item
+- [ ] Open item
+
+## 4. Results
+"""
+    subs = parse_subtasks(text)
+    assert subs["done"] == ["Done item"]
+    assert subs["open"] == ["Open item"]
+
+
 def test_parse_live_hints_and_subtasks():
     text = """live_log: runs/train.log
 metrics_dir: runs/plots

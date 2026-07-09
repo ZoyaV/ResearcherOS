@@ -32,7 +32,7 @@ export function subtasksFromDescription(description) {
   const open = [];
   const done = [];
   const body = String(description || "").replace(/\\n/g, "\n");
-  const re = /-\s*\[([ xX])\]\s*([^\n]*?)(?=\s*-\s*\[|$)/g;
+  const re = /-\s*\[([ xX])\]\s*([^\n]*?)(?=\s*-\s*\[|$)/gm;
   let m;
   while ((m = re.exec(body)) !== null) {
     const text = m[2].trim();

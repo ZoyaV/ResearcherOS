@@ -12,7 +12,10 @@ from koi.adapters.paths import repo_root
 LIVE_LOG_RE = re.compile(r"^live_log:\s*(.+)$", re.MULTILINE | re.IGNORECASE)
 METRICS_DIR_RE = re.compile(r"^metrics_dir:\s*(.+)$", re.MULTILINE | re.IGNORECASE)
 LIVE_NOTE_RE = re.compile(r"^live_note:\s*(.+)$", re.MULTILINE | re.IGNORECASE)
-SUBTASK_RE = re.compile(r"-\s*\[([ xX])\]\s*([^\n]*?)(?=\s*-\s*\[|$)")
+SUBTASK_RE = re.compile(
+    r"-\s*\[([ xX])\]\s*([^\n]*?)(?=\s*-\s*\[|$)",
+    re.MULTILINE,
+)
 
 IMAGE_SUFFIXES = frozenset({".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"})
 MAX_TAIL_BYTES = 256 * 1024
