@@ -3507,9 +3507,9 @@ a.btn {
 }
 
 .modal-panel--kanban {
-  width: min(1180px, 96vw);
+  width: min(1440px, 98vw);
   max-width: none;
-  max-height: 92vh;
+  max-height: 94vh;
   display: flex;
   flex-direction: column;
   background: var(--surface-modal);
@@ -4749,7 +4749,7 @@ textarea.inline-edit-field {
   gap: 0.75rem;
   align-items: stretch;
   flex: 1;
-  min-height: 440px;
+  min-height: 560px;
   padding: 0.85rem;
   border-radius: 14px;
   background: var(--surface-board);
@@ -4759,7 +4759,7 @@ textarea.inline-edit-field {
 
 .kanban-col {
   flex: 1;
-  min-width: 200px;
+  min-width: 240px;
   display: flex;
   flex-direction: column;
   background: var(--surface-col);
@@ -4771,8 +4771,8 @@ textarea.inline-edit-field {
 
 .kanban-col-body {
   flex: 1;
-  min-height: 380px;
-  max-height: 420px;
+  min-height: 500px;
+  max-height: 560px;
   overflow-y: auto;
   overflow-x: hidden;
   padding-right: 0.2rem;
@@ -5673,8 +5673,8 @@ textarea.inline-edit-field {
     min-width: 0;
   }
   .kanban-col-body {
-    min-height: 200px;
-    max-height: 280px;
+    min-height: 240px;
+    max-height: 340px;
   }
 }
 
