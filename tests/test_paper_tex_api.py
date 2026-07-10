@@ -36,6 +36,11 @@ class PaperTexApiTests(unittest.TestCase):
                 self.assertEqual(get.status_code, 200)
                 self.assertIn("\\documentclass{article}", get.text)
 
+                meta = client.get("/projects/demo/papers/emnlp-demo/tex/meta")
+                self.assertEqual(meta.status_code, 200)
+                self.assertTrue(meta.json()["tex_exists"])
+                self.assertIsInstance(meta.json()["tex_mtime"], float)
+
             saved = (slot / TEX_NAME).read_text(encoding="utf-8")
             self.assertIn("\\begin{document}", saved)
 

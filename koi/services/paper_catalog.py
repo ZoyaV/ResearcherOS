@@ -140,6 +140,8 @@ def paper_entry(project_id: str, slug: str, slot_dir: Path) -> dict[str, Any]:
         out["pdf_mtime"] = datetime.fromtimestamp(
             pdf.stat().st_mtime, tz=timezone.utc
         ).isoformat(timespec="seconds")
+    if tex.is_file():
+        out["tex_mtime"] = tex.stat().st_mtime
     return out
 
 

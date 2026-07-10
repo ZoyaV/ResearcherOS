@@ -182,6 +182,16 @@ def get_project_paper_tex_legacy(
     )
 
 
+@router.get("/projects/{project_id}/papers/{slug}/tex/meta")
+def get_project_paper_tex_meta(project_id: str, slug: str) -> dict:
+    _, slot_dir = _require_paper_slot(project_id, slug)
+    path = slot_dir / TEX_NAME
+    if not path.is_file():
+        raise HTTPException(404, "main.tex ещё не сгенерирован")
+    stat = path.stat()
+    return {"tex_exists": True, "tex_mtime": stat.st_mtime, "size": stat.st_size}
+
+
 @router.get("/projects/{project_id}/papers/{slug}/tex")
 def get_project_paper_tex(project_id: str, slug: str):
     parse_project(project_id)

@@ -223,6 +223,8 @@ export const KoiApi = {
     `${apiBase()}/projects/${projectId}/papers/${encodeURIComponent(slug)}/tex`,
   getPaperTex: (projectId, slug = "default") =>
     apiText(`/projects/${projectId}/papers/${encodeURIComponent(slug)}/tex`),
+  getPaperTexMeta: (projectId, slug = "default") =>
+    api(`/projects/${projectId}/papers/${encodeURIComponent(slug)}/tex/meta`),
   savePaperTex: (projectId, slug, content) =>
     api(`/projects/${projectId}/papers/${encodeURIComponent(slug)}/tex`, {
       method: "PUT",

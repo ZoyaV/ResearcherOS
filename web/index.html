@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20260709l" />
+  <link rel="stylesheet" href="styles.css?v=20260710e" />
   <script>
     (function () {
       var t = localStorage.getItem("koi-theme");
@@ -514,44 +514,30 @@
                 <span class="paper-pane__file">main.tex</span>
               </div>
               <span id="paper-tex-dirty" class="paper-tex-dirty hidden" aria-live="polite">не сохранено</span>
+              <div id="paper-tex-external-change" class="paper-tex-external-change hidden" role="status">
+                <span class="paper-tex-external-change__text">main.tex изменён на диске</span>
+                <button type="button" id="btn-paper-tex-reload" class="paper-comment-btn paper-comment-btn--primary">Перезагрузить</button>
+                <button type="button" id="btn-paper-tex-keep-local" class="paper-comment-btn">Оставить мою версию</button>
+              </div>
               <button type="button" id="btn-paper-tex-save" class="btn btn-small" disabled title="Сохранить main.tex">Сохранить</button>
               <button type="button" id="btn-paper-tex-compile" class="btn btn-small" title="Собрать PDF из main.tex">Собрать PDF</button>
+              <span id="paper-comments-count" class="paper-comments-count">0</span>
               <span id="paper-tex-selection" class="paper-tex-selection">Выделите фрагмент текста</span>
-              <button type="button" id="btn-paper-comments-expand" class="btn btn-small paper-comments-expand hidden" title="Показать панель комментариев">Review <span id="paper-comments-count-inline" class="paper-comments-count">0</span></button>
               <button type="button" id="btn-paper-comment-add" class="btn btn-primary btn-small paper-comment-cta" disabled>Комментировать</button>
             </header>
             <div id="paper-tex-scroll" class="paper-tex-scroll" tabindex="0">
-              <div class="paper-tex-editor">
-                <div id="paper-tex-gutter" class="paper-tex-gutter" aria-hidden="true"></div>
-                <textarea id="paper-tex-input" class="paper-tex-input" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Редактор main.tex"></textarea>
-              </div>
-              <div id="paper-selection-popover" class="paper-selection-popover hidden" role="toolbar" aria-label="Действия с выделением">
-                <button type="button" id="btn-paper-comment-popover" class="btn btn-primary btn-small">Комментировать</button>
+              <div id="paper-tex-scroll-inner" class="paper-tex-scroll-inner">
+                <div class="paper-tex-editor">
+                  <div id="paper-tex-gutter" class="paper-tex-gutter" aria-hidden="true"></div>
+                  <div class="paper-tex-input-wrap">
+                    <textarea id="paper-tex-input" class="paper-tex-input" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Редактор main.tex"></textarea>
+                    <div id="paper-tex-mirror" class="paper-tex-mirror" aria-hidden="true"></div>
+                  </div>
+                  <div id="paper-comment-margin" class="paper-comment-margin" aria-label="Комментарии к строкам"></div>
+                </div>
               </div>
             </div>
           </section>
-          <div class="paper-split-divider paper-split-divider--review" aria-hidden="true"></div>
-          <aside id="paper-comments-panel" class="paper-pane paper-pane--review" aria-label="Комментарии к статье">
-            <header class="paper-pane__head">
-              <div class="paper-pane__title-group">
-                <span class="paper-pane__label">Review</span>
-                <span id="paper-comments-count" class="paper-comments-count">0</span>
-              </div>
-              <button type="button" id="btn-paper-comments-collapse" class="paper-pane__toggle btn btn-small" aria-expanded="true" title="Скрыть панель комментариев">Скрыть</button>
-            </header>
-            <div id="paper-comments-body" class="paper-comments-body">
-              <div id="paper-comments-list" class="paper-comments-list"></div>
-              <div id="paper-comment-compose" class="paper-comment-compose hidden">
-                <p id="paper-comment-compose-range" class="paper-comment-compose-range"></p>
-                <textarea id="paper-comment-compose-body" class="paper-comment-compose-body" rows="4" placeholder="Комментарий для агента…"></textarea>
-                <div class="paper-comment-compose-actions">
-                  <button type="button" id="btn-paper-comment-save" class="btn btn-primary btn-small">Сохранить</button>
-                  <button type="button" id="btn-paper-comment-cancel" class="btn btn-small">Отмена</button>
-                </div>
-              </div>
-              <div id="paper-comment-thread" class="paper-comment-thread hidden"></div>
-            </div>
-          </aside>
           <div class="paper-split-divider paper-split-divider--pdf" aria-hidden="true"></div>
           <section class="paper-pane paper-pane--pdf" aria-label="PDF просмотр">
             <header class="paper-pane__head">
@@ -569,10 +555,9 @@
         <code>research.json</code>, отчёты экспериментов и графики из <code>assets/</code> ·
         LaTeX-исходник и PDF — в <code>koi-structure/paper/&lt;slug&gt;/</code>
       </p>
+      <div id="paper-toast-stack" class="paper-toast-stack" aria-live="polite"></div>
     </div>
   </div>
-
-  <!-- База знаний проекта -->
   <div id="knowledge-modal" class="modal hidden" role="dialog" aria-labelledby="knowledge-modal-title">
     <div class="modal-backdrop" data-close="knowledge-modal"></div>
     <div class="modal-panel modal-panel--report">
@@ -629,6 +614,6 @@
     aria-relevant="additions"
   ></div>
 
-  <script type="module" src="app.js?v=20260709n"></script>
+  <script type="module" src="app.js?v=20260710e"></script>
 </body>
 </html>

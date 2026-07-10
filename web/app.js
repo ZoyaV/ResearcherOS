@@ -6435,10 +6435,101 @@ function openKnowledgeModal() {
   void loadKnowledgeTab();
 }
 
+const PAPER_TOAST_MS = 3200;
+
+const PAPER_COMMENT_ICONS = {
+  copy: `<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>`,
+  send: `<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M2.01 21 23 12 2.01 3 2 10l15 2-15 2z"/></svg>`,
+  resolve: `<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`,
+  reopen: `<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M12 6v3l4-4-4-4v3c-4.42 0-8 3.58-8 8 0 1.57.46 3.03 1.24 4.26L6.7 14.8A5.87 5.87 0 0 1 6 12c0-3.31 2.69-6 6-6zm6.76 1.74L17.3 9.2c.44.84.7 1.79.7 2.8 0 3.31-2.69 6-6 6v-3l-4 4 4 4v-3c4.42 0 8-3.58 8-8 0-1.57-.46-3.03-1.24-4.26z"/></svg>`,
+  delete: `<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>`,
+  check: `<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>`,
+  alert: `<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>`,
+  save: `<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>`,
+  cancel: `<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>`,
+};
+
+function showPaperToast(message, { variant = "success" } = {}) {
+  const stack =
+    document.getElementById("paper-toast-stack") ||
+    paperEls().modal?.querySelector(".paper-toast-stack");
+  if (!stack) return;
+  const el = document.createElement("div");
+  el.className = `paper-toast paper-toast--${variant}`;
+  el.setAttribute("role", "status");
+  el.innerHTML = `
+    <span class="paper-toast__icon">${variant === "error" ? PAPER_COMMENT_ICONS.alert : PAPER_COMMENT_ICONS.check}</span>
+    <span class="paper-toast__text">${escapeHtml(message)}</span>`;
+  stack.appendChild(el);
+  requestAnimationFrame(() => el.classList.add("is-visible"));
+  setTimeout(() => {
+    el.classList.add("is-leaving");
+    setTimeout(() => el.remove(), 220);
+  }, PAPER_TOAST_MS);
+}
+
+function paperCommentBtn(label, icon, attrs, extraClass = "", { iconOnly = false } = {}) {
+  const safeLabel = escapeHtml(label);
+  const a11y = `aria-label="${safeLabel}" title="${safeLabel}"`;
+  if (iconOnly) {
+    return `<button type="button" class="paper-comment-btn paper-comment-btn--icon ${extraClass}" ${a11y} ${attrs}>
+      <span class="paper-comment-btn__icon">${icon}</span>
+    </button>`;
+  }
+  return `<button type="button" class="paper-comment-btn ${extraClass}" ${a11y} ${attrs}>
+    <span class="paper-comment-btn__icon">${icon}</span>
+    <span class="paper-comment-btn__label">${safeLabel}</span>
+  </button>`;
+}
+
+function paperCommentStatusHtml(comment, stale = false) {
+  if (comment.resolved) {
+    return `<span class="paper-comment-card__status is-resolved">Resolved</span>`;
+  }
+  if (stale) {
+    return `<span class="paper-comment-card__status is-stale">Устарел</span>`;
+  }
+  return `<span class="paper-comment-card__status is-open">Review</span>`;
+}
+
+function paperCommentQuoteHtml(snippet) {
+  if (!snippet) return "";
+  return `<blockquote class="paper-comment-card__quote">${snippet}</blockquote>`;
+}
+
+function markPaperCopyButton(btn, copied = true) {
+  if (!btn) return;
+  const iconEl = btn.querySelector(".paper-comment-btn__icon");
+  if (!btn.dataset.originalLabel) {
+    btn.dataset.originalLabel = btn.getAttribute("aria-label") || "Копировать";
+  }
+  if (iconEl && !btn.dataset.originalIcon) {
+    btn.dataset.originalIcon = iconEl.innerHTML;
+  }
+  btn.classList.toggle("is-copied", copied);
+  const label = copied ? "Скопировано" : btn.dataset.originalLabel;
+  btn.setAttribute("aria-label", label);
+  btn.setAttribute("title", label);
+  if (iconEl) {
+    iconEl.innerHTML = copied
+      ? PAPER_COMMENT_ICONS.check.replace('width="16"', 'width="14"').replace('height="16"', 'height="14"')
+      : btn.dataset.originalIcon;
+  }
+  const textLabel = btn.querySelector(".paper-comment-btn__label");
+  if (textLabel) textLabel.textContent = label;
+  if (copied) {
+    clearTimeout(btn._copyResetTimer);
+    btn._copyResetTimer = setTimeout(() => markPaperCopyButton(btn, false), 2000);
+  }
+}
+
 /* --------------------- Статья по проекту (NeurIPS PDF) --------------------- */
 
 const paperState = {
   pollTimer: null,
+  texPollTimer: null,
+  lastRemoteTexMtime: null,
+  pendingRemoteTexMtime: null,
   lastPdfStamp: null,
   lastPdfKey: null,
   lastTexKey: null,
@@ -6455,13 +6546,13 @@ const paperState = {
   activeCommentId: null,
   composeOpen: false,
   pendingDeepLink: null,
-  commentsPanelCollapsed: false,
   texDirty: false,
   texSaving: false,
   texCompiling: false,
+  gutterLineCount: 0,
 };
 const PAPER_INBOX_CONFIGURED_KEY = "koi_paper_inbox_configured";
-const PAPER_COMMENTS_COLLAPSED_KEY = "koi_paper_comments_collapsed";
+const PAPER_TEX_POLL_MS = 3000;
 let paperInboxBootstrapCopied = false;
 let lastPaperInboxMessage = "";
 
@@ -6600,24 +6691,18 @@ function paperEls() {
     frame: document.getElementById("paper-frame"),
     pdfMissing: document.getElementById("paper-pdf-missing"),
     texScroll: document.getElementById("paper-tex-scroll"),
+    texScrollInner: document.getElementById("paper-tex-scroll-inner"),
     texGutter: document.getElementById("paper-tex-gutter"),
     texInput: document.getElementById("paper-tex-input"),
+    texMirror: document.getElementById("paper-tex-mirror"),
+    commentMargin: document.getElementById("paper-comment-margin"),
     texDirty: document.getElementById("paper-tex-dirty"),
+    texExternalChange: document.getElementById("paper-tex-external-change"),
     texSave: document.getElementById("btn-paper-tex-save"),
     texCompile: document.getElementById("btn-paper-tex-compile"),
     texSelection: document.getElementById("paper-tex-selection"),
     commentAdd: document.getElementById("btn-paper-comment-add"),
     commentsCount: document.getElementById("paper-comments-count"),
-    commentsList: document.getElementById("paper-comments-list"),
-    commentCompose: document.getElementById("paper-comment-compose"),
-    commentComposeRange: document.getElementById("paper-comment-compose-range"),
-    commentComposeBody: document.getElementById("paper-comment-compose-body"),
-    commentThread: document.getElementById("paper-comment-thread"),
-    commentsPanel: document.getElementById("paper-comments-panel"),
-    commentsCollapseBtn: document.getElementById("btn-paper-comments-collapse"),
-    commentsExpandBtn: document.getElementById("btn-paper-comments-expand"),
-    commentsCountInline: document.getElementById("paper-comments-count-inline"),
-    selectionPopover: document.getElementById("paper-selection-popover"),
     panel: document.querySelector(".paper-panel"),
   };
 }
@@ -6651,6 +6736,8 @@ function renderPaperTabs() {
       paperState.lastPdfStamp = null;
       paperState.lastPdfKey = null;
       paperState.lastTexKey = null;
+      paperState.lastRemoteTexMtime = null;
+      paperState.pendingRemoteTexMtime = null;
       paperState.texDirty = false;
       paperState.activeCommentId = null;
       resetPaperSelection();
@@ -6715,6 +6802,103 @@ function stopPaperPolling() {
     clearInterval(paperState.pollTimer);
     paperState.pollTimer = null;
   }
+}
+
+function stopPaperTexPolling() {
+  if (paperState.texPollTimer) {
+    clearInterval(paperState.texPollTimer);
+    paperState.texPollTimer = null;
+  }
+}
+
+function startPaperTexPolling() {
+  stopPaperTexPolling();
+  paperState.texPollTimer = setInterval(() => {
+    void pollPaperTexChanges();
+  }, PAPER_TEX_POLL_MS);
+}
+
+function isPaperModalOpen() {
+  return !paperEls().modal?.classList.contains("hidden");
+}
+
+function isPaperWorkspaceVisible() {
+  return isPaperModalOpen() && !paperEls().split?.classList.contains("hidden");
+}
+
+function showPaperTexExternalChangeBanner(show = true) {
+  paperEls().texExternalChange?.classList.toggle("hidden", !show);
+}
+
+function dismissPaperTexExternalChange() {
+  paperState.pendingRemoteTexMtime = null;
+  showPaperTexExternalChangeBanner(false);
+}
+
+async function syncPaperTexRemoteMtime(projectId, slug) {
+  try {
+    const meta = await KoiApi.getPaperTexMeta(projectId, slug);
+    if (meta?.tex_mtime != null) paperState.lastRemoteTexMtime = meta.tex_mtime;
+    return meta;
+  } catch {
+    return null;
+  }
+}
+
+async function reloadPaperTexFromDisk({ quiet = false } = {}) {
+  const entry = activePaperEntry();
+  if (!entry) return false;
+  try {
+    const text = await KoiApi.getPaperTex(entry.project_id, entry.slug);
+    paperState.lastTexKey = null;
+    paperState.composeOpen = false;
+    dismissPaperTexExternalChange();
+    setTexEditorContent(text, { markClean: true });
+    await syncPaperTexRemoteMtime(entry.project_id, entry.slug);
+    if (!quiet) showPaperToast("main.tex перезагружен с диска");
+    return true;
+  } catch (err) {
+    if (!quiet && paperEls().status) {
+      paperEls().status.textContent = `Не удалось перезагрузить main.tex: ${err.message}`;
+    }
+    return false;
+  }
+}
+
+async function pollPaperTexChanges() {
+  const entry = activePaperEntry();
+  if (!entry || !isPaperWorkspaceVisible()) return;
+  if (paperState.texSaving || paperState.texCompiling) return;
+
+  try {
+    const meta = await KoiApi.getPaperTexMeta(entry.project_id, entry.slug);
+    const remoteMtime = meta?.tex_mtime;
+    if (remoteMtime == null) return;
+
+    if (paperState.lastRemoteTexMtime == null) {
+      paperState.lastRemoteTexMtime = remoteMtime;
+      return;
+    }
+
+    if (Math.abs(remoteMtime - paperState.lastRemoteTexMtime) < 0.001) return;
+
+    if (paperState.texDirty || paperState.composeOpen) {
+      paperState.pendingRemoteTexMtime = remoteMtime;
+      showPaperTexExternalChangeBanner(true);
+      return;
+    }
+
+    paperState.lastRemoteTexMtime = remoteMtime;
+    await reloadPaperTexFromDisk({ quiet: true });
+    showPaperToast("main.tex обновлён с диска");
+  } catch {
+    /* transient network errors */
+  }
+}
+
+function stopPaperPollingAll() {
+  stopPaperPolling();
+  stopPaperTexPolling();
 }
 
 function showPaperLoader(step = "Генерация статьи…") {
@@ -6835,48 +7019,13 @@ function paperCommentClipboardText(projectId, slug, comment) {
   return lines.join("\n");
 }
 
-function isPaperCommentsPanelCollapsed() {
-  try {
-    return localStorage.getItem(PAPER_COMMENTS_COLLAPSED_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-
-function applyPaperCommentsPanelCollapsed() {
-  const els = paperEls();
-  const collapsed = paperState.commentsPanelCollapsed;
-  els.split?.classList.toggle("paper-split--comments-collapsed", collapsed);
-  els.commentsCollapseBtn?.setAttribute("aria-expanded", String(!collapsed));
-  if (els.commentsCollapseBtn) {
-    els.commentsCollapseBtn.textContent = collapsed ? "Показать" : "Скрыть";
-    els.commentsCollapseBtn.title = collapsed
-      ? "Показать панель комментариев"
-      : "Скрыть панель комментариев";
-  }
-  els.commentsExpandBtn?.classList.toggle("hidden", !collapsed);
-}
-
-function setPaperCommentsPanelCollapsed(collapsed) {
-  paperState.commentsPanelCollapsed = Boolean(collapsed);
-  try {
-    localStorage.setItem(PAPER_COMMENTS_COLLAPSED_KEY, collapsed ? "1" : "0");
-  } catch {
-    /* private mode */
-  }
-  applyPaperCommentsPanelCollapsed();
-}
-
-function togglePaperCommentsPanel() {
-  setPaperCommentsPanelCollapsed(!paperState.commentsPanelCollapsed);
-}
-
 function setPaperViewerVisible({ split = false, empty = false } = {}) {
   const els = paperEls();
   els.empty?.classList.toggle("hidden", !empty);
   els.split?.classList.toggle("hidden", !split);
   els.panel?.classList.toggle("is-workspace", split);
-  if (split) applyPaperCommentsPanelCollapsed();
+  if (split && isPaperModalOpen()) startPaperTexPolling();
+  else stopPaperTexPolling();
 }
 
 function resetPaperSelection() {
@@ -6886,7 +7035,6 @@ function resetPaperSelection() {
   paperState.selectedCharEnd = null;
   paperState.selectedText = "";
   paperState.composeOpen = false;
-  hidePaperSelectionPopover();
   updatePaperSelectionUi();
 }
 
@@ -6927,19 +7075,123 @@ function parseTexareaSelection(ta) {
   return { lineStart, lineEnd, charStart, charEnd, selectedText };
 }
 
-function hidePaperSelectionPopover() {
-  paperEls().selectionPopover?.classList.add("hidden");
-}
-
 function syncPaperTextSelection() {
   const ta = paperEls().texInput;
   if (!ta || document.activeElement !== ta) {
     applyPaperTextSelection(null);
-    hidePaperSelectionPopover();
     return;
   }
   applyPaperTextSelection(parseTexareaSelection(ta));
-  hidePaperSelectionPopover();
+}
+
+function renderPaperTexMirror() {
+  const mirror = paperEls().texMirror;
+  if (!mirror) return;
+  const lines = paperState.texLines || [];
+  if (!lines.length) {
+    mirror.innerHTML = `<div class="paper-tex-mirror-line" data-line="1">\u200b</div>`;
+    return;
+  }
+  mirror.innerHTML = lines
+    .map((line, index) => {
+      const lineNo = index + 1;
+      const text = escapeHtml(line);
+      return `<div class="paper-tex-mirror-line" data-line="${lineNo}">${text || "\u200b"}</div>`;
+    })
+    .join("");
+}
+
+function syncPaperGutterFromMirror() {
+  const els = paperEls();
+  const mirror = els.texMirror;
+  const gutter = els.texGutter;
+  if (!mirror || !gutter) return;
+  mirror.querySelectorAll(".paper-tex-mirror-line").forEach((mirrorLine) => {
+    const lineNo = mirrorLine.getAttribute("data-line");
+    const gutterLine = gutter.querySelector(`.paper-tex-gutter-line[data-line="${lineNo}"]`);
+    if (gutterLine) gutterLine.style.minHeight = `${mirrorLine.offsetHeight}px`;
+  });
+}
+
+function measurePaperAnchorTop(lineNo, charOffset = 0) {
+  const mirror = paperEls().texMirror;
+  if (!mirror) return 0;
+  const lineEl = mirror.querySelector(`.paper-tex-mirror-line[data-line="${lineNo}"]`);
+  if (!lineEl) return 0;
+  const offset = Math.max(0, Number(charOffset) || 0);
+  if (!offset) return lineEl.offsetTop;
+
+  const text = paperState.texLines[lineNo - 1] || "";
+  const safeBefore = escapeHtml(text.slice(0, offset));
+  const safeAfter = escapeHtml(text.slice(offset));
+  const originalHtml = lineEl.innerHTML;
+  lineEl.innerHTML = `${safeBefore}<span class="paper-tex-mirror-marker">\u200b</span>${safeAfter || "\u200b"}`;
+  const marker = lineEl.querySelector(".paper-tex-mirror-marker");
+  let top = lineEl.offsetTop;
+  if (marker) {
+    const lineRect = lineEl.getBoundingClientRect();
+    const markerRect = marker.getBoundingClientRect();
+    top = lineEl.offsetTop + (markerRect.top - lineRect.top);
+  }
+  lineEl.innerHTML = originalHtml;
+  return top;
+}
+
+function measurePaperLineTop(lineNo, charOffset = 0) {
+  return measurePaperAnchorTop(lineNo, charOffset);
+}
+
+function commentAnchorTop(comment) {
+  const { start, end, charStart } = commentAnchorMeta(comment);
+  const charOffset = start === end && charStart != null ? charStart : 0;
+  return measurePaperAnchorTop(start, charOffset);
+}
+
+function selectionAnchorTop() {
+  const start = paperState.selectedLineStart;
+  if (!start) return 0;
+  const charOffset =
+    paperState.selectedLineStart === paperState.selectedLineEnd
+      ? paperState.selectedCharStart ?? 0
+      : 0;
+  return measurePaperAnchorTop(start, charOffset);
+}
+
+function syncPaperLayoutMetrics() {
+  renderPaperTexMirror();
+  syncPaperGutterFromMirror();
+  syncPaperTexEditorHeight();
+}
+
+async function refreshPaperCommentLayout({ rebuildGutter = false } = {}) {
+  const lineCount = Math.max(1, paperState.texLines.length || 1);
+  if (rebuildGutter || lineCount !== paperState.gutterLineCount) {
+    await renderPaperTexGutter();
+    paperState.gutterLineCount = lineCount;
+  }
+  syncPaperLayoutMetrics();
+  const margin = paperEls().commentMargin;
+  if (!margin) return;
+  margin.querySelectorAll(".paper-comment-anchor").forEach((anchor) => {
+    let top = 0;
+    if (anchor.hasAttribute("data-compose")) {
+      top = selectionAnchorTop();
+      if (paperState.selectedLineStart) {
+        anchor.dataset.lineNo = String(paperState.selectedLineStart);
+      }
+    } else {
+      const comment = paperState.comments.find(
+        (item) => item.id === anchor.getAttribute("data-comment-id")
+      );
+      if (comment) {
+        top = commentAnchorTop(comment);
+        anchor.dataset.lineNo = String(commentLinesFor(comment).start);
+      }
+    }
+    anchor.dataset.lineTop = String(top);
+    anchor.style.top = `${top}px`;
+  });
+  layoutPaperCommentAnchors();
 }
 
 function syncTexFromInput() {
@@ -6949,7 +7201,7 @@ function syncTexFromInput() {
   paperState.texLines = ta.value.split("\n");
   paperState.texDirty = true;
   updatePaperSaveUi();
-  void renderPaperTexGutter();
+  void refreshPaperCommentLayout({ rebuildGutter: true });
 }
 
 function updatePaperSaveUi() {
@@ -6973,7 +7225,8 @@ function setTexEditorContent(text, { markClean = true } = {}) {
   if (els.texInput && els.texInput.value !== text) els.texInput.value = text;
   if (markClean) paperState.texDirty = false;
   updatePaperSaveUi();
-  void renderPaperTexGutter();
+  syncPaperTexEditorHeight();
+  void renderPaperTexEditor();
 }
 
 function offsetForLine(text, lineNo, charOffset = 0) {
@@ -7021,14 +7274,6 @@ function updatePaperSelectionUi() {
     els.texSelection.classList.toggle("has-selection", hasSelection);
   }
   if (els.commentAdd) els.commentAdd.disabled = !hasSelection || paperState.composeOpen;
-
-  if (paperState.composeOpen && els.commentCompose && els.commentComposeRange) {
-    els.commentCompose.classList.remove("hidden");
-    els.commentComposeRange.textContent = `Новый комментарий · ${paperSelectionLabel()}`;
-    els.commentThread?.classList.add("hidden");
-  } else if (els.commentCompose) {
-    els.commentCompose.classList.add("hidden");
-  }
 }
 
 function linesWithComments() {
@@ -7080,17 +7325,48 @@ async function renderPaperTexGutter() {
   });
 }
 
+function syncPaperTexEditorHeight() {
+  const els = paperEls();
+  const ta = els.texInput;
+  const mirror = els.texMirror;
+  if (!ta) return;
+  const scrollMin = Math.max((els.texScroll?.clientHeight || 0) - 8, 120);
+  const mirrorHeight = mirror?.offsetHeight || ta.scrollHeight;
+  const contentHeight = Math.max(mirrorHeight, scrollMin);
+  ta.style.height = `${contentHeight}px`;
+  if (els.commentMargin) els.commentMargin.style.minHeight = `${contentHeight}px`;
+}
+
+function layoutPaperCommentAnchors() {
+  const margin = paperEls().commentMargin;
+  if (!margin) return;
+  const anchors = [...margin.querySelectorAll(".paper-comment-anchor")];
+  anchors.sort(
+    (a, b) => Number(a.dataset.lineTop || 0) - Number(b.dataset.lineTop || 0)
+  );
+  let lastBottom = 0;
+  for (const anchor of anchors) {
+    let top = Number(anchor.dataset.lineTop || 0);
+    if (top < lastBottom + 4) top = lastBottom + 4;
+    anchor.style.top = `${top}px`;
+    lastBottom = top + anchor.offsetHeight;
+  }
+  const ta = paperEls().texInput;
+  if (ta) {
+    const needed = Math.max(ta.scrollHeight, lastBottom + 24, margin.clientHeight);
+    ta.style.height = `${needed}px`;
+    margin.style.minHeight = `${needed}px`;
+  }
+}
+
 function bindPaperTexEditor() {
   const ta = paperEls().texInput;
-  const gutter = paperEls().texGutter;
+  const wrap = ta?.closest(".paper-tex-input-wrap");
   if (!ta || ta.dataset.editorBound === "1") return;
   ta.dataset.editorBound = "1";
 
   ta.addEventListener("input", () => {
     syncTexFromInput();
-  });
-  ta.addEventListener("scroll", () => {
-    if (gutter) gutter.scrollTop = ta.scrollTop;
   });
   ta.addEventListener("mouseup", () => {
     requestAnimationFrame(syncPaperTextSelection);
@@ -7107,10 +7383,25 @@ function bindPaperTexEditor() {
       void savePaperTex();
     }
   });
+
+  if (wrap && window.ResizeObserver && !wrap.dataset.resizeBound) {
+    wrap.dataset.resizeBound = "1";
+    let resizeTimer = null;
+    const observer = new ResizeObserver(() => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        void refreshPaperCommentLayout();
+      }, 80);
+    });
+    observer.observe(wrap);
+  }
 }
 
 async function renderPaperTexEditor() {
   await renderPaperTexGutter();
+  paperState.gutterLineCount = Math.max(1, paperState.texLines.length || 1);
+  syncPaperLayoutMetrics();
+  await renderPaperCommentMargin();
   updatePaperSelectionUi();
   if (paperState.activeCommentId) scrollPaperToComment(paperState.activeCommentId);
 }
@@ -7123,10 +7414,16 @@ async function savePaperTex({ quiet = false } = {}) {
   paperState.texSaving = true;
   updatePaperSaveUi();
   try {
-    await KoiApi.savePaperTex(entry.project_id, entry.slug, content);
+    const res = await KoiApi.savePaperTex(entry.project_id, entry.slug, content);
     paperState.texDirty = false;
     paperState.texText = content;
     paperState.texLines = content.split("\n");
+    if (res?.tex_mtime != null) {
+      paperState.lastRemoteTexMtime = res.tex_mtime;
+    } else {
+      await syncPaperTexRemoteMtime(entry.project_id, entry.slug);
+    }
+    dismissPaperTexExternalChange();
     updatePaperSaveUi();
     if (!quiet && els.status) {
       els.status.textContent = "main.tex сохранён";
@@ -7184,139 +7481,208 @@ async function compilePaperPdf() {
   }
 }
 
-function renderPaperCommentsList() {
-  const els = paperEls();
-  if (!els.commentsList) return;
-  const comments = [...(paperState.comments || [])].sort((a, b) => {
-    return commentLinesFor(a).start - commentLinesFor(b).start;
-  });
-  if (els.commentsCount) els.commentsCount.textContent = String(comments.length);
-  if (els.commentsCountInline) els.commentsCountInline.textContent = String(comments.length);
+function paperCommentAnchorHtml(comment, { expanded = false, stale = false } = {}) {
+  const { start, end, selectedText } = commentAnchorMeta(comment);
+  const snippet = selectedText
+    ? escapeHtml(selectedText.replace(/\s+/g, " ").trim().slice(0, 72))
+    : "";
+  const firstBody = escapeHtml(commentFirstMessage(comment));
+  const messages = comment.thread || [];
+  const lineTop = commentAnchorTop(comment);
 
-  if (!comments.length) {
-    els.commentsList.innerHTML = `<p class="paper-comments-empty">Выделите фрагмент в LaTeX и нажмите «Комментировать» — ссылку можно сразу отправить агенту.</p>`;
-    return;
+  if (!expanded) {
+    return `<div class="paper-comment-anchor is-collapsed${comment.resolved ? " is-resolved" : ""}" data-comment-id="${escapeHtml(comment.id)}" data-line-no="${start}" data-line-top="${lineTop}" style="top:${lineTop}px">
+      <article class="paper-comment-card">
+        <div class="paper-comment-card__rail" aria-hidden="true"></div>
+        <div class="paper-comment-card__content">
+          <header class="paper-comment-card__head">
+            <span class="paper-comment-card__badge">L${start}${end !== start ? `–${end}` : ""}</span>
+            ${paperCommentStatusHtml(comment, stale)}
+          </header>
+          ${paperCommentQuoteHtml(snippet)}
+          <p class="paper-comment-card__body">${firstBody || "…"}</p>
+        </div>
+      </article>
+    </div>`;
   }
 
-  els.commentsList.innerHTML = comments
-    .map((comment) => {
-      const { start, end, selectedText } = commentAnchorMeta(comment);
-      const active = comment.id === paperState.activeCommentId;
-      const snippet = selectedText
-        ? escapeHtml(selectedText.replace(/\s+/g, " ").trim().slice(0, 72))
-        : "";
-      return `<article class="paper-comment-card${active ? " is-active" : ""}${comment.resolved ? " is-resolved" : ""}" data-comment-id="${escapeHtml(comment.id)}">
-        <div class="paper-comment-card__meta">
+  return `<div class="paper-comment-anchor is-active${comment.resolved ? " is-resolved" : ""}" data-comment-id="${escapeHtml(comment.id)}" data-line-no="${start}" data-line-top="${lineTop}" style="top:${lineTop}px">
+    <article class="paper-comment-card">
+      <div class="paper-comment-card__rail" aria-hidden="true"></div>
+      <div class="paper-comment-card__content">
+        <header class="paper-comment-card__head">
           <span class="paper-comment-card__badge">L${start}${end !== start ? `–${end}` : ""}</span>
-          <span>${comment.resolved ? "resolved" : ""}</span>
+          ${paperCommentStatusHtml(comment, stale)}
+        </header>
+        ${paperCommentQuoteHtml(snippet)}
+        <div class="paper-comment-thread__messages">
+          ${messages
+            .map(
+              (msg) => `<div class="paper-comment-message">
+                <div class="paper-comment-message__meta">${escapeHtml(msg.author || "reviewer")} · ${escapeHtml(new Date(msg.created_at || "").toLocaleString() || "")}</div>
+                <div class="paper-comment-message__body">${escapeHtml(msg.body || "")}</div>
+              </div>`
+            )
+            .join("")}
         </div>
-        ${snippet ? `<span class="paper-comment-card__snippet">${snippet}</span>` : ""}
-        <div class="paper-comment-card__body">${escapeHtml(commentFirstMessage(comment))}</div>
-        <div class="paper-comment-card__actions">
-          <button type="button" class="btn btn-small" data-paper-comment-copy="${escapeHtml(comment.id)}">Копировать</button>
-          <button type="button" class="btn btn-small btn-danger" data-paper-comment-delete="${escapeHtml(comment.id)}">Удалить</button>
-        </div>
-      </article>`;
-    })
-    .join("");
+        <textarea class="paper-comment-thread-reply" rows="2" placeholder="Ответ…" data-paper-thread-reply="${escapeHtml(comment.id)}"></textarea>
+        <footer class="paper-comment-card__actions paper-comment-card__actions--compact">
+          ${paperCommentBtn("Ответить", PAPER_COMMENT_ICONS.send, `data-paper-thread-send="${escapeHtml(comment.id)}"`, "paper-comment-btn--primary", { iconOnly: true })}
+          ${paperCommentBtn("Копировать", PAPER_COMMENT_ICONS.copy, `data-paper-thread-copy="${escapeHtml(comment.id)}"`, "", { iconOnly: true })}
+          ${paperCommentBtn(comment.resolved ? "Открыть снова" : "Resolve", comment.resolved ? PAPER_COMMENT_ICONS.reopen : PAPER_COMMENT_ICONS.resolve, `data-paper-thread-resolve="${escapeHtml(comment.id)}"`, "", { iconOnly: true })}
+          ${paperCommentBtn("Удалить", PAPER_COMMENT_ICONS.delete, `data-paper-thread-delete="${escapeHtml(comment.id)}"`, "paper-comment-btn--danger", { iconOnly: true })}
+        </footer>
+      </div>
+    </article>
+  </div>`;
+}
 
-  els.commentsList.querySelectorAll("[data-comment-id]").forEach((card) => {
-    card.addEventListener("click", (event) => {
-      if (event.target.closest("[data-paper-comment-copy], [data-paper-comment-delete]")) return;
-      focusPaperComment(card.getAttribute("data-comment-id"));
+function paperCommentComposeHtml() {
+  const start = paperState.selectedLineStart;
+  if (!start) return "";
+  const lineTop = selectionAnchorTop();
+  return `<div class="paper-comment-anchor is-compose is-active" data-compose="1" data-line-no="${start}" data-line-top="${lineTop}" style="top:${lineTop}px">
+    <article class="paper-comment-card paper-comment-card--compose">
+      <div class="paper-comment-card__rail" aria-hidden="true"></div>
+      <div class="paper-comment-card__content">
+        <header class="paper-comment-card__head">
+          <span class="paper-comment-card__badge">Новый комментарий</span>
+          <span class="paper-comment-card__status is-compose">Draft</span>
+        </header>
+        <p class="paper-comment-card__range">${escapeHtml(paperSelectionLabel())}</p>
+        <textarea class="paper-comment-compose-body" rows="3" placeholder="Комментарий для агента…" data-paper-compose-body="1"></textarea>
+        <footer class="paper-comment-card__actions paper-comment-card__actions--compact">
+          ${paperCommentBtn("Сохранить", PAPER_COMMENT_ICONS.save, `data-paper-compose-save="1"`, "paper-comment-btn--primary", { iconOnly: true })}
+          ${paperCommentBtn("Отмена", PAPER_COMMENT_ICONS.cancel, `data-paper-compose-cancel="1"`, "", { iconOnly: true })}
+        </footer>
+      </div>
+    </article>
+  </div>`;
+}
+
+function bindPaperCommentMarginEvents() {
+  const margin = paperEls().commentMargin;
+  if (!margin) return;
+
+  margin.querySelectorAll(".paper-comment-anchor.is-collapsed[data-comment-id]").forEach((anchor) => {
+    anchor.addEventListener("click", () => {
+      focusPaperComment(anchor.getAttribute("data-comment-id"), { scroll: false });
     });
   });
-  els.commentsList.querySelectorAll("[data-paper-comment-copy]").forEach((btn) => {
+
+  margin.querySelector("[data-paper-compose-save]")?.addEventListener("click", () => {
+    void savePaperComment();
+  });
+  margin.querySelector("[data-paper-compose-cancel]")?.addEventListener("click", () => {
+    closePaperCommentCompose();
+  });
+  margin.querySelector("[data-paper-compose-body]")?.addEventListener("keydown", (event) => {
+    if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+      event.preventDefault();
+      void savePaperComment();
+    }
+  });
+
+  margin.querySelectorAll("[data-paper-thread-copy]").forEach((btn) => {
     btn.addEventListener("click", (event) => {
       event.stopPropagation();
-      void copyPaperCommentLink(btn.getAttribute("data-paper-comment-copy"));
+      void copyPaperCommentLink(btn.getAttribute("data-paper-thread-copy"), btn);
     });
   });
-  els.commentsList.querySelectorAll("[data-paper-comment-delete]").forEach((btn) => {
+  margin.querySelectorAll("[data-paper-thread-send]").forEach((btn) => {
     btn.addEventListener("click", (event) => {
       event.stopPropagation();
-      void deletePaperComment(btn.getAttribute("data-paper-comment-delete"));
+      void replyPaperComment(btn.getAttribute("data-paper-thread-send"));
+    });
+  });
+  margin.querySelectorAll("[data-paper-thread-resolve]").forEach((btn) => {
+    btn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const comment = paperState.comments.find((item) => item.id === btn.getAttribute("data-paper-thread-resolve"));
+      void togglePaperCommentResolved(btn.getAttribute("data-paper-thread-resolve"), !comment?.resolved);
+    });
+  });
+  margin.querySelectorAll("[data-paper-thread-delete]").forEach((btn) => {
+    btn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      void deletePaperComment(btn.getAttribute("data-paper-thread-delete"));
     });
   });
 }
 
-function renderPaperCommentThread() {
+async function renderPaperCommentMargin() {
   const els = paperEls();
-  const entry = activePaperEntry();
-  if (!els.commentThread || !entry || !paperState.activeCommentId || paperState.composeOpen) {
-    els.commentThread?.classList.add("hidden");
-    return;
-  }
-  const comment = paperState.comments.find((item) => item.id === paperState.activeCommentId);
-  if (!comment) {
-    els.commentThread.classList.add("hidden");
-    return;
-  }
-  const { start, end } = commentLinesFor(comment);
-  const messages = comment.thread || [];
-  els.commentThread.classList.remove("hidden");
-  els.commentThread.innerHTML = `
-    <div class="paper-comment-thread__head">
-      <span class="paper-comment-thread__title">L${start}${end !== start ? `–${end}` : ""}</span>
-      <button type="button" class="btn btn-small" data-paper-thread-copy="${escapeHtml(comment.id)}">Копировать ссылку</button>
-    </div>
-    <div class="paper-comment-thread__messages">
-      ${messages
-        .map(
-          (msg) => `<div class="paper-comment-message">
-            <div class="paper-comment-message__meta">${escapeHtml(msg.author || "reviewer")} · ${escapeHtml(new Date(msg.created_at || "").toLocaleString() || "")}</div>
-            <div>${escapeHtml(msg.body || "")}</div>
-          </div>`
-        )
-        .join("")}
-    </div>
-    <textarea class="paper-comment-thread-reply" rows="2" placeholder="Ответ…" data-paper-thread-reply="${escapeHtml(comment.id)}"></textarea>
-    <div class="paper-comment-thread-actions">
-      <button type="button" class="btn btn-primary btn-small" data-paper-thread-send="${escapeHtml(comment.id)}">Ответить</button>
-      <button type="button" class="btn btn-small" data-paper-thread-resolve="${escapeHtml(comment.id)}">${comment.resolved ? "Открыть снова" : "Resolve"}</button>
-      <button type="button" class="btn btn-small btn-danger" data-paper-thread-delete="${escapeHtml(comment.id)}">Удалить</button>
-    </div>`;
+  if (!els.commentMargin) return;
+  syncPaperLayoutMetrics();
 
-  els.commentThread.querySelector("[data-paper-thread-copy]")?.addEventListener("click", () => {
-    void copyPaperCommentLink(comment.id);
+  const staleChecks = await Promise.all(
+    paperState.comments.map(async (comment) => {
+      const { start, end, charStart, charEnd } = commentAnchorMeta(comment);
+      const current = await paperContentHash(start, end, charStart, charEnd);
+      return [comment.id, comment.anchor?.content_hash && current !== comment.anchor.content_hash];
+    })
+  );
+  const staleById = new Map(staleChecks);
+
+  const comments = [...(paperState.comments || [])].sort(
+    (a, b) => commentLinesFor(a).start - commentLinesFor(b).start
+  );
+  if (els.commentsCount) els.commentsCount.textContent = String(comments.length);
+
+  const composeDraft = paperState.composeOpen
+    ? els.commentMargin?.querySelector("[data-paper-compose-body]")?.value || ""
+    : "";
+  const replyDrafts = new Map();
+  els.commentMargin?.querySelectorAll("[data-paper-thread-reply]").forEach((field) => {
+    if (field.value) replyDrafts.set(field.getAttribute("data-paper-thread-reply"), field.value);
   });
-  els.commentThread.querySelector("[data-paper-thread-send]")?.addEventListener("click", () => {
-    void replyPaperComment(comment.id);
+
+  const parts = [];
+  if (paperState.composeOpen) parts.push(paperCommentComposeHtml());
+  for (const comment of comments) {
+    const expanded = comment.id === paperState.activeCommentId && !paperState.composeOpen;
+    parts.push(
+      paperCommentAnchorHtml(comment, {
+        expanded,
+        stale: Boolean(staleById.get(comment.id)),
+      })
+    );
+  }
+  els.commentMargin.innerHTML = parts.join("");
+  if (composeDraft) {
+    const field = els.commentMargin.querySelector("[data-paper-compose-body]");
+    if (field) field.value = composeDraft;
+  }
+  replyDrafts.forEach((value, commentId) => {
+    const field = els.commentMargin.querySelector(
+      `[data-paper-thread-reply="${commentId}"]`
+    );
+    if (field) field.value = value;
   });
-  els.commentThread.querySelector("[data-paper-thread-resolve]")?.addEventListener("click", () => {
-    void togglePaperCommentResolved(comment.id, !comment.resolved);
-  });
-  els.commentThread.querySelector("[data-paper-thread-delete]")?.addEventListener("click", () => {
-    void deletePaperComment(comment.id);
-  });
+  layoutPaperCommentAnchors();
+  bindPaperCommentMarginEvents();
 }
 
 function scrollPaperToComment(commentId) {
   const els = paperEls();
   const comment = paperState.comments.find((item) => item.id === commentId);
-  const ta = els.texInput;
-  if (!comment || !ta) return;
-  const { start } = commentLinesFor(comment);
-  const pos = offsetForLine(ta.value, start, 0);
-  ta.focus();
-  ta.setSelectionRange(pos, pos);
-  const lineHeight = parseFloat(getComputedStyle(ta).lineHeight) || 18;
-  ta.scrollTop = Math.max(0, (start - 3) * lineHeight);
-  if (els.texGutter) els.texGutter.scrollTop = ta.scrollTop;
+  if (!comment || !els.texScroll) return;
+  const top = commentAnchorTop(comment);
+  els.texScroll.scrollTop = Math.max(0, top - 48);
 }
 
-function focusPaperComment(commentId) {
+function focusPaperComment(commentId, { scroll = true } = {}) {
   if (!commentId) return;
-  if (paperState.commentsPanelCollapsed) setPaperCommentsPanelCollapsed(false);
+  paperState.composeOpen = false;
   paperState.activeCommentId = commentId;
   const comment = paperState.comments.find((item) => item.id === commentId);
   if (comment) {
     const anchor = commentAnchorMeta(comment);
     selectPaperLines(anchor.start, anchor.end, anchor);
   }
-  hidePaperSelectionPopover();
-  renderPaperCommentsList();
-  void renderPaperTexEditor().then(() => renderPaperCommentThread());
+  void renderPaperTexEditor().then(() => {
+    if (scroll) scrollPaperToComment(commentId);
+  });
 }
 
 async function loadPaperComments(projectId, slug) {
@@ -7326,19 +7692,20 @@ async function loadPaperComments(projectId, slug) {
   } catch {
     paperState.comments = [];
   }
-  renderPaperCommentsList();
-  renderPaperCommentThread();
+  await renderPaperCommentMargin();
 }
 
 async function loadPaperTex(projectId, slug, { force = false } = {}) {
   const key = paperViewerKey(projectId, slug);
   if (!force && paperState.lastTexKey === key && paperEls().texInput && !paperState.texDirty) {
-    await renderPaperTexGutter();
+    await renderPaperTexEditor();
     return;
   }
   const text = await KoiApi.getPaperTex(projectId, slug);
   paperState.lastTexKey = key;
   setTexEditorContent(text, { markClean: true });
+  await syncPaperTexRemoteMtime(projectId, slug);
+  dismissPaperTexExternalChange();
 }
 
 async function loadPaperWorkspace(projectId, slug, { pdfExists = false, pdfStamp = "" } = {}) {
@@ -7378,53 +7745,53 @@ async function loadPaperWorkspace(projectId, slug, { pdfExists = false, pdfStamp
   paperState.pendingDeepLink = null;
 }
 
-async function copyPaperCommentLink(commentId) {
+async function copyPaperCommentLink(commentId, triggerBtn = null) {
   const entry = activePaperEntry();
   const comment = paperState.comments.find((item) => item.id === commentId);
   if (!entry || !comment) return false;
   const text = paperCommentClipboardText(entry.project_id, entry.slug, comment);
   try {
     await navigator.clipboard.writeText(text);
-    const els = paperEls();
-    if (els.status) {
-      els.status.textContent = "Ссылка на комментарий скопирована — вставьте агенту.";
-      setTimeout(() => {
-        if (els.status.textContent.startsWith("Ссылка на комментарий")) els.status.textContent = "";
-      }, 4000);
-    }
+    showPaperToast("Скопировано — вставьте агенту в Cursor");
+    markPaperCopyButton(triggerBtn, true);
     return true;
   } catch {
-    if (paperEls().status) paperEls().status.textContent = "Не удалось скопировать ссылку.";
+    showPaperToast("Не удалось скопировать", { variant: "error" });
     return false;
   }
 }
 
 function openPaperCommentCompose() {
   if (!paperState.selectedLineStart) return;
-  if (paperState.commentsPanelCollapsed) setPaperCommentsPanelCollapsed(false);
   paperState.composeOpen = true;
   paperState.activeCommentId = null;
-  const els = paperEls();
-  if (els.commentComposeBody) {
-    els.commentComposeBody.value = "";
-    els.commentComposeBody.focus();
-  }
   updatePaperSelectionUi();
-  renderPaperCommentsList();
-  renderPaperCommentThread();
+  void renderPaperTexEditor().then(() => {
+    const start = paperState.selectedLineStart;
+    if (start) scrollPaperToLine(start);
+    paperEls().commentMargin?.querySelector("[data-paper-compose-body]")?.focus();
+  });
+}
+
+function scrollPaperToLine(lineNo) {
+  const els = paperEls();
+  if (!els.texScroll) return;
+  const top = measurePaperLineTop(lineNo);
+  els.texScroll.scrollTop = Math.max(0, top - 48);
 }
 
 function closePaperCommentCompose() {
   paperState.composeOpen = false;
-  if (paperEls().commentComposeBody) paperEls().commentComposeBody.value = "";
   updatePaperSelectionUi();
-  renderPaperCommentThread();
+  void renderPaperCommentMargin();
 }
 
 async function savePaperComment() {
   const entry = activePaperEntry();
   const els = paperEls();
-  const body = els.commentComposeBody?.value?.trim();
+  const body = els.commentMargin
+    ?.querySelector("[data-paper-compose-body]")
+    ?.value?.trim();
   if (!entry || !body || !paperState.selectedLineStart) return;
   try {
     const payload = {
@@ -7442,9 +7809,7 @@ async function savePaperComment() {
       paperState.activeCommentId = res.comment.id;
     }
     paperState.composeOpen = false;
-    renderPaperCommentsList();
     await renderPaperTexEditor();
-    renderPaperCommentThread();
     void copyPaperCommentLink(paperState.activeCommentId);
   } catch (err) {
     if (els.status) els.status.textContent = `Не удалось сохранить комментарий: ${err.message}`;
@@ -7454,7 +7819,9 @@ async function savePaperComment() {
 async function replyPaperComment(commentId) {
   const entry = activePaperEntry();
   const els = paperEls();
-  const textarea = els.commentThread?.querySelector(`[data-paper-thread-reply="${commentId}"]`);
+  const textarea = els.commentMargin?.querySelector(
+    `[data-paper-thread-reply="${commentId}"]`
+  );
   const body = textarea?.value?.trim();
   if (!entry || !body) return;
   try {
@@ -7467,8 +7834,7 @@ async function replyPaperComment(commentId) {
       comment.thread = [...(comment.thread || []), res.message];
     }
     if (textarea) textarea.value = "";
-    renderPaperCommentsList();
-    renderPaperCommentThread();
+    await renderPaperCommentMargin();
   } catch (err) {
     if (els.status) els.status.textContent = `Не удалось отправить ответ: ${err.message}`;
   }
@@ -7480,8 +7846,7 @@ async function togglePaperCommentResolved(commentId, resolved) {
     const res = await KoiApi.resolvePaperComment(entry.project_id, entry.slug, commentId, resolved);
     const comment = paperState.comments.find((item) => item.id === commentId);
     if (comment && res?.comment) Object.assign(comment, res.comment);
-    renderPaperCommentsList();
-    renderPaperCommentThread();
+    await renderPaperCommentMargin();
   } catch (err) {
     if (paperEls().status) paperEls().status.textContent = `Не удалось обновить комментарий: ${err.message}`;
   }
@@ -7494,9 +7859,7 @@ async function deletePaperComment(commentId) {
     await KoiApi.deletePaperComment(entry.project_id, entry.slug, commentId);
     paperState.comments = paperState.comments.filter((item) => item.id !== commentId);
     if (paperState.activeCommentId === commentId) paperState.activeCommentId = null;
-    renderPaperCommentsList();
     await renderPaperTexEditor();
-    renderPaperCommentThread();
   } catch (err) {
     if (paperEls().status) paperEls().status.textContent = `Не удалось удалить: ${err.message}`;
   }
@@ -7707,9 +8070,7 @@ function openPaperModal() {
 
 function initPaper() {
   capturePaperDeepLinkFromUrl();
-  paperState.commentsPanelCollapsed = isPaperCommentsPanelCollapsed();
   bindPaperTexEditor();
-  applyPaperCommentsPanelCollapsed();
   document.getElementById("btn-paper")?.addEventListener("click", openPaperModal);
   document.getElementById("btn-paper-generate")?.addEventListener("click", () => {
     void requestPaperGeneration();
@@ -7720,27 +8081,25 @@ function initPaper() {
   document.getElementById("btn-paper-comment-add")?.addEventListener("click", () => {
     openPaperCommentCompose();
   });
-  document.getElementById("btn-paper-comment-popover")?.addEventListener("click", () => {
-    hidePaperSelectionPopover();
-    openPaperCommentCompose();
-  });
-  document.getElementById("btn-paper-comments-collapse")?.addEventListener("click", () => {
-    togglePaperCommentsPanel();
-  });
-  document.getElementById("btn-paper-comments-expand")?.addEventListener("click", () => {
-    setPaperCommentsPanelCollapsed(false);
-  });
   document.getElementById("btn-paper-tex-save")?.addEventListener("click", () => {
     void savePaperTex();
   });
   document.getElementById("btn-paper-tex-compile")?.addEventListener("click", () => {
     void compilePaperPdf();
   });
-  document.getElementById("btn-paper-comment-save")?.addEventListener("click", () => {
-    void savePaperComment();
+  document.getElementById("btn-paper-tex-reload")?.addEventListener("click", () => {
+    void (async () => {
+      if (paperState.pendingRemoteTexMtime != null) {
+        paperState.lastRemoteTexMtime = paperState.pendingRemoteTexMtime;
+      }
+      await reloadPaperTexFromDisk();
+    })();
   });
-  document.getElementById("btn-paper-comment-cancel")?.addEventListener("click", () => {
-    closePaperCommentCompose();
+  document.getElementById("btn-paper-tex-keep-local")?.addEventListener("click", () => {
+    if (paperState.pendingRemoteTexMtime != null) {
+      paperState.lastRemoteTexMtime = paperState.pendingRemoteTexMtime;
+    }
+    dismissPaperTexExternalChange();
   });
   document.getElementById("paper-inbox-message-copy")?.addEventListener("click", () => {
     void copyPaperInboxBootstrap(document.getElementById("paper-inbox-message-status"));
@@ -7791,7 +8150,7 @@ async function init() {
         if (paperState.texDirty && !window.confirm("Есть несохранённые изменения в main.tex. Закрыть без сохранения?")) {
           return;
         }
-        stopPaperPolling();
+        stopPaperPollingAll();
       }
       hideModal(el.dataset.close);
     });
@@ -7810,7 +8169,7 @@ async function init() {
           return;
         }
         hideModal("paper-modal");
-        stopPaperPolling();
+        stopPaperPollingAll();
         return;
       }
       hideModal("create-project-modal");
