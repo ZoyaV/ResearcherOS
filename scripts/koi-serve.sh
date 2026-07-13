@@ -12,6 +12,7 @@ LOG_DIR="$RUN_DIR/logs"
 API_PID="$RUN_DIR/koi-api.pid"
 WEB_PID="$RUN_DIR/koi-web.pid"
 WORKER_PID="$RUN_DIR/koi-agent-chat-worker.pid"
+CURSOR_WIDGET_PID="$RUN_DIR/koi-cursor-usage-widget.pid"
 ENV_FILE="$KOI_ROOT/.env"
 
 mkdir -p "$RUN_DIR" "$LOG_DIR"
@@ -130,6 +131,28 @@ start_web() {
     --host 127.0.0.1 --port "$WEB_PORT" --api-host 127.0.0.1 --api-port "$API_PORT" \
     >>"$LOG_DIR/web.log" 2>&1 &
   echo $! >"$WEB_PID"
+}
+
+start_cursor_usage_widget() {
+  if [[ "${KOI_CURSOR_USAGE_WIDGET:-0}" != "1" ]]; then
+    return 0
+  fi
+  if [[ "$(uname -s)" != "Darwin" ]]; then
+    echo "cursor usage widget: skipped (macOS overlay only for now)" >&2
+    return 0
+  fi
+  if [[ -f "$CURSOR_WIDGET_PID" ]]; then
+    local pid
+    pid="$(cat "$CURSOR_WIDGET_PID")"
+    if kill -0 "$pid" 2>/dev/null; then
+      return 0
+    fi
+    rm -f "$CURSOR_WIDGET_PID"
+  fi
+  ensure_venv
+  nohup "$VENV/bin/python" "$KOI_ROOT/scripts/koi_cursor_usage_widget.py" \
+    >>"$LOG_DIR/cursor-usage-widget.log" 2>&1 &
+  echo $! >"$CURSOR_WIDGET_PID"
 }
 
 start_agent_worker() {
@@ -271,6 +294,7 @@ cmd_start() {
   start_api
   start_web
   start_agent_worker
+  start_cursor_usage_widget
   start_inbox_watcher
   for _ in $(seq 1 30); do
     if health_ok; then
@@ -281,6 +305,9 @@ cmd_start() {
         echo "  Chat inbox:     .run/logs/agent-chat-watch.log (AGENT_CHAT_WAKE)"
         echo "  Literature inbox: .run/logs/related-work-watch.log (RELATED_WORK_WAKE)"
         echo "  Paper inbox:    .run/logs/paper-watch.log (PAPER_WAKE)"
+      fi
+      if [[ "${KOI_CURSOR_USAGE_WIDGET:-0}" == "1" && "$(uname -s)" == "Darwin" ]]; then
+        echo "  Cursor desktop overlay: enabled (legacy; web widget is default in ResearchOS UI)"
       fi
       return 0
     fi
@@ -297,6 +324,7 @@ cmd_stop() {
   free_port "$API_PORT"
   free_port "$WEB_PORT"
   stop_inbox_watcher
+  stop_pid_file_simple "$CURSOR_WIDGET_PID"
   if [[ -f "$WORKER_PID" ]]; then
     pid="$(cat "$WORKER_PID")"
     kill "$pid" 2>/dev/null || true

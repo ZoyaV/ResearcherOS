@@ -307,6 +307,7 @@ export const KoiApi = {
       method: "PUT",
       body: JSON.stringify(body),
     }),
+  getCursorUsage: () => api("/cursor/usage"),
   baseUrl: apiBase,
   meta: () => api("/meta/node-types"),
 };
