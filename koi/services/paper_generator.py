@@ -42,6 +42,7 @@ from koi.services.paper_catalog import (
     DEFAULT_PAPER_SLUG,
     list_project_papers,
     prepare_paper_slot_dir,
+    read_paper_meta,
     read_paper_status,
 )
 
@@ -570,6 +571,109 @@ def _parse_agent_response(text: str) -> Optional[tuple[str, str]]:
 # Компиляция
 
 
+def _compile_log_tail(log_parts: list[str]) -> str:
+    log = "\n".join(log_parts)
+    interesting = [
+        ln
+        for ln in log.splitlines()
+        if ln.startswith(("!", "error", "Error", "warning"))
+        or ".tex:" in ln
+        or "I couldn't open file name" in ln
+    ]
+    return "\n".join(interesting[-20:]) or log[-2000:]
+
+
+def _slot_prefers_pdflatex(slot_dir: Path) -> bool:
+    """External / conference papers usually need pdflatex+bibtex, not tectonic."""
+    meta = read_paper_meta(slot_dir)
+    engine = str(meta.get("compile_engine") or "").strip().lower()
+    if engine == "pdflatex":
+        return True
+    if engine == "tectonic":
+        return False
+    if meta.get("source") == "external":
+        return True
+    fmt = str(meta.get("format") or "").strip().lower()
+    if fmt and "neurips" not in fmt:
+        return True
+    if any(slot_dir.glob("*.bib")):
+        return True
+    tex_path = slot_dir / TEX_NAME
+    if tex_path.is_file():
+        head = tex_path.read_text(encoding="utf-8", errors="replace")[:12000]
+        if re.search(r"\\usepackage\{EMNLP", head, re.I):
+            return True
+        if "\\bibliography{" in head or "\\bibliographystyle{" in head:
+            return True
+    for sty in slot_dir.glob("*.sty"):
+        if "neurips" not in sty.name.lower():
+            return True
+    return False
+
+
+def _finalize_pdf(tex_dir: Path, engine: str, log_parts: list[str]) -> tuple[bool, str, str]:
+    produced = tex_dir / TEX_NAME.replace(".tex", ".pdf")
+    target = tex_dir / PDF_NAME
+    if produced.is_file():
+        if produced != target:
+            shutil.copy2(produced, target)
+        return True, engine, "\n".join(log_parts)[-1500:]
+    return False, engine, "Компиляция завершилась без PDF.\n" + "\n".join(log_parts)[-2000:]
+
+
+def _compile_pdflatex_bibtex(tex_dir: Path) -> tuple[bool, str, str]:
+    pdflatex = shutil.which("pdflatex")
+    bibtex = shutil.which("bibtex")
+    if not pdflatex:
+        return False, "", "Не найден pdflatex в PATH."
+
+    base = Path(TEX_NAME).stem
+    logs: list[str] = []
+
+    def run_pdflatex() -> subprocess.CompletedProcess[str]:
+        proc = subprocess.run(
+            [pdflatex, "-interaction=nonstopmode", "-halt-on-error", TEX_NAME],
+            cwd=str(tex_dir),
+            capture_output=True,
+            text=True,
+            timeout=COMPILE_TIMEOUT_S,
+        )
+        logs.append((proc.stdout or "") + "\n" + (proc.stderr or ""))
+        return proc
+
+    def run_bibtex() -> subprocess.CompletedProcess[str] | None:
+        if not bibtex:
+            return None
+        proc = subprocess.run(
+            [bibtex, base],
+            cwd=str(tex_dir),
+            capture_output=True,
+            text=True,
+            timeout=COMPILE_TIMEOUT_S,
+        )
+        logs.append((proc.stdout or "") + "\n" + (proc.stderr or ""))
+        return proc
+
+    proc = run_pdflatex()
+    if proc.returncode != 0:
+        return False, "pdflatex+bibtex", _compile_log_tail(logs)
+
+    aux_path = tex_dir / f"{base}.aux"
+    if bibtex and aux_path.is_file():
+        aux_text = aux_path.read_text(encoding="utf-8", errors="replace")
+        if "\\citation" in aux_text or "\\bibdata" in aux_text:
+            bproc = run_bibtex()
+            if bproc is not None and bproc.returncode != 0:
+                return False, "pdflatex+bibtex", _compile_log_tail(logs)
+
+    for _ in range(2):
+        proc = run_pdflatex()
+        if proc.returncode != 0:
+            return False, "pdflatex+bibtex", _compile_log_tail(logs)
+
+    return _finalize_pdf(tex_dir, "pdflatex+bibtex", logs)
+
+
 def _find_engine() -> Optional[tuple[str, str]]:
     """(name, binary). tectonic из .tools предпочтителен, затем PATH, затем pdflatex."""
     env_bin = os.environ.get("KOI_TECTONIC_BIN", "").strip()
@@ -616,24 +720,18 @@ def _compile_tex(tex_dir: Path) -> tuple[bool, str, str]:
             return False, name, f"Компиляция не запустилась/прервана: {e}"
         log = (proc.stdout or "") + "\n" + (proc.stderr or "")
         if proc.returncode != 0:
-            interesting = [
-                ln for ln in log.splitlines()
-                if ln.startswith(("!", "error", "Error")) or ".tex:" in ln
-            ]
-            tail = "\n".join(interesting[-15:]) or log[-2000:]
-            return False, name, tail
-    produced = tex_dir / TEX_NAME.replace(".tex", ".pdf")
-    target = tex_dir / PDF_NAME
-    if produced.is_file():
-        if produced != target:
-            shutil.move(str(produced), str(target))
-        return True, name, log[-1500:]
-    return False, name, "Компиляция завершилась без PDF.\n" + log[-2000:]
+            return False, name, _compile_log_tail([log])
+    return _finalize_pdf(tex_dir, name, [log])
 
 
 def compile_paper_slot(slot_dir: Path) -> tuple[bool, str, str]:
     """Compile main.tex in an existing paper slot directory."""
-    return _compile_tex(slot_dir)
+    if _slot_prefers_pdflatex(slot_dir):
+        return _compile_pdflatex_bibtex(slot_dir)
+    ok, engine, log = _compile_tex(slot_dir)
+    if ok or not shutil.which("pdflatex"):
+        return ok, engine, log
+    return _compile_pdflatex_bibtex(slot_dir)
 
 
 # ---------------------------------------------------------------------------

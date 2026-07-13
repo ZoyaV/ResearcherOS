@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
 
 from koi.services.card_live import (
+    has_live_hints,
+    is_live_active,
     list_metric_images,
     normalize_hint_path,
     parse_live_hints,
@@ -55,6 +58,61 @@ live_note: epoch 3 running
     subs = parse_subtasks(text)
     assert subs["done"] == ["Sync code"]
     assert subs["open"] == ["Train model"]
+
+
+def test_has_live_hints():
+    assert has_live_hints({"live_log": "runs/a.log"})
+    assert not has_live_hints({})
+    assert not has_live_hints({"live_log": "  "})
+
+
+def test_is_live_active_recent_log():
+    snapshot = {
+        "live_note": "",
+        "live_log": {
+            "configured": True,
+            "exists": True,
+            "mtime": datetime.now(timezone.utc).isoformat(),
+        },
+        "metrics_dir": {"configured": False, "images": []},
+    }
+    assert is_live_active(snapshot)
+
+
+def test_is_live_active_stale_log_with_note_only_paths():
+    snapshot = {
+        "live_note": "epoch 3",
+        "live_log": {
+            "configured": True,
+            "exists": True,
+            "mtime": "2020-01-01T00:00:00+00:00",
+        },
+        "metrics_dir": {"configured": False, "images": []},
+    }
+    assert not is_live_active(snapshot)
+
+
+def test_is_live_active_running_with_stale_metrics():
+    snapshot = {
+        "live_note": "",
+        "live_log": {"configured": True, "exists": True, "mtime": "2020-01-01T00:00:00+00:00"},
+        "metrics_dir": {
+            "configured": True,
+            "exists": True,
+            "images": [{"name": "sr.png", "mtime": "2020-01-01T00:00:00+00:00"}],
+        },
+    }
+    assert is_live_active(snapshot, column_id="running")
+    assert not is_live_active(snapshot, column_id="done")
+
+
+def test_is_live_active_note_only():
+    snapshot = {
+        "live_note": "writing section 2",
+        "live_log": {"configured": False},
+        "metrics_dir": {"configured": False, "images": []},
+    }
+    assert is_live_active(snapshot)
 
 
 def test_resolve_and_tail(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):

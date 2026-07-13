@@ -5,9 +5,12 @@ from __future__ import annotations
 import re
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from koi.adapters.paths import repo_root
+
+if TYPE_CHECKING:
+    from koi.core.models import Project
 
 LIVE_LOG_RE = re.compile(r"^live_log:\s*(.+)$", re.MULTILINE | re.IGNORECASE)
 METRICS_DIR_RE = re.compile(r"^metrics_dir:\s*(.+)$", re.MULTILINE | re.IGNORECASE)
@@ -22,6 +25,7 @@ MAX_TAIL_BYTES = 256 * 1024
 DEFAULT_TAIL_LINES = 100
 MAX_TAIL_LINES = 500
 MAX_IMAGES = 24
+LIVE_ACTIVITY_MAX_AGE_SEC = 30 * 60
 
 
 def parse_live_hints(text: str) -> dict[str, str]:
@@ -37,6 +41,60 @@ def parse_live_hints(text: str) -> dict[str, str]:
         if m:
             out[key] = m.group(1).strip()
     return out
+
+
+def has_live_hints(hints: dict[str, str] | None) -> bool:
+    hints = hints or {}
+    return any(str(hints.get(key) or "").strip() for key in ("live_log", "metrics_dir", "live_note"))
+
+
+def _mtime_ts(iso: str | None) -> float | None:
+    if not iso:
+        return None
+    try:
+        return datetime.fromisoformat(str(iso).replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return None
+
+
+def is_live_active(
+    snapshot: dict[str, Any],
+    *,
+    column_id: str | None = None,
+    now: datetime | None = None,
+    max_age_sec: int = LIVE_ACTIVITY_MAX_AGE_SEC,
+) -> bool:
+    """True when live artifacts were updated recently or agent reports via live_note only."""
+    now_ts = (now or datetime.now(timezone.utc)).timestamp()
+    cutoff = now_ts - max_age_sec
+
+    live_log = snapshot.get("live_log") or {}
+    metrics = snapshot.get("metrics_dir") or {}
+    live_note = str(snapshot.get("live_note") or "").strip()
+    log_cfg = bool(live_log.get("configured"))
+    metrics_cfg = bool(metrics.get("configured"))
+
+    if live_log.get("exists"):
+        ts = _mtime_ts(live_log.get("mtime"))
+        if ts is not None and ts >= cutoff:
+            return True
+
+    for img in metrics.get("images") or []:
+        ts = _mtime_ts(img.get("mtime"))
+        if ts is not None and ts >= cutoff:
+            return True
+
+    # Running cards with wired live paths stay in monitor (slow jobs may exceed 30m between syncs).
+    if column_id == "running":
+        if metrics_cfg and metrics.get("exists") and (metrics.get("images") or []):
+            return True
+        if log_cfg and live_log.get("exists"):
+            return True
+
+    if live_note and not log_cfg and not metrics_cfg:
+        return True
+
+    return False
 
 
 def parse_subtasks(description: str) -> dict[str, list[str]]:
@@ -162,6 +220,7 @@ def live_snapshot(
     hints: dict[str, str],
     description: str,
     tail_lines: int = DEFAULT_TAIL_LINES,
+    column_id: str | None = None,
 ) -> dict[str, Any]:
     """Build pull snapshot for UI polling."""
     subtasks = parse_subtasks(description)
@@ -181,8 +240,12 @@ def live_snapshot(
             log_block["exists"] = resolved.is_file()
             log_block["resolved_path"] = _path_for_api(project_id, resolved)
             if resolved.is_file():
+                st = resolved.stat()
                 log_block["tail"] = tail_file(resolved, lines=tail_lines)
-                log_block["size"] = resolved.stat().st_size
+                log_block["size"] = st.st_size
+                log_block["mtime"] = datetime.fromtimestamp(
+                    st.st_mtime, tz=timezone.utc
+                ).isoformat()
         except (ValueError, OSError) as exc:
             log_block["error"] = str(exc)
 
@@ -196,9 +259,59 @@ def live_snapshot(
         except (ValueError, OSError) as exc:
             metrics_block["error"] = str(exc)
 
-    return {
+    snapshot = {
         "live_note": hints.get("live_note", ""),
         "subtasks": subtasks,
         "live_log": log_block,
         "metrics_dir": metrics_block,
     }
+    snapshot["has_live_hints"] = has_live_hints(hints)
+    snapshot["active"] = is_live_active(snapshot, column_id=column_id)
+    return snapshot
+
+
+def merge_live_hints(
+    project: Project,
+    board_id: str,
+    card_id: str,
+    card_title: str,
+    description: str,
+) -> dict[str, str]:
+    """Live hints from card description plus report body (report wins on overlap)."""
+    from koi.adapters.card_reports import read_report
+
+    hints = parse_live_hints(description)
+    try:
+        report = read_report(project, board_id, card_id, card_title)
+        hints = {**hints, **parse_live_hints(report.get("content", ""))}
+    except (OSError, KeyError, ValueError):
+        pass
+    return hints
+
+
+def live_monitor_cards(project_id: str, project: Project) -> list[dict[str, Any]]:
+    """Running cards with live hints and recent activity (for monitor tabs)."""
+    items: list[dict[str, Any]] = []
+    for board in project.boards:
+        for card in board.cards:
+            if card.column_id != "running":
+                continue
+            hints = merge_live_hints(project, board.id, card.id, card.title, card.description)
+            if not has_live_hints(hints):
+                continue
+            snapshot = live_snapshot(
+                project_id,
+                hints=hints,
+                description=card.description,
+                column_id=card.column_id,
+            )
+            if not snapshot.get("active"):
+                continue
+            items.append(
+                {
+                    "board_id": board.id,
+                    "card_id": card.id,
+                    "title": card.title,
+                }
+            )
+    return items

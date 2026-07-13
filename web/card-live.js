@@ -21,9 +21,11 @@ const DEFAULT_VIEW = "metrics";
 /** @typedef {'status' | 'log' | 'metrics' | 'note'} LiveView */
 
 let pollTimer = null;
-/** @type {Map<string, { ctx: object, data: object | null, view: LiveView, error?: string }>} */
+/** @type {Map<string, { ctx: object, data: object | null, view: LiveView, error?: string, lastLogSize?: number, lastLiveNote?: string }>} */
 const monitored = new Map();
 let activeKey = null;
+/** Card the user opened in the monitor — always keep visible while modal is open. */
+let pinnedKey = null;
 /** @type {() => Array<object>} */
 let getRunningSeedCards = () => [];
 
@@ -40,6 +42,53 @@ function cardTabTitle(entry, allEntries) {
     return `${truncateTitle(project, 18)} · ${card}`;
   }
   return card;
+}
+
+function cardLooksActive(entry, data) {
+  if (!data) return false;
+  if (data.active) return true;
+  const logSize = data.live_log?.size;
+  if (
+    typeof logSize === "number" &&
+    typeof entry.lastLogSize === "number" &&
+    logSize > entry.lastLogSize
+  ) {
+    return true;
+  }
+  const note = String(data.live_note || "").trim();
+  if (note && entry.lastLiveNote !== undefined && note !== entry.lastLiveNote) {
+    return true;
+  }
+  return false;
+}
+
+function shouldKeepInMonitor(key, entry, data) {
+  if (key === pinnedKey) return true;
+  if (!data || data.column_id !== "running") return false;
+  if (!data.has_live_hints) return false;
+  if (data.metrics_dir?.images?.length) return true;
+  if (data.live_log?.exists) return true;
+  return cardLooksActive(entry, data);
+}
+
+function trackLiveActivity(entry, data) {
+  if (!entry || !data) return;
+  if (typeof data.live_log?.size === "number") {
+    entry.lastLogSize = data.live_log.size;
+  }
+  if (data.live_note !== undefined) {
+    entry.lastLiveNote = String(data.live_note || "");
+  }
+}
+
+function pruneInactiveCards() {
+  for (const [key, entry] of [...monitored.entries()]) {
+    if (shouldKeepInMonitor(key, entry, entry.data)) continue;
+    monitored.delete(key);
+    if (activeKey === key) {
+      activeKey = monitored.size ? [...monitored.keys()][0] : null;
+    }
+  }
 }
 
 function upsertMonitoredCard(ctx) {
@@ -212,7 +261,7 @@ function renderCardTabs() {
   if (!tabsEl) return;
 
   if (!monitored.size) {
-    tabsEl.innerHTML = `<p class="card-live-empty card-live-empty--tabs">Нет открытых карточек</p>`;
+    tabsEl.innerHTML = `<p class="card-live-empty card-live-empty--tabs">Нет активных экспериментов</p>`;
     return;
   }
 
@@ -293,11 +342,9 @@ async function syncRunningTabs(focusCtx, seedCards = []) {
     if (ctx?.projectId) projectIds.add(ctx.projectId);
   }
 
-  for (const ctx of seedCards) upsertMonitoredCard(ctx);
-
   for (const projectId of projectIds) {
     try {
-      const data = await KoiApi.getKanbanRunningActivity(projectId);
+      const data = await KoiApi.getKanbanLiveMonitor(projectId);
       for (const item of data.items || []) {
         const existing = [...monitored.values()].find(
           (entry) =>
@@ -315,7 +362,7 @@ async function syncRunningTabs(focusCtx, seedCards = []) {
         });
       }
     } catch {
-      /* running-activity optional */
+      /* live-monitor optional */
     }
   }
 
@@ -336,7 +383,13 @@ async function refreshCard(key) {
     );
     entry.data = data;
     entry.error = undefined;
+    trackLiveActivity(entry, data);
     if (data.column_id && data.column_id !== "running") {
+      monitored.delete(key);
+      if (activeKey === key) {
+        activeKey = monitored.size ? [...monitored.keys()][0] : null;
+      }
+    } else if (!shouldKeepInMonitor(key, entry, data)) {
       monitored.delete(key);
       if (activeKey === key) {
         activeKey = monitored.size ? [...monitored.keys()][0] : null;
@@ -356,6 +409,7 @@ async function refreshAll() {
     await syncRunningTabs(anchor, getRunningSeedCards());
   }
   await Promise.all([...monitored.keys()].map((key) => refreshCard(key)));
+  pruneInactiveCards();
   renderUI();
   const stamp = document.getElementById("card-live-updated");
   if (stamp) stamp.textContent = `обновлено ${new Date().toLocaleTimeString()}`;
@@ -386,6 +440,7 @@ export async function openCardLiveDrawer(ctx, ui) {
       seedCards.find((item) => item.projectId === ctx.projectId)?.projectTitle ||
       "",
   };
+  pinnedKey = cardKey(focusCtx);
   await syncRunningTabs(
     focusCtx,
     seedCards.length ? seedCards : [{ ...focusCtx, cardTitle: focusCtx.cardTitle || "Эксперимент" }]
@@ -404,6 +459,7 @@ export function closeCardLiveDrawer(ui) {
   stopPolling();
   monitored.clear();
   activeKey = null;
+  pinnedKey = null;
   ui.hideModal("card-live-modal");
 }
 

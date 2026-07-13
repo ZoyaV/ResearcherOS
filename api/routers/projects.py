@@ -413,6 +413,7 @@ def get_card_live(
         hints=hints,
         description=card.description,
         tail_lines=tail_lines,
+        column_id=card.column_id,
     )
     return {
         "ok": True,
