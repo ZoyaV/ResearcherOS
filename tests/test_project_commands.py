@@ -55,7 +55,7 @@ def project() -> Project:
 @pytest.fixture
 def command_context(monkeypatch, project: Project) -> dict[str, list]:
     calls: dict[str, list] = {
-        "saved_boards": [],
+        "saved_projects": [],
         "reports": [],
         "renames": [],
         "deletions": [],
@@ -68,10 +68,9 @@ def command_context(monkeypatch, project: Project) -> dict[str, list]:
     )
     monkeypatch.setattr(
         project_commands.repository,
-        "update_board",
-        lambda loaded, board: calls["saved_boards"].append((loaded, board)) or board,
+        "save_project",
+        lambda loaded: calls["saved_projects"].append(loaded),
     )
-    monkeypatch.setattr(project_commands.repository, "save_project", lambda loaded: None)
     monkeypatch.setattr(
         project_commands.card_reports,
         "ensure_card_report",
@@ -115,7 +114,7 @@ def test_create_card_coordinates_domain_persistence_and_report(
     assert card.tags == ["baseline"]
     assert card.depends_on == ["card-a"]
     assert result.card_tags == ["baseline"]
-    assert command_context["saved_boards"]
+    assert command_context["saved_projects"] == [project]
     assert command_context["reports"][0][2] == card.id
     assert command_context["sync"] == [
         ("demo", "kanban_updated", "новая карточка: Card C")
@@ -134,7 +133,7 @@ def test_update_card_rejects_dependency_cycle(
             project_commands.UpdateCardCommand(depends_on=("card-b",)),
         )
 
-    assert command_context["saved_boards"] == []
+    assert command_context["saved_projects"] == []
 
 
 def test_update_card_renames_report_and_enqueues_edit(
@@ -192,4 +191,3 @@ def test_missing_project_and_board_have_application_errors(
         project_commands.delete_node("missing", "node")
     with pytest.raises(project_commands.EntityNotFoundError, match="Board"):
         project_commands.delete_card("demo", "missing", "card")
-

@@ -7,6 +7,7 @@ from typing import Optional
 from uuid import uuid4
 
 from koi.adapters import card_reports, repository
+from koi.core import project_ops
 from koi.core.md_io import normalize_card_tags, register_project_card_tags
 from koi.core.models import (
     ExperimentCard,
@@ -100,13 +101,14 @@ def _enqueue_sync(project_id: str, reason: str, detail: str) -> None:
 
 def create_node(project_id: str, command: CreateNodeCommand) -> Project:
     project = _require_project(project_id)
-    repository.add_node(
+    project_ops.add_node(
         project,
         command.parent_id,
         command.node_type,
         command.title,
         command.description,
     )
+    repository.save_project(project)
     _enqueue_sync(project_id, "tree_updated", f"новый узел: {command.title}")
     return project
 
@@ -128,7 +130,7 @@ def update_node(project_id: str, node_id: str, command: UpdateNodeCommand) -> Pr
             for item in command.research_questions
         ]
     try:
-        repository.update_node(
+        project_ops.update_node(
             project,
             node_id,
             title=command.title,
@@ -138,6 +140,7 @@ def update_node(project_id: str, node_id: str, command: UpdateNodeCommand) -> Pr
     except StopIteration as exc:
         raise EntityNotFoundError("Node not found") from exc
 
+    repository.save_project(project)
     if command.research_questions is not None:
         _enqueue_sync(project_id, "research_updated", f"research_questions узла {node_id}")
     elif command.title is not None or command.description is not None:
@@ -148,9 +151,10 @@ def update_node(project_id: str, node_id: str, command: UpdateNodeCommand) -> Pr
 def delete_node(project_id: str, node_id: str) -> Project:
     project = _require_project(project_id)
     try:
-        repository.delete_node(project, node_id)
+        project_ops.delete_node(project, node_id)
     except StopIteration as exc:
         raise EntityNotFoundError("Node not found") from exc
+    repository.save_project(project)
     _enqueue_sync(project_id, "tree_updated", f"удалён узел {node_id}")
     return project
 
@@ -174,7 +178,7 @@ def create_card(project_id: str, board_id: str, command: CreateCardCommand) -> P
     )
     register_project_card_tags(project, card.tags)
     board.cards.append(card)
-    repository.update_board(project, board)
+    repository.save_project(project)
     card_reports.ensure_card_report(project, board_id, card.id, card.title)
     _enqueue_sync(project_id, "kanban_updated", f"новая карточка: {card.title}")
     return project
@@ -213,7 +217,7 @@ def update_card(
         card.depends_on = dependencies
         dependencies_changed = True
 
-    repository.update_board(project, board)
+    repository.save_project(project)
     if command.column_id is not None and command.column_id != old_column:
         if command.column_id != "done":
             _enqueue_sync(
@@ -242,6 +246,6 @@ def delete_card(project_id: str, board_id: str, card_id: str) -> Project:
                 for dependency in card.depends_on
                 if dependency != card_id
             ]
-    repository.update_board(project, board)
+    repository.save_project(project)
     card_reports.delete_report(project_id, card_id)
     return project
