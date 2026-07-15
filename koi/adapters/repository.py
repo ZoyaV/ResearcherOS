@@ -58,7 +58,7 @@ def seed_templates() -> None:
     """No-op: demo projects are seeded via ``scripts/koi_seed_demo.py`` if needed."""
 
 
-def list_projects(*, with_programs: bool = False) -> list[dict]:
+def list_projects() -> list[dict]:
     items = []
     preferred = {"ai-agents-embodied": 0, "demo-aggregation": 1}
     mounts = sorted(
@@ -78,10 +78,6 @@ def list_projects(*, with_programs: bool = False) -> list[dict]:
                 "updated": meta.get("updated"),
             }
         )
-    if with_programs:
-        from koi.services.programs import enrich_projects
-
-        return enrich_projects(items)
     return items
 
 

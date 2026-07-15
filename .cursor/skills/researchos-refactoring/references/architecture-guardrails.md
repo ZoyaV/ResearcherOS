@@ -8,6 +8,7 @@ Use these as dependency-direction defaults. Verify actual imports before every p
 |---|---|---|
 | `api/routers/` | HTTP parsing, status codes, response mapping, dependency lookup | project mutation rules, filesystem workflows, long orchestration |
 | `koi/projects/` | project commands, read models, reports, live artifacts, kanban, and sync/discovery orchestration | HTTP types, unrelated capabilities, persistence details leaking into callers |
+| `koi/laboratory/` | cross-project programs, membership, summaries, and portfolio grouping | raw persistence mechanics, HTTP types, single-project mutation policy |
 | `koi/application/` | cross-feature use cases and transitional compatibility facades | becoming a permanent bucket for feature-specific workflows |
 | `koi/core/` | domain operations, validation, deterministic transformations | FastAPI, process-wide state, direct filesystem/network access where a boundary can be passed in |
 | `koi/adapters/` | persistence, serialization, external-system and filesystem integration | deciding domain policy |

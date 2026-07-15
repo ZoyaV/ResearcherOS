@@ -5,8 +5,9 @@ koi/
   core/       Pure domain — models, markdown I/O, project migrations
   adapters/   Workspace paths, filesystem stores, git sync, agent backends
   projects/   Project capability — commands, views, reports, live, kanban, sync
+  laboratory/ Cross-project programs and portfolio views
   application/ Cross-feature use-cases and temporary project compatibility shims
-  services/   Use-cases — knowledge, literature, review, paper, programs, agent chat
+  services/   Remaining use-cases — knowledge, literature, review, paper, agent chat
     review/     Paper review agent (arxiv, analysis, pipeline)
   *.py        Temporary external compatibility shims
 ```

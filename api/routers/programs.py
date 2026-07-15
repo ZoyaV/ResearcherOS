@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 
 from api.schemas import CreateProgramBody
-from koi.services.programs import (
+from koi.laboratory.programs import (
     create_program,
     grouped_projects,
     list_programs,

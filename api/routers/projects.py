@@ -14,18 +14,18 @@ from api.schemas import (
     UpdateCardBody,
     UpdateNodeBody,
 )
+from koi.laboratory.programs import list_project_summaries
 from koi.projects import commands as project_commands
 from koi.projects import live as live_queries
 from koi.projects import reports as report_commands
 from koi.projects.views import project_to_client
-from koi.adapters.repository import list_projects
 
 router = APIRouter(tags=["projects"])
 
 
 @router.get("/projects")
 def projects() -> list[dict]:
-    return list_projects(with_programs=True)
+    return list_project_summaries()
 
 
 @router.post("/projects")

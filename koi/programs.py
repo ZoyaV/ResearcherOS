@@ -1,6 +1,6 @@
-"""Compatibility shim — use koi.services.programs."""
+"""Compatibility shim — use :mod:`koi.laboratory.programs`."""
 import sys
 
-from koi.services import programs as _module
+from koi.laboratory import programs as _module
 
 sys.modules[__name__] = _module

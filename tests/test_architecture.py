@@ -18,6 +18,7 @@ LEGACY_MODULES = {
     "koi.services.card_live",
     "koi.services.rq_discoveries",
     "koi.services.composite",
+    "koi.services.programs",
 }
 
 
@@ -85,5 +86,23 @@ def test_sync_adapters_do_not_import_project_discovery_workflows() -> None:
 
     assert not violations, (
         "Sync adapters must receive discovery behavior from project orchestration:\n"
+        + "\n".join(violations)
+    )
+
+
+def test_repository_adapter_does_not_import_laboratory_policy() -> None:
+    path = ROOT / "koi/adapters/repository.py"
+    forbidden = ("koi.laboratory", "koi.services.programs")
+    violations = [
+        f"{path.relative_to(ROOT)}:{lineno}: {module}"
+        for lineno, module in _imported_modules(path)
+        if any(
+            module == prefix or module.startswith(f"{prefix}.")
+            for prefix in forbidden
+        )
+    ]
+
+    assert not violations, (
+        "Repository adapter must return stored project data without laboratory policy:\n"
         + "\n".join(violations)
     )

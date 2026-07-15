@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 import json
+from importlib import import_module
 from pathlib import Path
 
 import pytest
 
 from koi.adapters import project_mount as pm
 from koi.adapters.workspace import reset_workspace_cache
-from koi.services.programs import (
+from koi.laboratory.programs import (
     grouped_projects,
+    list_project_summaries,
     list_programs,
     load_laboratory,
     program_summary,
@@ -23,13 +25,20 @@ def program_layout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     engine = tmp_path / "ReseachOS"
     engine.mkdir()
 
-    def write_project(folder: str, project_id: str, programs: list[str]) -> None:
+    def write_project(
+        folder: str,
+        project_id: str,
+        programs: list[str],
+        *,
+        composite_id: str | None = None,
+    ) -> None:
         repo = tmp_path / folder
         koi = repo / "koi-structure"
         koi.mkdir(parents=True)
         prog_yaml = "\n".join(f"  - {p}" for p in programs)
+        composite_yaml = f"composite_id: {composite_id}\n" if composite_id else ""
         (koi / "project.md").write_text(
-            f"---\nid: {project_id}\ntitle: {project_id}\nprograms:\n{prog_yaml}\n---\n\n"
+            f"---\nid: {project_id}\ntitle: {project_id}\n{composite_yaml}programs:\n{prog_yaml}\n---\n\n"
             f"# problem: p\n\n{project_id}\n",
             encoding="utf-8",
         )
@@ -38,7 +47,12 @@ def program_layout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
             encoding="utf-8",
         )
 
-    write_project("proj_a", "proj-a", ["embodied-ai"])
+    write_project(
+        "proj_a",
+        "proj-a",
+        ["embodied-ai"],
+        composite_id="shared-problem",
+    )
     write_project("proj_b", "proj-b", ["embodied-ai", "demos"])
 
     monkeypatch.setattr(pm, "ENGINE_ROOT", engine)
@@ -77,3 +91,14 @@ def test_grouped_projects(program_layout: None):
     assert "proj-a" in assigned
     assert "proj-b" in assigned
     assert "composites" in data
+
+
+def test_project_summaries_include_programs_and_composite(program_layout: None) -> None:
+    projects = {item["id"]: item for item in list_project_summaries()}
+
+    assert projects["proj-a"]["programs"] == ["embodied-ai"]
+    assert projects["proj-a"]["composite_id"] == "shared-problem"
+
+
+def test_root_programs_import_remains_compatible() -> None:
+    assert import_module("koi.programs") is import_module("koi.laboratory.programs")

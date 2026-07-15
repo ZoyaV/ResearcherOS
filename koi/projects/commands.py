@@ -28,7 +28,7 @@ from koi.projects.kanban.dependencies import (
     would_create_cycle,
 )
 from koi.projects.kanban import layout as dag_layout
-from koi.services import programs as program_service
+from koi.laboratory import programs as program_service
 
 
 class EntityNotFoundError(LookupError):

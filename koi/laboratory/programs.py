@@ -10,7 +10,8 @@ import yaml
 from koi.adapters.paths import project_md
 from koi.adapters.project_mount import list_mounts
 from koi.core.models import NodeType, Verdict
-from koi.adapters.repository import list_projects, load_project
+from koi.adapters.repository import list_projects as list_stored_projects
+from koi.adapters.repository import load_project
 
 
 def _split_frontmatter(text: str) -> tuple[dict[str, Any], str]:
@@ -244,11 +245,16 @@ def enrich_projects(projects: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return out
 
 
+def list_project_summaries() -> list[dict[str, Any]]:
+    """Project summaries enriched with laboratory and composite membership."""
+    return enrich_projects(list_stored_projects())
+
+
 def grouped_projects() -> dict[str, Any]:
     """Projects grouped by program for UI; unassigned projects go to ``ungrouped``."""
     from koi.projects.composites import list_composites_summary
 
-    all_projects = {p["id"]: p for p in enrich_projects(list_projects())}
+    all_projects = {p["id"]: p for p in list_project_summaries()}
     composites = list_composites_summary()
     composite_member_ids: set[str] = set()
     for comp in composites:
