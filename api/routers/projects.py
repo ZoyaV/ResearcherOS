@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
-from api.deps import find_card, get_project as require_project, parse_project
+from api.deps import get_project as require_project
 from api.schemas import (
     CardReportBody,
     CreateCardBody,
@@ -14,16 +14,9 @@ from api.schemas import (
     UpdateCardBody,
     UpdateNodeBody,
 )
-from koi.application import project_commands, report_commands
+from koi.application import live_queries, project_commands, report_commands
 from koi.application.project_views import project_to_client
 from koi.adapters.repository import list_projects
-from koi.services.card_live import (
-    live_monitor_cards,
-    live_snapshot,
-    merge_live_hints,
-    resolve_project_path,
-)
-from koi.services.rq_discoveries import running_kanban_activity
 
 router = APIRouter(tags=["projects"])
 
@@ -57,14 +50,20 @@ def read_project(project_id: str) -> dict:
 
 @router.get("/projects/{project_id}/kanban/running-activity")
 def get_kanban_running_activity(project_id: str) -> dict:
-    require_project(project_id, sync_reports=False)
-    return {"ok": True, "items": running_kanban_activity(project_id)}
+    try:
+        items = live_queries.running_activity(project_id)
+    except live_queries.EntityNotFoundError as error:
+        raise HTTPException(404, str(error)) from error
+    return {"ok": True, "items": items}
 
 
 @router.get("/projects/{project_id}/kanban/live-monitor")
 def get_kanban_live_monitor(project_id: str) -> dict:
-    project = require_project(project_id, sync_reports=False)
-    return {"ok": True, "items": live_monitor_cards(project_id, project)}
+    try:
+        items = live_queries.live_monitor(project_id)
+    except live_queries.EntityNotFoundError as error:
+        raise HTTPException(404, str(error)) from error
+    return {"ok": True, "items": items}
 
 
 @router.put("/projects/{project_id}")
@@ -300,34 +299,27 @@ def get_card_live(
     card_id: str,
     tail_lines: int = 100,
 ) -> dict:
-    project = parse_project(project_id)
-    _, card = find_card(project, board_id, card_id)
-    hints = merge_live_hints(project, board_id, card_id, card.title, card.description)
-    snapshot = live_snapshot(
-        project_id,
-        hints=hints,
-        description=card.description,
-        tail_lines=tail_lines,
-        column_id=card.column_id,
-    )
-    return {
-        "ok": True,
-        "card_id": card_id,
-        "column_id": card.column_id,
-        "title": card.title,
-        **snapshot,
-    }
+    try:
+        return live_queries.card_snapshot(
+            project_id,
+            board_id,
+            card_id,
+            tail_lines=tail_lines,
+        )
+    except live_queries.EntityNotFoundError as error:
+        raise HTTPException(404, str(error)) from error
 
 
 @router.get("/projects/{project_id}/live/file")
 def get_live_file(project_id: str, path: str) -> FileResponse:
-    require_project(project_id, sync_reports=False)
     try:
-        resolved = resolve_project_path(project_id, path)
-    except ValueError as e:
-        raise HTTPException(400, str(e)) from e
-    if not resolved.is_file():
-        raise HTTPException(404, "File not found")
+        resolved = live_queries.resolve_live_file(project_id, path)
+    except live_queries.EntityNotFoundError as error:
+        raise HTTPException(404, str(error)) from error
+    except ValueError as error:
+        raise HTTPException(400, str(error)) from error
+    except FileNotFoundError as error:
+        raise HTTPException(404, "File not found") from error
     return FileResponse(resolved)
 
 

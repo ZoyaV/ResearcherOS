@@ -6,7 +6,7 @@ from pathlib import Path
 
 from fastapi import HTTPException
 
-from koi.core.models import ExperimentCard, KanbanBoard, Project
+from koi.core.models import Project
 from koi.adapters.repository import load_project
 from koi.adapters.paths import koi_root
 from koi.adapters.workspace import get_workspace
@@ -49,15 +49,3 @@ def workspace_relative(path: Path) -> str:
         return str(path.resolve().relative_to(ws.resolve()))
     except ValueError:
         return str(path)
-
-
-def find_card(
-    project: Project, board_id: str, card_id: str
-) -> tuple[KanbanBoard, ExperimentCard]:
-    board = next((b for b in project.boards if b.id == board_id), None)
-    if board is None:
-        raise HTTPException(404, "Board not found")
-    card = next((c for c in board.cards if c.id == card_id), None)
-    if card is None:
-        raise HTTPException(404, "Card not found")
-    return board, card
