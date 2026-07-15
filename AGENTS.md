@@ -11,6 +11,12 @@
 Содержательные плейбуки находятся в `agents/skills/*/SKILL.md`; Cursor видит те
 же каталоги через ссылки в `.cursor/skills/`.
 
+При добавлении нового skill используй developer-skill
+`.cursor/skills/koi-add-research-skill`: содержательный research-skill хранится
+один раз в `agents/skills/`, а в `.cursor/skills/` при необходимости создаётся
+только относительная ссылка. Skills для разработки самого ResearchOS остаются
+в `.cursor/skills/` и в `agents/skills/` не дублируются.
+
 ## Старт сессии — проверь очереди
 
 1. **done-research** (карточки, перенесённые в done и ждущие вывода):
