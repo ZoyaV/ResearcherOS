@@ -6,7 +6,7 @@ koi/
   adapters/   Workspace paths, filesystem stores, git sync, agent backends
   agent_chat/ Agent-chat capability — answers, inbox, formatting, workers
   knowledge/  Project knowledge — rendering, summaries, generated artifacts
-  projects/   Project capability — commands, views, reports, live, kanban, sync
+  projects/   Project capability — commands, views, reports, ingest, live, kanban, sync
   laboratory/ Cross-project programs and portfolio views
   application/ Cross-feature use-cases and temporary compatibility shims
   services/   Remaining use-cases — literature, review, paper
@@ -21,6 +21,6 @@ koi/
 Bundled code must import from canonical paths (`koi.core.models`,
 `koi.projects.commands`, …); `tests/test_architecture.py` enforces this rule.
 Stabilized root shims for `core`, `adapters`, `agent_chat`, `knowledge`,
-`projects`, and `laboratory` have been removed. The remaining root entry points
+`projects` (including report ingest), and `laboratory` have been removed. The remaining root entry points
 belong to capabilities that have not yet completed their package migration;
 bundled code must not import through them.

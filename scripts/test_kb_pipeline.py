@@ -32,7 +32,10 @@ from koi.core.models import (  # noqa: E402
     Project,
     Verdict,
 )
-from koi.services.report_ingest import expected_run_report_path, ingest_report  # noqa: E402
+from koi.projects.report_ingest import (  # noqa: E402
+    expected_run_report_path,
+    ingest_report,
+)
 from koi.adapters.paths import koi_root
 from koi.adapters.project_mount import get_mount, rescan_projects
 from koi.adapters.repository import create_project, load_project, save_project  # noqa: E402

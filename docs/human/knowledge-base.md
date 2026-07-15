@@ -78,7 +78,7 @@ PYTHONPATH=. python scripts/koi_check_hypothesis.py <project_id> <card_id>
 2. Агент (Claude Code CLI или Cursor SDK — см. раздел 5) проводит проверку и пишет
    рабочий отчёт `reports/<узел>/<карточка>.run.md`. Кроме файла отчёта агент
    ничего менять не должен.
-3. Отчёт автоматически «вливается» (`koi/services/report_ingest.py`): из §5.1 берётся вердикт
+3. Отчёт автоматически «вливается» (`koi/projects/report_ingest/`): из §5.1 берётся вердикт
    гипотезы, из §5.2 — json-блок с инсайтами (≤3, формат research.json); проект
    обновляется (вердикт узла, research.json, карточка → done, запись в
    `reports/index.json`), и хук `save_project` пересобирает БЗ + журнал.

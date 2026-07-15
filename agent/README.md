@@ -44,7 +44,7 @@ projects/<id>/
    `save_project` пересобирает `hypotheses.md` + оглавление и дописывает журнал;
 2) новый `.md` кладётся в `knowledge/` → при следующем сохранении (или
    `python agent/bin/build_kb.py`) он появляется в оглавлении и в журнале;
-3) **отчёт `.run.md` вливается автоматически**: `koi/services/report_ingest.py` парсит §5
+3) **отчёт `.run.md` вливается автоматически**: `koi/projects/report_ingest/` парсит §5
    (вердикт + json-блок инсайтов) и сам обновляет вердикт узла, `research.json`,
    карточку (→ done) и `reports/index.json` — дальше срабатывает путь (1).
 
