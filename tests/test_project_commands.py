@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from koi.application import project_commands
+from koi.projects import commands as project_commands
 from koi.core.models import (
     ExperimentCard,
     KanbanBoard,

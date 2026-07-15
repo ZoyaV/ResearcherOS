@@ -8,7 +8,7 @@ from fastapi import APIRouter, File, HTTPException, UploadFile
 from api.deps import workspace_relative
 from api.schemas import LibraryDiscoverBody, LiteratureSearchBody, ReviewSetBody, TranslateToEnglishBody
 from koi.application import literature_commands
-from koi.application.project_views import project_to_client
+from koi.projects.views import project_to_client
 from koi.services.literature import (
     LIBRARY_REQUIRED_FIELDS,
     LIBRARY_UPLOAD_PATH,

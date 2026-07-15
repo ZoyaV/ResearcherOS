@@ -9,7 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from api.main import app
-from koi.application import live_queries
+from koi.projects import live as live_queries
 from koi.core.models import ExperimentCard, KanbanBoard, Project
 
 

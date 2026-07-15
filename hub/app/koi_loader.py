@@ -11,7 +11,7 @@ import yaml
 from koi.adapters.research_store import _record_to_question, apply_research_to_project
 from koi.core.md_io import parse_project_md
 from koi.core.models import MethodResearchQuestion, Project
-from koi.application.project_views import project_to_client
+from koi.projects.views import project_to_client
 
 
 def read_koi_meta(koi_root: Path) -> dict[str, Any]:

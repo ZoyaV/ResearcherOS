@@ -14,8 +14,10 @@ from api.schemas import (
     UpdateCardBody,
     UpdateNodeBody,
 )
-from koi.application import live_queries, project_commands, report_commands
-from koi.application.project_views import project_to_client
+from koi.projects import commands as project_commands
+from koi.projects import live as live_queries
+from koi.projects import reports as report_commands
+from koi.projects.views import project_to_client
 from koi.adapters.repository import list_projects
 
 router = APIRouter(tags=["projects"])

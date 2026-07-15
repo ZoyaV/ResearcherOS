@@ -12,7 +12,7 @@ from hub.app.access import can_view_project_with_store
 from hub.app.hub_composite import list_hub_composites, load_hub_composite
 from hub.app.project_identity import dedupe_hub_projects, project_rank
 from hub.app.store import HubProject, HubStore
-from koi.application.project_views import allowed_children
+from koi.projects.views import allowed_children
 from koi.core.models import NodeType
 
 router = APIRouter(tags=["koi-readonly"])

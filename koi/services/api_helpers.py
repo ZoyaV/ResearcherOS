@@ -1,7 +1,7 @@
-"""Compatibility shim — use koi.application.project_views."""
+"""Compatibility shim — use :mod:`koi.projects.views`."""
 
 import sys
 
-from koi.application import project_views as _module
+from koi.projects import views as _module
 
 sys.modules[__name__] = _module

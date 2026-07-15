@@ -7,7 +7,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from api.main import app
-from koi.application import project_commands
+from koi.projects import commands as project_commands
 from koi.core.models import KanbanBoard, Project
 
 

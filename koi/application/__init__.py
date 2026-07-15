@@ -1,2 +1,1 @@
-"""Application use-cases coordinating KOI domain logic and adapters."""
-
+"""Cross-feature use cases and transitional compatibility facades."""

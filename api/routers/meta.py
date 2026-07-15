@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from koi.application.project_views import allowed_children
+from koi.projects.views import allowed_children
 from koi.core.models import NodeType
 
 router = APIRouter(tags=["meta"])

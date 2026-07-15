@@ -8,6 +8,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_DIRS = ("agent", "api", "examples", "hub", "koi", "scripts", "tests")
+LEGACY_APPLICATION_MODULES = {
+    "koi.application.live_queries",
+    "koi.application.project_commands",
+    "koi.application.project_views",
+    "koi.application.report_commands",
+}
 
 
 def test_internal_code_uses_canonical_koi_imports() -> None:
@@ -17,6 +23,7 @@ def test_internal_code_uses_canonical_koi_imports() -> None:
         if path.name != "__init__.py"
     }
     legacy_modules = {f"koi.{name}" for name in legacy_names}
+    legacy_modules.update(LEGACY_APPLICATION_MODULES)
     violations: list[str] = []
 
     for directory in SOURCE_DIRS:
@@ -31,6 +38,10 @@ def test_internal_code_uses_canonical_koi_imports() -> None:
                     imported = [node.module] if node.module else []
                     if node.module == "koi":
                         imported.extend(f"koi.{alias.name}" for alias in node.names)
+                    elif node.module == "koi.application":
+                        imported.extend(
+                            f"koi.application.{alias.name}" for alias in node.names
+                        )
                 else:
                     continue
 
@@ -43,6 +54,6 @@ def test_internal_code_uses_canonical_koi_imports() -> None:
                         violations.append(f"{relative}:{node.lineno}: {module}")
 
     assert not violations, (
-        "Use canonical koi.application/core/adapters/services imports instead of "
-        "root compatibility modules:\n" + "\n".join(violations)
+        "Use canonical KOI package imports instead of compatibility modules:\n"
+        + "\n".join(violations)
     )

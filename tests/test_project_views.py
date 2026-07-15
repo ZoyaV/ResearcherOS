@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from importlib import import_module
 
-from koi.application.project_views import allowed_children, project_to_client
+from koi.projects.views import allowed_children, project_to_client
 from koi.core.models import (
     ExperimentCard,
     KanbanBoard,
@@ -67,3 +67,15 @@ def test_legacy_api_helper_imports_remain_compatible() -> None:
 
     assert root_helpers.project_to_client is project_to_client
     assert service_helpers.allowed_children is allowed_children
+
+
+def test_legacy_application_imports_remain_compatible() -> None:
+    module_pairs = (
+        ("koi.application.project_commands", "koi.projects.commands"),
+        ("koi.application.project_views", "koi.projects.views"),
+        ("koi.application.report_commands", "koi.projects.reports"),
+        ("koi.application.live_queries", "koi.projects.live"),
+    )
+
+    for legacy_name, canonical_name in module_pairs:
+        assert import_module(legacy_name) is import_module(canonical_name)
