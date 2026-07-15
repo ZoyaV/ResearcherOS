@@ -5,10 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from koi.services.card_live import (
+from koi.projects.live_artifacts import (
     has_live_hints,
     is_live_active,
     list_metric_images,
+    live_snapshot,
     normalize_hint_path,
     parse_live_hints,
     parse_subtasks,
@@ -133,7 +134,7 @@ def test_resolve_and_tail(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     log.write_text("line1\nline2\nline3\n", encoding="utf-8")
 
     monkeypatch.setattr(
-        "koi.services.card_live.repo_root",
+        "koi.projects.live_artifacts.repo_root",
         lambda _pid: repo,
     )
 
@@ -156,7 +157,7 @@ def test_normalize_hint_path_strips_repo_prefix(tmp_path: Path, monkeypatch: pyt
     repo = tmp_path / "verl-agent-craftext"
     repo.mkdir()
     monkeypatch.setattr(
-        "koi.services.card_live.repo_root",
+        "koi.projects.live_artifacts.repo_root",
         lambda _pid: repo,
     )
     assert (
@@ -169,8 +170,38 @@ def test_resolve_rejects_escape(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
     repo = tmp_path / "proj"
     repo.mkdir()
     monkeypatch.setattr(
-        "koi.services.card_live.repo_root",
+        "koi.projects.live_artifacts.repo_root",
         lambda _pid: repo,
     )
     with pytest.raises(ValueError, match="outside"):
         resolve_project_path("proj", "../../../etc/passwd")
+
+
+def test_live_snapshot_combines_log_metrics_and_subtasks(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repo = tmp_path / "proj"
+    log = repo / "runs" / "train.log"
+    metrics = repo / "runs" / "plots"
+    metrics.mkdir(parents=True)
+    log.write_text("epoch 1\nepoch 2\n", encoding="utf-8")
+    (metrics / "loss.png").write_bytes(b"png")
+    monkeypatch.setattr("koi.projects.live_artifacts.repo_root", lambda _pid: repo)
+
+    snapshot = live_snapshot(
+        "proj",
+        hints={
+            "live_log": "runs/train.log",
+            "metrics_dir": "runs/plots",
+            "live_note": "training",
+        },
+        description="- [x] Prepare\n- [ ] Train",
+        tail_lines=1,
+        column_id="running",
+    )
+
+    assert snapshot["live_log"]["tail"] == "epoch 2"
+    assert snapshot["metrics_dir"]["images"][0]["name"] == "loss.png"
+    assert snapshot["subtasks"] == {"open": ["Train"], "done": ["Prepare"]}
+    assert snapshot["active"] is True

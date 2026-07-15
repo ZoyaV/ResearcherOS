@@ -15,6 +15,7 @@ LEGACY_MODULES = {
     "koi.application.report_commands",
     "koi.services.dag_layout",
     "koi.services.dag_suggest",
+    "koi.services.card_live",
 }
 
 

@@ -49,18 +49,18 @@ def test_live_queries_coordinate_project_services(monkeypatch, project: Project)
         lambda project_id: calls["activity"].append(project_id) or [{"card_id": "card-a"}],
     )
     monkeypatch.setattr(
-        live_queries.card_live,
+        live_queries.live_artifacts,
         "live_monitor_cards",
         lambda project_id, loaded: calls["monitor"].append((project_id, loaded))
         or [{"card_id": "card-a"}],
     )
     monkeypatch.setattr(
-        live_queries.card_live,
+        live_queries.live_artifacts,
         "merge_live_hints",
         lambda *args: calls["hints"].append(args) or {"live_log": "runs/train.log"},
     )
     monkeypatch.setattr(
-        live_queries.card_live,
+        live_queries.live_artifacts,
         "live_snapshot",
         lambda *args, **kwargs: calls["snapshot"].append((args, kwargs))
         or {"active": True},
@@ -96,7 +96,7 @@ def test_resolve_live_file_requires_existing_file(
         lambda project_id, *, sync_reports=False: project,
     )
     monkeypatch.setattr(
-        live_queries.card_live,
+        live_queries.live_artifacts,
         "resolve_project_path",
         lambda project_id, path: target,
     )

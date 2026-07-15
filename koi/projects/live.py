@@ -6,7 +6,8 @@ from pathlib import Path
 
 from koi.adapters import repository
 from koi.core.models import ExperimentCard, KanbanBoard, Project
-from koi.services import card_live, rq_discoveries
+from koi.projects import live_artifacts
+from koi.services import rq_discoveries
 
 
 class EntityNotFoundError(LookupError):
@@ -41,7 +42,7 @@ def running_activity(project_id: str) -> list[dict]:
 
 def live_monitor(project_id: str) -> list[dict]:
     project = _require_project(project_id)
-    return card_live.live_monitor_cards(project_id, project)
+    return live_artifacts.live_monitor_cards(project_id, project)
 
 
 def card_snapshot(
@@ -54,14 +55,14 @@ def card_snapshot(
     project = _require_project(project_id)
     board = _require_board(project, board_id)
     card = _require_card(board, card_id)
-    hints = card_live.merge_live_hints(
+    hints = live_artifacts.merge_live_hints(
         project,
         board_id,
         card_id,
         card.title,
         card.description,
     )
-    snapshot = card_live.live_snapshot(
+    snapshot = live_artifacts.live_snapshot(
         project_id,
         hints=hints,
         description=card.description,
@@ -79,7 +80,7 @@ def card_snapshot(
 
 def resolve_live_file(project_id: str, path: str) -> Path:
     _require_project(project_id)
-    resolved = card_live.resolve_project_path(project_id, path)
+    resolved = live_artifacts.resolve_project_path(project_id, path)
     if not resolved.is_file():
         raise FileNotFoundError("File not found")
     return resolved
