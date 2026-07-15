@@ -23,7 +23,7 @@ POLL_INTERVAL_S = 2.0
 DEBOUNCE_S = 1.0
 
 ENGINE_ROOT = _ws.engine_root
-INBOX_SCRIPT = _ws.scripts_dir / "koi_agent_chat_inbox.py"
+INBOX_SCRIPT = "-m koi.agent_chat.inbox_cli"
 CONFIGURED_FLAG = RUN_DIR / "chat-inbox-configured.json"
 VENV_PYTHON = _ws.venv_python
 LOOP_POLL_INTERVAL_S = 5
@@ -57,7 +57,7 @@ def pending_count() -> int:
 
 def processing_instructions(*, focus_agent_chat_id: str | None = None) -> str:
     py = _python_bin()
-    chat = _ws.scripts_dir / "koi_agent_chat.py"
+    chat = "-m koi.agent_chat.cli"
     if focus_agent_chat_id:
         return (
             "agent-chat: скилл **koi-agent-chat** — "
@@ -255,7 +255,7 @@ def inbox_task_message(
         return bootstrap_prompt()
     py = _python_bin()
     inbox = INBOX_SCRIPT
-    chat = _ws.scripts_dir / "koi_agent_chat.py"
+    chat = "-m koi.agent_chat.cli"
     if agent_chat_id:
         return (
             f"ResearchOS Chat Inbox — вопрос `{agent_chat_id}`.\n\n"

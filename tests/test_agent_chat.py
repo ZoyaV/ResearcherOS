@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import runpy
 from importlib import import_module
-from pathlib import Path
 
 import pytest
 
@@ -19,9 +17,6 @@ from koi.core.models import (
 )
 from koi.agent_chat import auto as agent_chat_auto
 from koi.agent_chat.formatting import append_sources, format_sources_block
-
-
-ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_sources_block_deduplicates_records_and_keeps_experiment_title() -> None:
@@ -87,16 +82,14 @@ def test_auto_answer_uses_research_narrative_and_card_title(
 
 
 @pytest.mark.parametrize(
-    "relative_path",
+    "module_name",
     (
-        "scripts/koi_agent_chat_inbox.py",
-        "scripts/koi_agent_chat_worker.py",
+        "koi.agent_chat.inbox_cli",
+        "koi.agent_chat.worker",
     ),
 )
-def test_agent_chat_entry_point_imports(relative_path: str) -> None:
-    namespace = runpy.run_path(str(ROOT / relative_path), run_name="agent_chat_smoke")
-
-    assert callable(namespace["main"])
+def test_agent_chat_entry_point_imports(module_name: str) -> None:
+    assert callable(import_module(module_name).main)
 
 
 def test_agent_chat_api_router_imports() -> None:

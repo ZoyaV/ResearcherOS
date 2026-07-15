@@ -5,27 +5,21 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
-from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from koi.adapters.project_sync import (  # noqa: E402
+from koi.adapters.project_sync import (
     git_summary,
     init_sync_branches,
     push_projects,
 )
-from koi.projects.sync import pull_projects  # noqa: E402
-from koi.adapters.project_sync_queue import (  # noqa: E402
+from koi.projects.sync import pull_projects
+from koi.adapters.project_sync_queue import (
     clear_push_queue,
     dequeue_push,
     enqueue_push,
     list_pending_push,
     should_periodic_pull,
 )
-from koi.adapters.project_mount import list_mounts  # noqa: E402
+from koi.adapters.project_mount import list_mounts
 
 
 def cmd_status() -> None:

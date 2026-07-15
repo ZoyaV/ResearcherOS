@@ -29,7 +29,7 @@ All research data lives in Markdown files — no database required. The engine i
 | 2026-07-03 | **Composite view** — projects with the same `composite_id` merge into one hypothesis tree at read time; virtual program entry in the sidebar; writes route to the owning repo via `node.project_id`. API: `GET /composites`, `GET /composites/{id}`. ADR: [docs/adr-002-composite-view.md](docs/adr-002-composite-view.md). |
 | 2026-07-02 | Kanban **Successful** column (`successful`) — 4th column after Done for confirmed experiments; `done` stays the agent/report terminal state; auto-migration of `project.md` on load. |
 | 2026-07-01 | Open-source release on GitHub (`main` = engine, `test_project` = demo sample). |
-| 2026-07-01 | Orphan-branch sync — `koi-structure/` can live on a dedicated git branch (`koi/research` or custom) while your code branch stays clean. CLI: `scripts/koi_project_sync.py init-sync-branch`. |
+| 2026-07-01 | Orphan-branch sync — `koi-structure/` can live on a dedicated git branch (`koi/research` or custom) while your code branch stays clean. CLI: `python -m koi.projects.sync_cli init-sync-branch`. |
 | 2026-07-01 | Stable local serve — `koi-serve.sh` works reliably on macOS; web port proxies `/api` so one URL is enough. |
 | 2026-07-01 | Live card view — real-time experiment activity on kanban cards; refreshed method-activity UI. |
 | 2026-07-01 | Report & knowledge fixes — reliable card report loading; repo `docs/*.md` served via knowledge API. |
@@ -139,7 +139,7 @@ Steps:
    Plus koi-structure/research.json: {"version":1,"questions":[]}
 3. If the tree is empty, interview me briefly and draft a minimal problem → cause → method skeleton.
 4. From ReseachOS root, run:
-   python scripts/koi_project_sync.py init-sync-branch --project-id <id>
+   python -m koi.projects.sync_cli init-sync-branch --project-id <id>
    This creates the orphan branch on origin and seeds koi-structure/.
 5. On the CODE branch of my project repo:
    - git rm -r --cached koi-structure  (if it was tracked)
@@ -148,7 +148,7 @@ Steps:
      .koi-sync-worktree/
      .koi-sync-bootstrap/
    - commit: "chore: track koi-structure on orphan sync branch"
-6. Verify: python scripts/koi_project_sync.py status
+6. Verify: python -m koi.projects.sync_cli status
 7. Restart serve: ./scripts/koi-serve.sh restart
 8. Do not change git config. Do not commit secrets (.env).
 
@@ -159,7 +159,7 @@ Manual CLI (same result):
 
 ```bash
 cd ReseachOS
-python scripts/koi_project_sync.py init-sync-branch --project-id <your-project-id>
+python -m koi.projects.sync_cli init-sync-branch --project-id <your-project-id>
 ```
 
 ### Sync branch already exists
@@ -182,14 +182,14 @@ Then pull research data into your working tree:
 
 ```bash
 cd ReseachOS
-python scripts/koi_project_sync.py pull --project-id my-project
+python -m koi.projects.sync_cli pull --project-id my-project
 ```
 
 Ongoing sync: UI Sync button, skill `koi-project-sync`, or:
 
 ```bash
-python scripts/koi_project_sync.py push --project-id my-project
-python scripts/koi_project_sync.py pull --project-id my-project
+python -m koi.projects.sync_cli push --project-id my-project
+python -m koi.projects.sync_cli pull --project-id my-project
 ```
 
 ### Start from scratch (no repo yet)

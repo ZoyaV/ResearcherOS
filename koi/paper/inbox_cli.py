@@ -5,13 +5,8 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
-from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
-
-from koi.paper.inbox import (  # noqa: E402
+from koi.paper.inbox import (
     bootstrap_prompt,
     format_pending_report,
     paper_inbox_settings,

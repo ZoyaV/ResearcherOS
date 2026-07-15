@@ -9,7 +9,7 @@ if [[ ! -x "$PY" ]]; then
   PY=python3
 fi
 
-if [[ ! -f "$KOI_ROOT/scripts/koi_done_research.py" ]]; then
+if [[ ! -f "$KOI_ROOT/koi/projects/done_research_cli.py" ]]; then
   cat >/dev/null
   echo '{}'
   exit 0

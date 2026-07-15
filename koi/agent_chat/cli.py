@@ -5,23 +5,19 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
-
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
 
 from koi.adapters.paths import koi_root, research_json
 from koi.adapters.workspace import get_workspace
 
 _ws = get_workspace()
 
-from koi.agent_chat.formatting import ANSWER_FORMAT_INSTRUCTIONS  # noqa: E402
-from koi.adapters.agent_chat_queue import find_item, list_pending, mark_processing, submit_answer  # noqa: E402
-from koi.adapters.card_reports import read_report  # noqa: E402
-from koi.core.models import NodeType  # noqa: E402
-from koi.adapters.repository import load_project  # noqa: E402
-from koi.adapters.research_store import research_path  # noqa: E402
+from koi.agent_chat.formatting import ANSWER_FORMAT_INSTRUCTIONS
+from koi.adapters.agent_chat_queue import find_item, list_pending, mark_processing, submit_answer
+from koi.adapters.card_reports import read_report
+from koi.core.models import NodeType
+from koi.adapters.repository import load_project
+from koi.adapters.research_store import research_path
 
 
 def _card_meta(project, board_id: str, card_id: str) -> dict | None:

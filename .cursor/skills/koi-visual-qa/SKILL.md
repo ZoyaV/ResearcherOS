@@ -25,7 +25,7 @@ cd KOI
 ## Capture screenshots
 
 ```bash
-KOI/.venv/bin/python KOI/scripts/ui_snapshot.py
+KOI/.venv/bin/python KOI/.cursor/skills/koi-visual-qa/scripts/ui_snapshot.py
 ```
 
 Output: `KOI/.run/ui-screenshots/`

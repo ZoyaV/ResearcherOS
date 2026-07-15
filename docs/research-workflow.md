@@ -3,12 +3,12 @@
 Как знание проходит путь от вопроса до записи в реестр. Источник правды —
 файлы проекта; производные `KNOWLEDGE.md` пересобираются автоматически.
 
-Шаги 3–4 и 7–8 автоматизированы: `scripts/koi_check_hypothesis.py <project> <card>`
+Шаги 3–4 и 7–8 автоматизированы: `python -m koi.projects.report_ingest.cli <project> <card>`
 поручает проверку агенту (Claude Code / Cursor), который пишет `.run.md` по шаблону,
 а `koi/projects/report_ingest/` вливает отчёт (вердикт из §5.1, инсайты из json-блока §5.2,
 карточка → done) и запускает автопересборку БЗ. Ручное ревью по матрице ниже остаётся
 рекомендованным контролем качества — готовый отчёт можно влить и после ревью:
-`… koi_check_hypothesis.py <project> <card> --ingest-only`. Подробности и переменные
+`python -m koi.projects.report_ingest.cli <project> <card> --ingest-only`. Подробности и переменные
 окружения — `docs/human/knowledge-base.md`.
 
 ## Шаги

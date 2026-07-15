@@ -14,12 +14,10 @@ from dataclasses import replace
 from pathlib import Path
 from tkinter import font as tkfont
 
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+ROOT = Path(__file__).resolve().parents[2]
 
-from koi.cursor.app import cursor_is_active  # noqa: E402
-from koi.cursor.usage import (  # noqa: E402
+from koi.cursor.app import cursor_is_active
+from koi.cursor.usage import (
     CURSOR_DASHBOARD_URL,
     CursorUsageSnapshot,
     fetch_cursor_usage,

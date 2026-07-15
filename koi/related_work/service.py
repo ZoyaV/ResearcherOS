@@ -36,7 +36,7 @@ def _python_bin() -> str:
 
 
 def _related_work_script() -> str:
-    return str(_ws.scripts_dir / "koi_related_work.py")
+    return "-m koi.related_work.cli"
 
 
 def cursor_chat_message(item_id: str) -> str:

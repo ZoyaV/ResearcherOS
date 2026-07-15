@@ -11,7 +11,7 @@ _HOOK = Path(__file__).resolve()
 _WORKSPACE = _HOOK.parent.parent.parent
 KOI_ROOT = (
     _WORKSPACE
-    if (_WORKSPACE / "scripts" / "koi_agent_chat.py").is_file()
+    if (_WORKSPACE / "koi" / "agent_chat" / "cli.py").is_file()
     else _WORKSPACE / "KOI"
 )
 sys.path.insert(0, str(KOI_ROOT))

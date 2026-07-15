@@ -68,7 +68,7 @@ projects/<id>/
 Полный цикл одной командой (из корня репо, в `.venv`):
 
 ```bash
-PYTHONPATH=. python scripts/koi_check_hypothesis.py <project_id> <card_id>
+python -m koi.projects.report_ingest.cli <project_id> <card_id>
 ```
 
 Что происходит:

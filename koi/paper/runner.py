@@ -39,7 +39,7 @@ def _python_bin() -> str:
 
 
 def _paper_script() -> str:
-    return str(_ws.scripts_dir / "koi_paper.py")
+    return "-m koi.paper.cli"
 
 
 def cursor_chat_message(item_id: str) -> str:

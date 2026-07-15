@@ -127,7 +127,7 @@ start_web() {
   fi
   ensure_venv
   cd "$KOI_ROOT"
-  nohup "$VENV/bin/python" "$KOI_ROOT/scripts/koi_web_proxy.py" \
+  nohup "$VENV/bin/python" -m api.web_proxy \
     --host 127.0.0.1 --port "$WEB_PORT" --api-host 127.0.0.1 --api-port "$API_PORT" \
     >>"$LOG_DIR/web.log" 2>&1 &
   echo $! >"$WEB_PID"
@@ -150,7 +150,7 @@ start_cursor_usage_widget() {
     rm -f "$CURSOR_WIDGET_PID"
   fi
   ensure_venv
-  nohup "$VENV/bin/python" "$KOI_ROOT/scripts/koi_cursor_usage_widget.py" \
+  nohup "$VENV/bin/python" -m koi.cursor.widget \
     >>"$LOG_DIR/cursor-usage-widget.log" 2>&1 &
   echo $! >"$CURSOR_WIDGET_PID"
 }
@@ -182,7 +182,7 @@ start_agent_worker() {
       return 0
     fi
   fi
-  nohup "$VENV/bin/python" "$KOI_ROOT/scripts/koi_agent_chat_worker.py" \
+  nohup "$VENV/bin/python" -m koi.agent_chat.worker \
     >>"$LOG_DIR/agent-chat-worker.log" 2>&1 &
   echo $! >"$WORKER_PID"
 }
@@ -220,7 +220,7 @@ stop_pid_file_simple() {
 }
 
 _start_one_inbox_watcher() {
-  local script="$1"
+  local module="$1"
   local pid_file="$2"
   local log_file="$3"
   if [[ -f "$pid_file" ]]; then
@@ -232,7 +232,7 @@ _start_one_inbox_watcher() {
     rm -f "$pid_file"
   fi
   ensure_venv
-  nohup "$VENV/bin/python" "$script" watch >>"$log_file" 2>&1 &
+  nohup "$VENV/bin/python" -m "$module" watch >>"$log_file" 2>&1 &
   local i pid
   for i in 1 2 3 4 5 6 7 8 9 10; do
     sleep 0.2
@@ -243,7 +243,7 @@ _start_one_inbox_watcher() {
       fi
     fi
   done
-  echo "warning: inbox watcher failed to start: $script (see $log_file)" >&2
+  echo "warning: inbox watcher failed to start: $module (see $log_file)" >&2
 }
 
 start_inbox_watcher() {
@@ -251,15 +251,15 @@ start_inbox_watcher() {
     return 0
   fi
   _start_one_inbox_watcher \
-    "$KOI_ROOT/scripts/koi_agent_chat_inbox.py" \
+    "koi.agent_chat.inbox_cli" \
     "$RUN_DIR/koi-agent-chat-inbox-watch.pid" \
     "$LOG_DIR/agent-chat-watch.log"
   _start_one_inbox_watcher \
-    "$KOI_ROOT/scripts/koi_related_work_inbox.py" \
+    "koi.related_work.inbox_cli" \
     "$RUN_DIR/koi-related-work-inbox-watch.pid" \
     "$LOG_DIR/related-work-watch.log"
   _start_one_inbox_watcher \
-    "$KOI_ROOT/scripts/koi_paper_inbox.py" \
+    "koi.paper.inbox_cli" \
     "$RUN_DIR/koi-paper-inbox-watch.pid" \
     "$LOG_DIR/paper-watch.log"
 }

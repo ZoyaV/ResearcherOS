@@ -14,7 +14,7 @@
 ## Старт сессии — проверь очереди
 
 1. **done-research** (карточки, перенесённые в done и ждущие вывода):
-   `python scripts/koi_done_research.py pending` — если список не пуст,
+   `python -m koi.projects.done_research_cli pending` — если список не пуст,
    обработай каждую по `agents/skills/koi-done-research/SKILL.md`.
 2. **agent-chat** (вопросы из панели «Спросить агента» в UI):
    очередь `.run/agent-chat-queue.json` — плейбук
@@ -25,7 +25,7 @@
 | Задача | Как |
 |--------|-----|
 | Выполнить карточку канбана | скилл **koi-execute-card** — **сначала** `backlog` → `running`, отмечай `- [x]` в §3 «Подзадачи» **сразу** по мере выполнения, в конце `running` → `done`; затем **koi-done-research** |
-| Проверить гипотезу (карточку канбана) | `PYTHONPATH=. python scripts/koi_check_hypothesis.py <project_id> <card_id>`. Если серверный бэкенд недоступен (обычный случай в клоне) — **выполни работу агента сам** (**koi-execute-card**): проведи эксперимент, заполни `agents/skills/koi-report-review/experiment-report.md` → `projects/<id>/reports/<узел>/<карточка>.run.md` (**koi-report-review**, критик 4), затем `… --ingest-only` (сначала `--dry-run`). Публичный отчёт по skeleton — **koi-report-review** на каждой фазе |
+| Проверить гипотезу (карточку канбана) | `python -m koi.projects.report_ingest.cli <project_id> <card_id>`. Если серверный бэкенд недоступен (обычный случай в клоне) — **выполни работу агента сам** (**koi-execute-card**): проведи эксперимент, заполни `agents/skills/koi-report-review/experiment-report.md` → `projects/<id>/reports/<узел>/<карточка>.run.md` (**koi-report-review**, критик 4), затем `… --ingest-only` (сначала `--dry-run`). Публичный отчёт по skeleton — **koi-report-review** на каждой фазе |
 | Вывод по done-карточке | скилл `koi-done-research` (question/narrative — человеческим языком, метрики — в `answer`) |
 | Ответ на вопрос из UI | скилл `koi-agent-chat` (сначала `research.json`, отчёты — только если не хватает) |
 | Глубокая суммаризация знаний | скилл `koi-knowledge-curator` — кросс-анализ отчётов и инсайтов, курируемые документы в `projects/<id>/knowledge/` |

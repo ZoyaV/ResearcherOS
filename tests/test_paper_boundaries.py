@@ -1,13 +1,8 @@
 """Import and compatibility contracts for the paper capability."""
 
 from importlib import import_module
-import runpy
-from pathlib import Path
 
 import pytest
-
-
-ROOT = Path(__file__).resolve().parents[1]
 
 
 @pytest.mark.parametrize(
@@ -26,10 +21,8 @@ def test_service_imports_remain_compatible(legacy: str, canonical: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "relative_path",
-    ("scripts/koi_paper.py", "scripts/koi_paper_inbox.py"),
+    "module_name",
+    ("koi.paper.cli", "koi.paper.inbox_cli"),
 )
-def test_paper_cli_imports(relative_path: str) -> None:
-    namespace = runpy.run_path(str(ROOT / relative_path), run_name="paper_smoke")
-
-    assert callable(namespace["main"])
+def test_paper_cli_imports(module_name: str) -> None:
+    assert callable(import_module(module_name).main)

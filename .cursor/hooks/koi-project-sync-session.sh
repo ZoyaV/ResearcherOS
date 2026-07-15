@@ -15,7 +15,7 @@ if [[ ! -x "$PY" ]]; then
   PY=python3
 fi
 
-if [[ ! -f "$KOI_ROOT/scripts/koi_project_sync.py" ]]; then
+if [[ ! -f "$KOI_ROOT/koi/projects/sync_cli.py" ]]; then
   cat >/dev/null
   echo '{}'
   exit 0

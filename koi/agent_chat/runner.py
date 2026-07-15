@@ -9,10 +9,8 @@ CLI и/или Cursor SDK, см. KOI_AGENT_BACKEND). Если ни один бэ�
 from __future__ import annotations
 
 import json
-import sys
-from pathlib import Path
-
 from koi.adapters.agent_backends import backend_status, run_agent
+from koi.agent_chat.cli import build_context
 from koi.agent_chat.auto import try_auto_answer
 from koi.agent_chat.formatting import ANSWER_FORMAT_INSTRUCTIONS, no_cursor_key_warning
 from koi.adapters.agent_chat_queue import find_item, list_pending, submit_answer
@@ -22,21 +20,7 @@ from koi.adapters.workspace import get_workspace
 _ws = get_workspace()
 
 
-def _import_build_context():
-    import importlib.util
-
-    path = _ws.scripts_dir / "koi_agent_chat.py"
-    spec = importlib.util.spec_from_file_location("koi_agent_chat_mod", path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"Cannot load {path}")
-    mod = importlib.util.module_from_spec(spec)
-    sys.modules["koi_agent_chat_mod"] = mod
-    spec.loader.exec_module(mod)
-    return mod.build_context
-
-
 def _sdk_prompt(item_id: str) -> str:
-    build_context = _import_build_context()
     ctx = build_context(item_id)
     return (
         "Ты отвечаешь на вопрос исследователя в ResearchOS (скилл koi-agent-chat).\n"

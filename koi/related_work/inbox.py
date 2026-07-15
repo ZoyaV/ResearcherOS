@@ -24,7 +24,7 @@ POLL_INTERVAL_S = 2.0
 DEBOUNCE_S = 1.0
 
 ENGINE_ROOT = _ws.engine_root
-INBOX_SCRIPT = _ws.scripts_dir / "koi_related_work_inbox.py"
+INBOX_SCRIPT = "-m koi.related_work.inbox_cli"
 CONFIGURED_FLAG = RUN_DIR / "literature-inbox-configured.json"
 VENV_PYTHON = _ws.venv_python
 LOOP_POLL_INTERVAL_S = 3
@@ -53,7 +53,7 @@ def pending_count() -> int:
 
 def processing_instructions(*, focus_related_work_id: str | None = None) -> str:
     py = _python_bin()
-    rw = _ws.scripts_dir / "koi_related_work.py"
+    rw = "-m koi.related_work.cli"
     if focus_related_work_id:
         return (
             "Related Work (literature.html): скилл **koi-related-work** — "
@@ -207,7 +207,7 @@ def inbox_task_message(*, related_work_id: str | None = None, setup: bool = Fals
         return bootstrap_prompt()
     py = _python_bin()
     inbox = INBOX_SCRIPT
-    rw = _ws.scripts_dir / "koi_related_work.py"
+    rw = "-m koi.related_work.cli"
     if related_work_id:
         return (
             f"ResearchOS Literature Inbox — Related Work `{related_work_id}`.\n\n"

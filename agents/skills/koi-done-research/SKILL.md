@@ -18,7 +18,7 @@ description: >-
 При старте сессии с KOI/ResearchOS **сначала проверь очередь**:
 
 ```bash
-KOI/.venv/bin/python KOI/scripts/koi_done_research.py pending
+KOI/.venv/bin/python -m koi.projects.done_research_cli pending
 ```
 
 Если список не пуст — обработай каждую запись по workflow ниже.
@@ -28,7 +28,7 @@ KOI/.venv/bin/python KOI/scripts/koi_done_research.py pending
 ### 1. Собрать контекст
 
 ```bash
-KOI/.venv/bin/python KOI/scripts/koi_done_research.py context \
+KOI/.venv/bin/python -m koi.projects.done_research_cli context \
   <project_id> <board_id> <card_id>
 ```
 
@@ -77,7 +77,7 @@ curl -s -X PATCH "http://127.0.0.1:8010/projects/<project_id>/nodes/<method_id>"
 ### 4. Закрыть очередь
 
 ```bash
-KOI/.venv/bin/python KOI/scripts/koi_done_research.py complete \
+KOI/.venv/bin/python -m koi.projects.done_research_cli complete \
   <project_id> <board_id> <card_id>
 ```
 

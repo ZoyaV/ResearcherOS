@@ -1,20 +1,15 @@
 #!/usr/bin/env python3
-"""ResearchOS Literature Inbox — watcher + queue status for Related Work."""
+"""ResearchOS Inbox — watcher + queue status for a dedicated Cursor agent chat."""
 
 from __future__ import annotations
 
 import argparse
 import json
-import sys
-from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
-
-from koi.related_work.inbox import (  # noqa: E402
+from koi.agent_chat.inbox import (
     bootstrap_prompt,
     format_pending_report,
-    literature_inbox_settings,
+    inbox_settings,
     pending_signature,
     pending_snapshot,
     run_watch,
@@ -22,7 +17,7 @@ from koi.related_work.inbox import (  # noqa: E402
 
 
 def cmd_status(_: argparse.Namespace) -> None:
-    data = literature_inbox_settings()
+    data = inbox_settings()
     data["pending_ids"] = list(pending_signature())
     data["pending"] = pending_snapshot()
     print(json.dumps(data, ensure_ascii=False, indent=2))
@@ -45,11 +40,14 @@ def main() -> None:
 
     p_watch = sub.add_parser(
         "watch",
-        help="Watch related-work queue; print RELATED_WORK_WAKE lines",
+        help="Watch agent-chat queue; print AGENT_CHAT_WAKE lines (run via koi-serve)",
     )
     p_watch.set_defaults(func=lambda _a: run_watch())
 
-    p_pending = sub.add_parser("pending", help="Show pending Related Work tasks")
+    p_pending = sub.add_parser(
+        "pending",
+        help="Show pending tasks from agent-chat JSON queue",
+    )
     p_pending.add_argument("--json", action="store_true", help="Machine-readable JSON")
     p_pending.set_defaults(func=cmd_pending)
 
@@ -58,7 +56,7 @@ def main() -> None:
 
     p_boot = sub.add_parser(
         "bootstrap",
-        help="Print first message for ResearchOS Literature Inbox chat",
+        help="Print first message to paste into new Cursor Inbox chat",
     )
     p_boot.set_defaults(func=cmd_bootstrap)
 

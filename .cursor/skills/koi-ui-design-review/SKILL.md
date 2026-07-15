@@ -51,7 +51,7 @@ Full-file scan (rare): append `--all`. Fix every **blocking** lint hit before re
 Navigate to the affected UI state. Prefer:
 
 ```bash
-KOI/.venv/bin/python KOI/scripts/ui_snapshot.py
+KOI/.venv/bin/python KOI/.cursor/skills/koi-visual-qa/scripts/ui_snapshot.py
 ```
 
 Or Browser MCP → `http://127.0.0.1:8080/`, interact to reach changed UI, `browser_take_screenshot`.

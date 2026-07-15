@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+from importlib import import_module
 from pathlib import Path
 
 
@@ -192,3 +193,31 @@ def test_repository_adapter_does_not_import_laboratory_policy() -> None:
         "Repository adapter must return stored project data without laboratory policy:\n"
         + "\n".join(violations)
     )
+
+
+def test_scripts_contains_only_bootstrap_entrypoints() -> None:
+    scripts = {
+        path.name for path in (ROOT / "scripts").iterdir() if path.is_file()
+    }
+
+    assert scripts == {"koi-install-tectonic.sh", "koi-serve.sh"}
+
+
+def test_cli_entrypoints_are_importable() -> None:
+    modules = (
+        "api.web_proxy",
+        "koi.agent_chat.cli",
+        "koi.agent_chat.inbox_cli",
+        "koi.agent_chat.worker",
+        "koi.cursor.widget",
+        "koi.paper.cli",
+        "koi.paper.inbox_cli",
+        "koi.projects.done_research_cli",
+        "koi.projects.report_ingest.cli",
+        "koi.projects.sync_cli",
+        "koi.related_work.cli",
+        "koi.related_work.inbox_cli",
+    )
+
+    for module_name in modules:
+        assert callable(import_module(module_name).main)

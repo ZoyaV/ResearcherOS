@@ -39,19 +39,19 @@
 
 ```bash
 # Чат
-.venv/bin/python scripts/koi_agent_chat_inbox.py watch
-.venv/bin/python scripts/koi_agent_chat_inbox.py pending
-.venv/bin/python scripts/koi_agent_chat_inbox.py bootstrap
+.venv/bin/python -m koi.agent_chat.inbox_cli watch
+.venv/bin/python -m koi.agent_chat.inbox_cli pending
+.venv/bin/python -m koi.agent_chat.inbox_cli bootstrap
 
 # Литература / Related Work
-.venv/bin/python scripts/koi_related_work_inbox.py watch
-.venv/bin/python scripts/koi_related_work_inbox.py pending
-.venv/bin/python scripts/koi_related_work_inbox.py bootstrap
+.venv/bin/python -m koi.related_work.inbox_cli watch
+.venv/bin/python -m koi.related_work.inbox_cli pending
+.venv/bin/python -m koi.related_work.inbox_cli bootstrap
 
 # Статья / Paper
-.venv/bin/python scripts/koi_paper_inbox.py watch
-.venv/bin/python scripts/koi_paper_inbox.py pending
-.venv/bin/python scripts/koi_paper_inbox.py bootstrap
+.venv/bin/python -m koi.paper.inbox_cli watch
+.venv/bin/python -m koi.paper.inbox_cli pending
+.venv/bin/python -m koi.paper.inbox_cli bootstrap
 ```
 
 На macOS без `inotifywait` каждый watcher поллит свою очередь каждые 2 с.

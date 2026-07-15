@@ -26,10 +26,10 @@ description: >-
 ## CLI
 
 ```bash
-KOI/.venv/bin/python KOI/scripts/koi_project_sync.py status
-KOI/.venv/bin/python KOI/scripts/koi_project_sync.py pull
-KOI/.venv/bin/python KOI/scripts/koi_project_sync.py pending-push
-KOI/.venv/bin/python KOI/scripts/koi_project_sync.py complete-push --all
+KOI/.venv/bin/python -m koi.projects.sync_cli status
+KOI/.venv/bin/python -m koi.projects.sync_cli pull
+KOI/.venv/bin/python -m koi.projects.sync_cli pending-push
+KOI/.venv/bin/python -m koi.projects.sync_cli complete-push --all
 ```
 
 ## Pull (входящие изменения)

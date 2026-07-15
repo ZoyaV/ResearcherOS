@@ -8,7 +8,7 @@ import asyncio
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(__file__).resolve().parents[4]
 OUT_DIR = ROOT / ".run" / "ui-screenshots"
 DEFAULT_URL = "http://127.0.0.1:8080/"
 

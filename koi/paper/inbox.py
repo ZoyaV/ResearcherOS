@@ -24,7 +24,7 @@ POLL_INTERVAL_S = 2.0
 DEBOUNCE_S = 1.0
 
 ENGINE_ROOT = _ws.engine_root
-INBOX_SCRIPT = _ws.scripts_dir / "koi_paper_inbox.py"
+INBOX_SCRIPT = "-m koi.paper.inbox_cli"
 CONFIGURED_FLAG = RUN_DIR / "paper-inbox-configured.json"
 VENV_PYTHON = _ws.venv_python
 LOOP_POLL_INTERVAL_S = 5
@@ -53,7 +53,7 @@ def pending_count() -> int:
 
 def processing_instructions(*, focus_paper_id: str | None = None) -> str:
     py = _python_bin()
-    paper = _ws.scripts_dir / "koi_paper.py"
+    paper = "-m koi.paper.cli"
     if focus_paper_id:
         return (
             "Paper (статья NeurIPS): скилл **koi-paper** — "
@@ -213,7 +213,7 @@ def inbox_task_message(*, paper_id: str | None = None, setup: bool = False) -> s
         return bootstrap_prompt()
     py = _python_bin()
     inbox = INBOX_SCRIPT
-    paper = _ws.scripts_dir / "koi_paper.py"
+    paper = "-m koi.paper.cli"
     if paper_id:
         return (
             f"ResearchOS Paper Inbox — статья `{paper_id}`.\n\n"

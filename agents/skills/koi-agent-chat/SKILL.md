@@ -21,7 +21,7 @@ description: >-
 | **Hooks** (`cursor_ide`) | Очередь при старте/stop любого чата агента |
 | **Фоновый API** (`api`) | Воркер + `CURSOR_API_KEY` |
 
-Инструкция: `docs/agent-chat-inbox.md`. Bootstrap: `python scripts/koi_agent_chat_inbox.py bootstrap`.
+Инструкция: `docs/agent-chat-inbox.md`. Bootstrap: `python -m koi.agent_chat.inbox_cli bootstrap`.
 
 ## Когда запускать
 
@@ -30,7 +30,7 @@ description: >-
 3. Пользователь явно ссылается на вопрос из ResearchOS UI.
 
 ```bash
-KOI/.venv/bin/python KOI/scripts/koi_agent_chat.py pending
+KOI/.venv/bin/python -m koi.agent_chat.cli pending
 ```
 
 ## Главное правило ответа
@@ -55,13 +55,13 @@ KOI/.venv/bin/python KOI/scripts/koi_agent_chat.py pending
 Сразу отметь вопрос принятым — UI покажет «прочитано» и анимацию «Агент пишет…»:
 
 ```bash
-KOI/.venv/bin/python KOI/scripts/koi_agent_chat.py claim <queue_id>
+KOI/.venv/bin/python -m koi.agent_chat.cli claim <queue_id>
 ```
 
 ### 1. Собрать контекст
 
 ```bash
-KOI/.venv/bin/python KOI/scripts/koi_agent_chat.py context <queue_id>
+KOI/.venv/bin/python -m koi.agent_chat.cli context <queue_id>
 ```
 
 В JSON:
@@ -98,13 +98,13 @@ KOI/.venv/bin/python KOI/scripts/koi_agent_chat.py context <queue_id>
 Пользователь ждёт ответ **в панели ResearchOS**, не только в Cursor. После формулировки ответа:
 
 ```bash
-KOI/.venv/bin/python KOI/scripts/koi_agent_chat.py answer <queue_id> "Текст ответа…"
+KOI/.venv/bin/python -m koi.agent_chat.cli answer <queue_id> "Текст ответа…"
 ```
 
 Или длинный текст из файла:
 
 ```bash
-KOI/.venv/bin/python KOI/scripts/koi_agent_chat.py answer <queue_id> -f /tmp/answer.md
+KOI/.venv/bin/python -m koi.agent_chat.cli answer <queue_id> -f /tmp/answer.md
 ```
 
 Или API:
@@ -142,7 +142,7 @@ curl -s -X PATCH "http://127.0.0.1:8010/agent-chat/<queue_id>" \
 
 Вручную обработать очередь:
 ```bash
-KOI/.venv/bin/python KOI/scripts/koi_agent_chat_worker.py --once
+KOI/.venv/bin/python -m koi.agent_chat.worker --once
 ```
 
 Без ключа в режиме `cursor_ide`: мгновенный ответ из `research.json`; остальное — hooks в IDE.

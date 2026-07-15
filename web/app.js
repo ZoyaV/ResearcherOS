@@ -5526,7 +5526,7 @@ async function copyInboxBootstrap(targetStatusEl) {
   const text =
     appSettings.chat_inbox_bootstrap_prompt ||
     appSettings.inbox_bootstrap_prompt ||
-    "Загрузите настройки (обновите страницу) или выполните: python scripts/koi_agent_chat_inbox.py bootstrap";
+    "Загрузите настройки (обновите страницу) или выполните: python -m koi.agent_chat.inbox_cli bootstrap";
   try {
     await navigator.clipboard.writeText(text);
     if (targetStatusEl) {

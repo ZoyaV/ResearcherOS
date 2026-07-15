@@ -5,7 +5,7 @@ description: >-
   immediately before any other work, (2) mark §3 «Подзадачи» [x] as each item
   completes, (3) move to done when finished. Use when the user asks to run,
   execute, or проверить a kanban card or experiment card; also with
-  koi_check_hypothesis.py or «выполни карточку».
+  `koi.projects.report_ingest.cli` or «выполни карточку».
 ---
 
 # KOI: выполнение карточки канбана
@@ -21,7 +21,7 @@ description: >-
 ## Когда запускать
 
 1. «Выполни / проверь / сделай карточку …» (по id или заголовку).
-2. `koi_check_hypothesis.py <project> <card>` — перед прогоном прочитай этот скилл.
+2. `python -m koi.projects.report_ingest.cli <project> <card>` — перед прогоном прочитай этот скилл.
 3. Карточка уже в **running**, но подзадачи в отчёте не отмечены — доведи до конца.
 4. Пользователь ссылается на конкретный эксперимент с канбана метода.
 
@@ -155,9 +155,9 @@ curl -s -X PUT "http://127.0.0.1:8010/projects/<project_id>/boards/<board_id>/ca
 Если нужна автоинтеграция в БЗ:
 
 ```bash
-PYTHONPATH=. python scripts/koi_check_hypothesis.py <project_id> <card_id>
+python -m koi.projects.report_ingest.cli <project_id> <card_id>
 # или после ручного .run.md:
-PYTHONPATH=. python scripts/koi_check_hypothesis.py <project_id> <card_id> --ingest-only
+python -m koi.projects.report_ingest.cli <project_id> <card_id> --ingest-only
 ```
 
 Ingest сам переносит карточку в done — но **до ingest** подзадачи в публичном отчёте уже должны быть `[x]`, иначе канбан и отчёт разъедутся.

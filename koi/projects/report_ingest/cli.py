@@ -3,9 +3,9 @@
 
 Запуск из корня репо:
 
-    PYTHONPATH=. python scripts/koi_check_hypothesis.py <project_id> <card_id> \
+    python -m koi.projects.report_ingest.cli <project_id> <card_id> \
         [--backend claude|cursor] [--no-ingest] [--dry-run] [--timeout 1800]
-    PYTHONPATH=. python scripts/koi_check_hypothesis.py <project_id> <card_id> \
+    python -m koi.projects.report_ingest.cli <project_id> <card_id> \
         --ingest-only [путь/к/отчёту.run.md]
 
 Конвейер:
@@ -27,21 +27,18 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
+import sys
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
-
-from koi.adapters.agent_backends import backend_status, run_agent  # noqa: E402
-from koi.core.models import NodeType, Project  # noqa: E402
-from koi.projects.report_ingest import (  # noqa: E402
+from koi.adapters.agent_backends import backend_status, run_agent
+from koi.core.models import NodeType, Project
+from koi.projects.report_ingest import (
     ReportIngestError,
     expected_run_report_path,
     ingest_report,
 )
-from koi.adapters.repository import load_project  # noqa: E402
-from koi.adapters.workspace import get_workspace  # noqa: E402
+from koi.adapters.repository import load_project
+from koi.adapters.workspace import get_workspace
 
 _ws = get_workspace()
 TEMPLATE_PATH = _ws.experiment_report_template

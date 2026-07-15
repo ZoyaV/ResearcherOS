@@ -5,16 +5,10 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
-from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from koi.adapters.card_reports import read_report  # noqa: E402
-from koi.adapters.done_research_queue import dequeue, list_pending  # noqa: E402
-from koi.adapters.repository import load_project  # noqa: E402
+from koi.adapters.card_reports import read_report
+from koi.adapters.done_research_queue import dequeue, list_pending
+from koi.adapters.repository import load_project
 
 
 def _find_card(project, board_id: str, card_id: str):
