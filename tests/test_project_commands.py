@@ -5,7 +5,14 @@ from __future__ import annotations
 import pytest
 
 from koi.application import project_commands
-from koi.core.models import ExperimentCard, KanbanBoard, Node, NodeType, Project
+from koi.core.models import (
+    ExperimentCard,
+    KanbanBoard,
+    Node,
+    NodeType,
+    Project,
+    ResearchQuestionCertainty,
+)
 
 
 @pytest.fixture
@@ -55,12 +62,19 @@ def project() -> Project:
 @pytest.fixture
 def command_context(monkeypatch, project: Project) -> dict[str, list]:
     calls: dict[str, list] = {
+        "created_projects": [],
         "saved_projects": [],
         "reports": [],
         "renames": [],
         "deletions": [],
         "sync": [],
     }
+    monkeypatch.setattr(
+        project_commands.repository,
+        "create_project",
+        lambda *args, **kwargs: calls["created_projects"].append((args, kwargs))
+        or project,
+    )
     monkeypatch.setattr(
         project_commands.repository,
         "load_project",
@@ -94,6 +108,48 @@ def command_context(monkeypatch, project: Project) -> dict[str, list]:
     return calls
 
 
+def test_create_project_resolves_program_title_and_delegates_to_repository(
+    project: Project,
+    command_context: dict[str, list],
+) -> None:
+    result = project_commands.create_project(
+        project_commands.CreateProjectCommand(
+            title="Demo",
+            project_id="demo",
+            description="  Description  ",
+            program_title="Embodied AI",
+        )
+    )
+
+    assert result is project
+    assert command_context["created_projects"] == [
+        (
+            ("Demo",),
+            {
+                "project_id": "demo",
+                "description": "  Description  ",
+                "programs": ["embodied-ai"],
+            },
+        )
+    ]
+
+
+def test_create_project_rejects_program_id_and_title_together(
+    command_context: dict[str, list],
+) -> None:
+    with pytest.raises(ValueError, match="Specify either program_id or program_title"):
+        project_commands.create_project(
+            project_commands.CreateProjectCommand(
+                title="Demo",
+                project_id="demo",
+                program_id="existing",
+                program_title="New program",
+            )
+        )
+
+    assert command_context["created_projects"] == []
+
+
 def test_create_card_coordinates_domain_persistence_and_report(
     project: Project,
     command_context: dict[str, list],
@@ -118,6 +174,65 @@ def test_create_card_coordinates_domain_persistence_and_report(
     assert command_context["reports"][0][2] == card.id
     assert command_context["sync"] == [
         ("demo", "kanban_updated", "новая карточка: Card C")
+    ]
+
+
+def test_replace_project_rebuilds_snapshot_and_enqueues_sync(
+    project: Project,
+    command_context: dict[str, list],
+) -> None:
+    result = project_commands.replace_project(
+        "demo",
+        {
+            "title": "Replaced",
+            "description": "Snapshot from UI",
+            "nodes": [
+                {
+                    "id": "method-new",
+                    "parent_id": None,
+                    "node_type": "method",
+                    "title": "New method",
+                    "verdict": "open",
+                    "research_questions": [
+                        {
+                            "question": "What changed?",
+                            "certainty": "tentative",
+                            "importance": 9,
+                        }
+                    ],
+                }
+            ],
+            "boards": {
+                "board-new": {
+                    "owner_node_id": "method-new",
+                    "columns": [
+                        {"id": "backlog", "title": "Backlog", "order": 0}
+                    ],
+                    "cards": [
+                        {
+                            "id": "card-new",
+                            "board_id": "board-new",
+                            "column_id": "backlog",
+                            "title": "New card",
+                        }
+                    ],
+                }
+            },
+        },
+    )
+
+    assert result.title == "Replaced"
+    assert result.description == "Snapshot from UI"
+    assert result.nodes[0].project_id == "demo"
+    question = result.nodes[0].research_questions[0]
+    assert question.id.startswith("rq-")
+    assert question.certainty == ResearchQuestionCertainty.TENTATIVE
+    assert question.importance == 5
+    assert result.boards[0].id == "board-new"
+    assert result.boards[0].cards[0].title == "New card"
+    assert command_context["saved_projects"] == [result]
+    assert command_context["sync"] == [
+        ("demo", "project_saved", "полное сохранение проекта из UI")
     ]
 
 

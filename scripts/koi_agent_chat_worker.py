@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from koi.agent_chat_runner import process_all_pending, process_item  # noqa: E402
+from koi.services.agent_chat_runner import process_all_pending, process_item  # noqa: E402
 
 
 def main() -> None:

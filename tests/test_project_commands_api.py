@@ -11,6 +11,48 @@ from koi.application import project_commands
 from koi.core.models import KanbanBoard, Project
 
 
+def test_create_project_route_maps_request_to_application_command() -> None:
+    project = Project(id="demo", title="Demo")
+    client = TestClient(app)
+
+    with patch(
+        "api.routers.projects.project_commands.create_project",
+        return_value=project,
+    ) as create_project:
+        response = client.post(
+            "/projects",
+            json={
+                "title": "Demo",
+                "description": "Description",
+                "tag": "demo",
+                "program_title": "Embodied AI",
+            },
+        )
+
+    assert response.status_code == 200
+    assert create_project.call_args.args[0] == project_commands.CreateProjectCommand(
+        title="Demo",
+        project_id="demo",
+        description="Description",
+        program_title="Embodied AI",
+    )
+
+
+def test_create_project_route_maps_application_validation_to_http_400() -> None:
+    client = TestClient(app)
+    with patch(
+        "api.routers.projects.project_commands.create_project",
+        side_effect=ValueError("Project already exists: demo"),
+    ):
+        response = client.post(
+            "/projects",
+            json={"title": "Demo", "tag": "demo"},
+        )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Project already exists: demo"
+
+
 def test_create_card_route_maps_request_to_application_command() -> None:
     project = Project(
         id="demo",
@@ -43,6 +85,28 @@ def test_create_card_route_maps_request_to_application_command() -> None:
     )
 
 
+def test_replace_project_route_delegates_snapshot_to_application_command() -> None:
+    project = Project(id="demo", title="Replaced")
+    payload = {
+        "title": "Replaced",
+        "description": "Snapshot from UI",
+        "nodes": [],
+        "boards": {},
+    }
+    client = TestClient(app)
+
+    with patch(
+        "api.routers.projects.project_commands.replace_project",
+        return_value=project,
+    ) as replace_project:
+        response = client.put("/projects/demo", json=payload)
+
+    assert response.status_code == 200
+    replace_project.assert_called_once_with("demo", payload)
+    assert response.json()["id"] == "demo"
+    assert response.json()["title"] == "Replaced"
+
+
 def test_update_card_route_maps_domain_validation_to_http_400() -> None:
     client = TestClient(app)
     with patch(
@@ -68,4 +132,3 @@ def test_delete_node_route_maps_application_not_found_to_http_404() -> None:
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Node not found"
-

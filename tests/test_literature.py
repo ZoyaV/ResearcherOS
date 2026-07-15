@@ -7,7 +7,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from api.main import app
-from koi.literature import (
+from koi.services.literature import (
     LIBRARY_FIELDNAMES,
     discover_library_with_agent,
     reset_library_cache,
@@ -42,7 +42,10 @@ class LiteratureBootstrapTests(unittest.TestCase):
         """
         with TemporaryDirectory() as tmpdir:
             destination = Path(tmpdir) / "library.csv"
-            with patch("koi.literature.run_agent", return_value=(response, "mock-agent")):
+            with patch(
+                "koi.services.literature.run_agent",
+                return_value=(response, "mock-agent"),
+            ):
                 result = discover_library_with_agent(
                     "dynamic scene graphs", limit=2, destination=destination
                 )
@@ -57,7 +60,10 @@ class LiteratureBootstrapTests(unittest.TestCase):
             self.assertEqual(rows[0]["arxiv_url"], "https://arxiv.org/abs/2401.12345")
             self.assertEqual(rows[0]["authors"], "Alice Example, Bob Example")
 
-            with patch("koi.literature.LIBRARY_CSV_CANDIDATES", (destination,)):
+            with patch(
+                "koi.services.literature.LIBRARY_CSV_CANDIDATES",
+                (destination,),
+            ):
                 reset_library_cache()
                 ranked = search_library("dynamic embodied scene graph reasoning", limit=5)
             self.assertGreaterEqual(len(ranked), 1)
@@ -115,9 +121,9 @@ class LiteratureBootstrapTests(unittest.TestCase):
             <author><name>Alice Example</name></author>
           </entry>
         </feed>"""
-        with patch("koi.literature.urllib.request.urlopen") as urlopen:
+        with patch("koi.services.literature.urllib.request.urlopen") as urlopen:
             urlopen.return_value.__enter__.return_value.read.return_value = xml
-            from koi.literature import search_arxiv_internet
+            from koi.services.literature import search_arxiv_internet
 
             results = search_arxiv_internet("dynamic scene graphs", limit=5)
         self.assertEqual(len(results), 1)
@@ -125,7 +131,7 @@ class LiteratureBootstrapTests(unittest.TestCase):
         self.assertEqual(results[0]["arxiv_url"], "https://arxiv.org/abs/2401.12345")
 
     def test_translate_to_english_passthrough_for_latin_text(self) -> None:
-        from koi.literature import translate_to_english
+        from koi.services.literature import translate_to_english
 
         translated, backend = translate_to_english("scene graph planning")
         self.assertEqual(translated, "scene graph planning")

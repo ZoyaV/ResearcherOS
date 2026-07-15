@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import subprocess
 
-from koi.rq_discoveries import (
+from koi.services.rq_discoveries import (
     _answer_signature,
     _author_for_card_done,
     _card_column_in_row,

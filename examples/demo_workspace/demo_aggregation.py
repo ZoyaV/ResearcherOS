@@ -1,6 +1,6 @@
 """Example seed: demo-aggregation project."""
 
-from koi.models import (
+from koi.core.models import (
     DEFAULT_KANBAN_COLUMNS,
     ExperimentCard,
     KanbanBoard,

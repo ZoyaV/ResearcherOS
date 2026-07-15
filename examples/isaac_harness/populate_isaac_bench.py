@@ -9,10 +9,10 @@
 """
 from __future__ import annotations
 
-from koi.models import MethodResearchQuestion as Q
-from koi.models import ResearchQuestionCertainty as C
-from koi.models import Verdict
-from koi.repository import load_project, save_project
+from koi.core.models import MethodResearchQuestion as Q
+from koi.core.models import ResearchQuestionCertainty as C
+from koi.core.models import Verdict
+from koi.adapters.repository import load_project, save_project
 
 PID = "isaac-rl-bench"
 

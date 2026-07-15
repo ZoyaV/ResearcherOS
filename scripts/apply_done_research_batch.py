@@ -11,10 +11,10 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from koi.done_research_queue import dequeue, list_pending  # noqa: E402
-from koi.models import MethodResearchQuestion as Q  # noqa: E402
-from koi.models import ResearchQuestionCertainty as C  # noqa: E402
-from koi.repository import load_project, update_node  # noqa: E402
+from koi.adapters.done_research_queue import dequeue, list_pending  # noqa: E402
+from koi.core.models import MethodResearchQuestion as Q  # noqa: E402
+from koi.core.models import ResearchQuestionCertainty as C  # noqa: E402
+from koi.adapters.repository import load_project, update_node  # noqa: E402
 
 UPDATES: dict[str, list[Q]] = {
     "n-c1b39d98": [

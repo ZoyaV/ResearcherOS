@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from uuid import uuid4
-
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
@@ -17,6 +15,7 @@ from api.schemas import (
     UpdateNodeBody,
 )
 from koi.application import project_commands
+from koi.application.project_views import project_to_client
 from koi.adapters.card_reports import (
     read_report,
     read_report_indexed,
@@ -25,21 +24,8 @@ from koi.adapters.card_reports import (
     save_report_asset,
     write_report,
 )
-from koi.adapters.repository import create_project, list_projects, save_project, update_board
-from koi.core.models import (
-    DEFAULT_KANBAN_COLUMNS,
-    ExperimentCard,
-    KanbanBoard,
-    KanbanColumn,
-    MethodResearchQuestion,
-    Node,
-    NodeType,
-    Project,
-    ResearchQuestionCertainty,
-    Verdict,
-)
+from koi.adapters.repository import list_projects, update_board
 from koi.services import dag_layout
-from koi.services.api_helpers import project_to_client
 from koi.services.card_live import (
     live_monitor_cards,
     live_snapshot,
@@ -62,23 +48,15 @@ def projects() -> list[dict]:
 
 @router.post("/projects")
 def post_project(body: CreateProjectBody) -> dict:
-    if body.program_id and body.program_title:
-        raise HTTPException(400, "Specify either program_id or program_title, not both")
-
-    programs: list[str] = []
-    if body.program_id:
-        programs.append(body.program_id.strip())
-    elif body.program_title:
-        from koi.services.programs import _slugify as slug_program
-
-        programs.append(slug_program(body.program_title))
-
     try:
-        project = create_project(
-            body.title,
-            project_id=body.tag,
-            description=body.description,
-            programs=programs,
+        project = project_commands.create_project(
+            project_commands.CreateProjectCommand(
+                title=body.title,
+                project_id=body.tag,
+                description=body.description,
+                program_id=body.program_id,
+                program_title=body.program_title,
+            )
         )
     except ValueError as e:
         raise HTTPException(400, str(e)) from e
@@ -104,60 +82,10 @@ def get_kanban_live_monitor(project_id: str) -> dict:
 
 @router.put("/projects/{project_id}")
 def put_project(project_id: str, payload: dict) -> dict:
-    existing = require_project(project_id)
-    project = Project(
-        id=project_id,
-        title=payload.get("title", existing.title),
-        description=payload.get("description", existing.description),
-    )
-    nodes = []
-    for raw in payload.get("nodes", []):
-        rq_raw = raw.get("research_questions") or []
-        research_questions = [
-            MethodResearchQuestion(
-                id=item.get("id") or f"rq-{uuid4().hex[:8]}",
-                question=item["question"],
-                answer=item.get("answer", ""),
-                narrative=item.get("narrative", ""),
-                certainty=ResearchQuestionCertainty(
-                    item.get("certainty", ResearchQuestionCertainty.DEFINITE.value)
-                ),
-                importance=max(1, min(5, int(item.get("importance", 3)))),
-                card_id=item.get("card_id"),
-            )
-            for item in rq_raw
-        ]
-        nodes.append(
-            Node(
-                id=raw["id"],
-                project_id=project_id,
-                parent_id=raw.get("parent_id"),
-                node_type=NodeType(raw["node_type"]),
-                title=raw["title"],
-                description=raw.get("description", ""),
-                verdict=Verdict(raw.get("verdict", "open")),
-                research_questions=research_questions,
-            )
-        )
-    boards = []
-    for bid, raw in payload.get("boards", {}).items():
-        cols = [
-            KanbanColumn(**c) if isinstance(c, dict) else c
-            for c in raw.get("columns", DEFAULT_KANBAN_COLUMNS)
-        ]
-        cards = [ExperimentCard(**c) for c in raw.get("cards", [])]
-        boards.append(
-            KanbanBoard(
-                id=raw.get("id", bid),
-                owner_node_id=raw["owner_node_id"],
-                columns=cols,
-                cards=cards,
-            )
-        )
-    project.nodes = nodes
-    project.boards = boards
-    save_project(project)
-    enqueue_sync(project_id, "project_saved", "полное сохранение проекта из UI")
+    try:
+        project = project_commands.replace_project(project_id, payload)
+    except project_commands.EntityNotFoundError as e:
+        raise HTTPException(404, str(e)) from e
     return project_to_client(project)
 
 

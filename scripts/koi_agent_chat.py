@@ -16,12 +16,12 @@ from koi.adapters.workspace import get_workspace
 
 _ws = get_workspace()
 
-from koi.agent_chat_format import ANSWER_FORMAT_INSTRUCTIONS  # noqa: E402
+from koi.services.agent_chat_format import ANSWER_FORMAT_INSTRUCTIONS  # noqa: E402
 from koi.adapters.agent_chat_queue import find_item, list_pending, mark_processing, submit_answer  # noqa: E402
-from koi.card_reports import read_report  # noqa: E402
-from koi.models import NodeType  # noqa: E402
-from koi.repository import load_project  # noqa: E402
-from koi.research_store import research_path  # noqa: E402
+from koi.adapters.card_reports import read_report  # noqa: E402
+from koi.core.models import NodeType  # noqa: E402
+from koi.adapters.repository import load_project  # noqa: E402
+from koi.adapters.research_store import research_path  # noqa: E402
 
 
 def _card_meta(project, board_id: str, card_id: str) -> dict | None:

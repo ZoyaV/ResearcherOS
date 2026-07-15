@@ -2,9 +2,9 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from koi.workspace import get_workspace
+from koi.adapters.workspace import get_workspace
 
-from koi.review_agent import (
+from koi.services.review_agent import (
     PaperAnswerArtifact,
     PaperAnswerCluster,
     PaperSummary,

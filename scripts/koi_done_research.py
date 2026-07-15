@@ -12,9 +12,9 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from koi.card_reports import read_report  # noqa: E402
-from koi.done_research_queue import dequeue, list_pending  # noqa: E402
-from koi.repository import load_project  # noqa: E402
+from koi.adapters.card_reports import read_report  # noqa: E402
+from koi.adapters.done_research_queue import dequeue, list_pending  # noqa: E402
+from koi.adapters.repository import load_project  # noqa: E402
 
 
 def _find_card(project, board_id: str, card_id: str):

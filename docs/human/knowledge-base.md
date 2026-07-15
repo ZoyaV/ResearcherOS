@@ -78,7 +78,7 @@ PYTHONPATH=. python scripts/koi_check_hypothesis.py <project_id> <card_id>
 2. Агент (Claude Code CLI или Cursor SDK — см. раздел 5) проводит проверку и пишет
    рабочий отчёт `reports/<узел>/<карточка>.run.md`. Кроме файла отчёта агент
    ничего менять не должен.
-3. Отчёт автоматически «вливается» (`koi/report_ingest.py`): из §5.1 берётся вердикт
+3. Отчёт автоматически «вливается» (`koi/services/report_ingest.py`): из §5.1 берётся вердикт
    гипотезы, из §5.2 — json-блок с инсайтами (≤3, формат research.json); проект
    обновляется (вердикт узла, research.json, карточка → done, запись в
    `reports/index.json`), и хук `save_project` пересобирает БЗ + журнал.
@@ -101,7 +101,7 @@ PYTHONPATH=. python scripts/koi_check_hypothesis.py <project_id> <card_id>
 
 ## 5. Агентские бэкенды: Claude Code и Cursor
 
-Слой `koi/agent_backends.py` используется и проверкой гипотез, и agent-чатом
+Слой `koi/adapters/agent_backends.py` используется и проверкой гипотез, и agent-чатом
 (очередь вопросов из UI). Бэкенды пробуются по порядку; недоступные пропускаются.
 
 | Переменная | Значение по умолчанию | Смысл |
@@ -118,7 +118,7 @@ PYTHONPATH=. python scripts/koi_check_hypothesis.py <project_id> <card_id>
 и авторизоваться (`claude login` или переменная `ANTHROPIC_API_KEY`).
 **Чтобы включить Cursor**: `pip install cursor-sdk` в `.venv` и задать `CURSOR_API_KEY`.
 Проверка готовности: `GET /agent/backends` или
-`PYTHONPATH=. python -c "from koi.agent_backends import backend_status; print(backend_status())"`.
+`PYTHONPATH=. python -c "from koi.adapters.agent_backends import backend_status; print(backend_status())"`.
 
 Claude Code вызывается headless: `claude -p --output-format text`, промпт через stdin;
 при проверке гипотез — с `--permission-mode acceptEdits` и списком allowed-tools,

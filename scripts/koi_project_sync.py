@@ -12,13 +12,13 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from koi.project_sync import (  # noqa: E402
+from koi.adapters.project_sync import (  # noqa: E402
     git_summary,
     init_sync_branches,
     pull_projects,
     push_projects,
 )
-from koi.project_sync_queue import (  # noqa: E402
+from koi.adapters.project_sync_queue import (  # noqa: E402
     clear_push_queue,
     dequeue_push,
     enqueue_push,

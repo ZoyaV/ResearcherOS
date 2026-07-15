@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from koi.repository import seed_templates  # noqa: E402
+from koi.adapters.repository import seed_templates  # noqa: E402
 
 
 def main() -> int:

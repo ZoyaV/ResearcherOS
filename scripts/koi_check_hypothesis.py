@@ -11,10 +11,10 @@
 Конвейер:
 1. По карточке канбана находится цепочка узлов: метод → доказательство/
    ремедиация → гипотеза (cause) → проблема.
-2. Локальный агент (Claude Code CLI или Cursor SDK — koi/agent_backends.py)
+2. Локальный агент (Claude Code CLI или Cursor SDK — koi/adapters/agent_backends.py)
    получает контекст + шаблон `agent/templates/experiment-report.md` и пишет
    рабочий отчёт `<отчёт-карточки>.run.md` рядом с публичным отчётом.
-3. `koi/report_ingest.py` разбирает «Заявку в БЗ» (§5): вердикт ставится на
+3. `koi/services/report_ingest.py` разбирает «Заявку в БЗ» (§5): вердикт ставится на
    cause-узел, инсайты (§5.2, json) попадают в research.json, карточка едет
    в done — а хук save_project автоматически пересобирает KNOWLEDGE.md,
    knowledge/hypotheses.md и KNOWLEDGE_LOG.md.
@@ -33,15 +33,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from koi.agent_backends import backend_status, run_agent  # noqa: E402
-from koi.models import NodeType, Project  # noqa: E402
-from koi.report_ingest import (  # noqa: E402
+from koi.adapters.agent_backends import backend_status, run_agent  # noqa: E402
+from koi.core.models import NodeType, Project  # noqa: E402
+from koi.services.report_ingest import (  # noqa: E402
     ReportIngestError,
     expected_run_report_path,
     ingest_report,
 )
-from koi.repository import load_project  # noqa: E402
-from koi.workspace import get_workspace  # noqa: E402
+from koi.adapters.repository import load_project  # noqa: E402
+from koi.adapters.workspace import get_workspace  # noqa: E402
 
 _ws = get_workspace()
 TEMPLATE_PATH = _ws.experiment_report_template

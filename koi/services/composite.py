@@ -11,7 +11,7 @@ from koi.adapters.paths import project_md
 from koi.adapters.project_mount import list_mounts
 from koi.adapters.repository import load_project
 from koi.core.models import KanbanBoard, Node, Project
-from koi.services.api_helpers import project_to_client
+from koi.application.project_views import project_to_client
 
 
 def _split_frontmatter(text: str) -> tuple[dict[str, Any], str]:

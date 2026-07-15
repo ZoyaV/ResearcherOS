@@ -22,10 +22,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from koi.knowledge import VERDICT_MARK, write_project_knowledge  # noqa: E402
-from koi.models import NodeType, Verdict  # noqa: E402
-from koi.programs import list_programs, program_summary  # noqa: E402
-from koi.repository import list_projects, load_project  # noqa: E402
+from koi.services.knowledge import VERDICT_MARK, write_project_knowledge  # noqa: E402
+from koi.core.models import NodeType, Verdict  # noqa: E402
+from koi.services.programs import list_programs, program_summary  # noqa: E402
+from koi.adapters.repository import list_projects, load_project  # noqa: E402
 
 GLOBAL_INDEX = ROOT / "kb" / "KNOWLEDGE.md"
 

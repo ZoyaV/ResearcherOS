@@ -10,18 +10,32 @@ from koi.adapters import card_reports, repository
 from koi.core import project_ops
 from koi.core.md_io import normalize_card_tags, register_project_card_tags
 from koi.core.models import (
+    DEFAULT_KANBAN_COLUMNS,
     ExperimentCard,
     KanbanBoard,
+    KanbanColumn,
     MethodResearchQuestion,
+    Node,
     NodeType,
     Project,
     ResearchQuestionCertainty,
+    Verdict,
 )
 from koi.services.dag_suggest import normalize_dependency_ids, would_create_cycle
+from koi.services import programs as program_service
 
 
 class EntityNotFoundError(LookupError):
     """A project aggregate or one of its requested children does not exist."""
+
+
+@dataclass(frozen=True)
+class CreateProjectCommand:
+    title: str
+    project_id: str
+    description: str = ""
+    program_id: Optional[str] = None
+    program_title: Optional[str] = None
 
 
 @dataclass(frozen=True)
@@ -97,6 +111,84 @@ def _enqueue_sync(project_id: str, reason: str, detail: str) -> None:
     except Exception:
         # Sync is best-effort and must not make a local edit fail.
         pass
+
+
+def create_project(command: CreateProjectCommand) -> Project:
+    if command.program_id and command.program_title:
+        raise ValueError("Specify either program_id or program_title, not both")
+
+    programs: list[str] = []
+    if command.program_id:
+        programs.append(command.program_id.strip())
+    elif command.program_title:
+        programs.append(program_service.create_program(command.program_title)["id"])
+
+    return repository.create_project(
+        command.title,
+        project_id=command.project_id,
+        description=command.description,
+        programs=programs,
+    )
+
+
+def replace_project(project_id: str, snapshot: dict) -> Project:
+    """Replace a project aggregate from the serialized UI snapshot."""
+    existing = _require_project(project_id)
+    project = Project(
+        id=project_id,
+        title=snapshot.get("title", existing.title),
+        description=snapshot.get("description", existing.description),
+    )
+
+    project.nodes = [
+        Node(
+            id=raw["id"],
+            project_id=project_id,
+            parent_id=raw.get("parent_id"),
+            node_type=NodeType(raw["node_type"]),
+            title=raw["title"],
+            description=raw.get("description", ""),
+            verdict=Verdict(raw.get("verdict", "open")),
+            research_questions=[
+                MethodResearchQuestion(
+                    id=item.get("id") or f"rq-{uuid4().hex[:8]}",
+                    question=item["question"],
+                    answer=item.get("answer", ""),
+                    narrative=item.get("narrative", ""),
+                    certainty=ResearchQuestionCertainty(
+                        item.get(
+                            "certainty",
+                            ResearchQuestionCertainty.DEFINITE.value,
+                        )
+                    ),
+                    importance=max(1, min(5, int(item.get("importance", 3)))),
+                    card_id=item.get("card_id"),
+                )
+                for item in (raw.get("research_questions") or [])
+            ],
+        )
+        for raw in snapshot.get("nodes", [])
+    ]
+
+    project.boards = [
+        KanbanBoard(
+            id=raw.get("id", board_id),
+            owner_node_id=raw["owner_node_id"],
+            columns=[
+                KanbanColumn(**column) if isinstance(column, dict) else column
+                for column in raw.get("columns", DEFAULT_KANBAN_COLUMNS)
+            ],
+            cards=[
+                ExperimentCard(**card)
+                for card in raw.get("cards", [])
+            ],
+        )
+        for board_id, raw in snapshot.get("boards", {}).items()
+    ]
+
+    repository.save_project(project)
+    _enqueue_sync(project_id, "project_saved", "полное сохранение проекта из UI")
+    return project
 
 
 def create_node(project_id: str, command: CreateNodeCommand) -> Project:

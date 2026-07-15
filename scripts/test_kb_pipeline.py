@@ -23,7 +23,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from koi.models import (  # noqa: E402
+from koi.core.models import (  # noqa: E402
     DEFAULT_KANBAN_COLUMNS,
     ExperimentCard,
     KanbanBoard,
@@ -32,10 +32,10 @@ from koi.models import (  # noqa: E402
     Project,
     Verdict,
 )
-from koi.report_ingest import expected_run_report_path, ingest_report  # noqa: E402
+from koi.services.report_ingest import expected_run_report_path, ingest_report  # noqa: E402
 from koi.adapters.paths import koi_root
 from koi.adapters.project_mount import get_mount, rescan_projects
-from koi.repository import create_project, load_project, save_project  # noqa: E402
+from koi.adapters.repository import create_project, load_project, save_project  # noqa: E402
 
 PID = "kb-selftest"
 

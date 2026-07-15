@@ -44,13 +44,13 @@ projects/<id>/
    `save_project` пересобирает `hypotheses.md` + оглавление и дописывает журнал;
 2) новый `.md` кладётся в `knowledge/` → при следующем сохранении (или
    `python agent/bin/build_kb.py`) он появляется в оглавлении и в журнале;
-3) **отчёт `.run.md` вливается автоматически**: `koi/report_ingest.py` парсит §5
+3) **отчёт `.run.md` вливается автоматически**: `koi/services/report_ingest.py` парсит §5
    (вердикт + json-блок инсайтов) и сам обновляет вердикт узла, `research.json`,
    карточку (→ done) и `reports/index.json` — дальше срабатывает путь (1).
 
 **Автоматическая проверка гипотезы агентом** — одна команда:
 `PYTHONPATH=. python scripts/koi_check_hypothesis.py <project_id> <card_id>` —
-агент (Claude Code CLI или Cursor SDK, слой `koi/agent_backends.py`) пишет
+агент (Claude Code CLI или Cursor SDK, слой `koi/adapters/agent_backends.py`) пишет
 рабочий отчёт по `agent/templates/experiment-report.md` и отчёт тут же вливается в БЗ.
 Подробно, включая переменные окружения бэкендов, — `docs/human/knowledge-base.md`.
 
