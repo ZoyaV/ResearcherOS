@@ -11,7 +11,11 @@ from koi.core.models import ExperimentCard, KanbanBoard, Node, Project
 DONE_COLUMNS = frozenset({"done", "successful"})
 
 
-def _normalize_dep_ids(raw: list[str] | None, valid_ids: set[str], self_id: str = "") -> list[str]:
+def normalize_dependency_ids(
+    raw: list[str] | None,
+    valid_ids: set[str],
+    self_id: str = "",
+) -> list[str]:
     out: list[str] = []
     seen: set[str] = set()
     for item in raw or []:
@@ -30,8 +34,8 @@ def normalize_depends_on_list(
     self_id: str = "",
 ) -> list[str]:
     valid = {c.id for c in board.cards}
-    normalized = _normalize_dep_ids(deps, valid, self_id)
-    if self_id and _would_create_cycle(board.cards, self_id, normalized):
+    normalized = normalize_dependency_ids(deps, valid, self_id)
+    if self_id and would_create_cycle(board.cards, self_id, normalized):
         return []
     return normalized
 
@@ -44,15 +48,19 @@ def normalize_card_depends_on(
 ) -> list[str]:
     """Keep only valid same-board prerequisite ids."""
     valid = {c.id for c in board.cards}
-    deps = _normalize_dep_ids(card.depends_on, valid, card.id)
+    deps = normalize_dependency_ids(card.depends_on, valid, card.id)
     if allow_cycles:
         return deps
-    if _would_create_cycle(board.cards, card.id, deps):
+    if would_create_cycle(board.cards, card.id, deps):
         return list(card.depends_on or [])
     return deps
 
 
-def _would_create_cycle(cards: list[ExperimentCard], card_id: str, new_deps: list[str]) -> bool:
+def would_create_cycle(
+    cards: list[ExperimentCard],
+    card_id: str,
+    new_deps: list[str],
+) -> bool:
     graph = {c.id: list(c.depends_on or []) for c in cards}
     graph[card_id] = list(new_deps)
 
@@ -76,6 +84,11 @@ def _would_create_cycle(cards: list[ExperimentCard], card_id: str, new_deps: lis
         if dfs(cid):
             return True
     return False
+
+
+# Compatibility aliases for callers using the original private names.
+_normalize_dep_ids = normalize_dependency_ids
+_would_create_cycle = would_create_cycle
 
 
 def _card_text(card: ExperimentCard, report: str = "") -> str:
@@ -233,7 +246,7 @@ def apply_dag_suggestions(
         if from_id in deps:
             continue
         trial = deps + [from_id]
-        if _would_create_cycle(board.cards, to_id, trial):
+        if would_create_cycle(board.cards, to_id, trial):
             continue
         card.depends_on = trial
         updated += 1

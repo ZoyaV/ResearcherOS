@@ -16,19 +16,16 @@ from api.schemas import (
     UpdateCardBody,
     UpdateNodeBody,
 )
-from koi.services.api_helpers import project_to_client
+from koi.application import project_commands
 from koi.adapters.card_reports import (
-    delete_report,
-    ensure_card_report,
     read_report,
     read_report_indexed,
-    rename_report_for_card,
     report_path_info,
     resolve_report_asset_path,
     save_report_asset,
     write_report,
 )
-from koi.core.md_io import normalize_card_tags, register_project_card_tags
+from koi.adapters.repository import create_project, list_projects, save_project, update_board
 from koi.core.models import (
     DEFAULT_KANBAN_COLUMNS,
     ExperimentCard,
@@ -41,15 +38,8 @@ from koi.core.models import (
     ResearchQuestionCertainty,
     Verdict,
 )
-from koi.adapters.repository import (
-    add_node,
-    create_project,
-    delete_node,
-    list_projects,
-    save_project,
-    update_board,
-    update_node,
-)
+from koi.services import dag_layout
+from koi.services.api_helpers import project_to_client
 from koi.services.card_live import (
     live_monitor_cards,
     live_snapshot,
@@ -57,12 +47,9 @@ from koi.services.card_live import (
     resolve_project_path,
 )
 from koi.services.dag_suggest import (
-    _normalize_dep_ids,
-    _would_create_cycle,
     apply_dag_suggestions,
     suggest_board_dag,
 )
-from koi.services import dag_layout
 from koi.services.rq_discoveries import running_kanban_activity
 
 router = APIRouter(tags=["projects"])
@@ -176,23 +163,30 @@ def put_project(project_id: str, payload: dict) -> dict:
 
 @router.post("/projects/{project_id}/nodes")
 def post_node(project_id: str, body: CreateNodeBody) -> dict:
-    project = require_project(project_id)
     try:
-        add_node(project, body.parent_id, body.node_type, body.title, body.description)
+        project = project_commands.create_node(
+            project_id,
+            project_commands.CreateNodeCommand(
+                parent_id=body.parent_id,
+                node_type=body.node_type,
+                title=body.title,
+                description=body.description,
+            ),
+        )
+    except project_commands.EntityNotFoundError as e:
+        raise HTTPException(404, str(e)) from e
     except ValueError as e:
         raise HTTPException(400, str(e)) from e
-    enqueue_sync(project_id, "tree_updated", f"новый узел: {body.title}")
     return project_to_client(project)
 
 
 @router.patch("/projects/{project_id}/nodes/{node_id}")
 def patch_node(project_id: str, node_id: str, body: UpdateNodeBody) -> dict:
-    project = require_project(project_id)
     research_questions = None
     if body.research_questions is not None:
         research_questions = [
-            MethodResearchQuestion(
-                id=item.id or f"rq-{uuid4().hex[:8]}",
+            project_commands.ResearchQuestionInput(
+                id=item.id,
                 question=item.question,
                 answer=item.answer,
                 narrative=item.narrative,
@@ -203,58 +197,51 @@ def patch_node(project_id: str, node_id: str, body: UpdateNodeBody) -> dict:
             for item in body.research_questions
         ]
     try:
-        update_node(
-            project,
+        project = project_commands.update_node(
+            project_id,
             node_id,
-            title=body.title,
-            description=body.description,
-            research_questions=research_questions,
+            project_commands.UpdateNodeCommand(
+                title=body.title,
+                description=body.description,
+                research_questions=research_questions,
+            ),
         )
+    except project_commands.EntityNotFoundError as e:
+        raise HTTPException(404, str(e)) from e
     except ValueError as e:
         raise HTTPException(400, str(e)) from e
-    except StopIteration as e:
-        raise HTTPException(404, "Node not found") from e
-    if body.research_questions is not None:
-        enqueue_sync(project_id, "research_updated", f"research_questions узла {node_id}")
-    elif body.title is not None or body.description is not None:
-        enqueue_sync(project_id, "tree_updated", f"обновлён узел {node_id}")
     return project_to_client(project)
 
 
 @router.delete("/projects/{project_id}/nodes/{node_id}")
 def remove_node(project_id: str, node_id: str) -> dict:
-    project = require_project(project_id)
     try:
-        delete_node(project, node_id)
+        project = project_commands.delete_node(project_id, node_id)
+    except project_commands.EntityNotFoundError as e:
+        raise HTTPException(404, str(e)) from e
     except ValueError as e:
         raise HTTPException(400, str(e)) from e
-    except StopIteration as e:
-        raise HTTPException(404, "Node not found") from e
-    enqueue_sync(project_id, "tree_updated", f"удалён узел {node_id}")
     return project_to_client(project)
 
 
 @router.post("/projects/{project_id}/boards/{board_id}/cards")
 def post_card(project_id: str, board_id: str, body: CreateCardBody) -> dict:
-    project = require_project(project_id)
-    board = next((b for b in project.boards if b.id == board_id), None)
-    if board is None:
-        raise HTTPException(404, "Board not found")
-    card_id = f"c-{uuid4().hex[:8]}"
-    card = ExperimentCard(
-        id=card_id,
-        board_id=board_id,
-        column_id=body.column_id,
-        title=body.title,
-        description=body.description,
-        tags=normalize_card_tags(body.tags),
-        depends_on=_normalize_dep_ids(body.depends_on, {c.id for c in board.cards}, card_id),
-    )
-    register_project_card_tags(project, card.tags)
-    board.cards.append(card)
-    update_board(project, board)
-    ensure_card_report(project, board_id, card.id, card.title)
-    enqueue_sync(project_id, "kanban_updated", f"новая карточка: {card.title}")
+    try:
+        project = project_commands.create_card(
+            project_id,
+            board_id,
+            project_commands.CreateCardCommand(
+                column_id=body.column_id,
+                title=body.title,
+                description=body.description,
+                tags=tuple(body.tags),
+                depends_on=tuple(body.depends_on),
+            ),
+        )
+    except project_commands.EntityNotFoundError as e:
+        raise HTTPException(404, str(e)) from e
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
     return project_to_client(project)
 
 
@@ -262,46 +249,23 @@ def post_card(project_id: str, board_id: str, body: CreateCardBody) -> dict:
 def patch_card(
     project_id: str, board_id: str, card_id: str, body: UpdateCardBody
 ) -> dict:
-    project = require_project(project_id)
-    board = next((b for b in project.boards if b.id == board_id), None)
-    if board is None:
-        raise HTTPException(404, "Board not found")
-    card = next((c for c in board.cards if c.id == card_id), None)
-    if card is None:
-        raise HTTPException(404, "Card not found")
-    old_title = card.title
-    old_column = card.column_id
-    deps_changed = False
-    if body.title is not None:
-        card.title = body.title
-    if body.description is not None:
-        card.description = body.description
-    if body.column_id is not None:
-        card.column_id = body.column_id
-    if body.tags is not None:
-        card.tags = normalize_card_tags(body.tags)
-        register_project_card_tags(project, card.tags)
-    if body.depends_on is not None:
-        valid_ids = {c.id for c in board.cards}
-        new_deps = _normalize_dep_ids(body.depends_on, valid_ids, card_id)
-        if _would_create_cycle(board.cards, card_id, new_deps):
-            raise HTTPException(400, "depends_on would create a cycle")
-        card.depends_on = new_deps
-        deps_changed = True
-    update_board(project, board)
-    if body.column_id is not None and body.column_id != old_column:
-        if body.column_id != "done":
-            enqueue_sync(
-                project_id,
-                "kanban_updated",
-                f"карточка {card.title}: {old_column} → {body.column_id}",
-            )
-    elif deps_changed:
-        enqueue_sync(project_id, "kanban_updated", f"связи DAG карточки {card.title}")
-    elif body.title is not None or body.description is not None or body.tags is not None:
-        enqueue_sync(project_id, "kanban_updated", f"правка карточки {card.title}")
-    if body.title is not None and body.title != old_title:
-        rename_report_for_card(project, board_id, card_id, card.title)
+    try:
+        project = project_commands.update_card(
+            project_id,
+            board_id,
+            card_id,
+            project_commands.UpdateCardCommand(
+                title=body.title,
+                description=body.description,
+                column_id=body.column_id,
+                tags=tuple(body.tags) if body.tags is not None else None,
+                depends_on=tuple(body.depends_on) if body.depends_on is not None else None,
+            ),
+        )
+    except project_commands.EntityNotFoundError as e:
+        raise HTTPException(404, str(e)) from e
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
     return project_to_client(project)
 
 
@@ -355,16 +319,12 @@ def put_board_dag_layout(
 
 @router.delete("/projects/{project_id}/boards/{board_id}/cards/{card_id}")
 def delete_card(project_id: str, board_id: str, card_id: str) -> dict:
-    project = require_project(project_id)
-    board = next((b for b in project.boards if b.id == board_id), None)
-    if board is None:
-        raise HTTPException(404, "Board not found")
-    board.cards = [c for c in board.cards if c.id != card_id]
-    for other in board.cards:
-        if card_id in (other.depends_on or []):
-            other.depends_on = [d for d in other.depends_on if d != card_id]
-    update_board(project, board)
-    delete_report(project_id, card_id)
+    try:
+        project = project_commands.delete_card(project_id, board_id, card_id)
+    except project_commands.EntityNotFoundError as e:
+        raise HTTPException(404, str(e)) from e
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
     return project_to_client(project)
 
 
