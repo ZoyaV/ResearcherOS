@@ -7,6 +7,7 @@ from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from api.deps import workspace_relative
 from api.schemas import LibraryDiscoverBody, LiteratureSearchBody, ReviewSetBody, TranslateToEnglishBody
+from koi.application import literature_commands
 from koi.application.project_views import project_to_client
 from koi.services.literature import (
     LIBRARY_REQUIRED_FIELDS,
@@ -16,17 +17,10 @@ from koi.services.literature import (
     library_csv_exists,
     reset_library_cache,
     resolve_library_csv,
-    review_card_id,
-    review_project_description,
-    review_project_title,
     search_arxiv_internet,
     search_library,
     translate_to_english,
 )
-from koi.services.literature import build_review_report
-from koi.core.models import ExperimentCard, NodeType
-from koi.adapters.repository import add_node, create_project, save_project, update_board
-from koi.adapters.card_reports import write_report
 
 router = APIRouter(tags=["library"])
 
@@ -182,71 +176,21 @@ async def post_library_upload(file: UploadFile = File(...)) -> dict[str, object]
 
 @router.post("/library/review-set")
 def post_library_review_set(body: ReviewSetBody) -> dict[str, object]:
-    query = body.query.strip()
-    if not query:
-        raise HTTPException(400, "Query must not be empty")
-
-    results = body.papers or search_library(query, limit=body.limit)
-    if not results:
-        raise HTTPException(400, "No ranked papers available for this query")
-
-    project = create_project(review_project_title(query))
-    project.description = review_project_description(query, len(results))
-    root = next((n for n in project.nodes if n.node_type == NodeType.PROBLEM), None)
-    if root is None:
-        raise HTTPException(500, "Problem node missing in generated project")
-    root.description = project.description
-    save_project(project)
-
-    cause = add_node(
-        project,
-        root.id,
-        NodeType.CAUSE,
-        "Candidate papers retrieved from the local library",
-        "Auto-generated set of papers ranked against the current research question.",
-    )
-    evidence = add_node(
-        project,
-        cause.id,
-        NodeType.CAUSE_EVIDENCE,
-        "Evidence of relevance for the research question",
-        f"Query: {query}",
-    )
-    method = add_node(
-        project,
-        evidence.id,
-        NodeType.METHOD,
-        "Screen, annotate, and shortlist the papers",
-        "Each card corresponds to one ranked paper. Use the report to capture screening notes.",
-    )
-
-    board = next((b for b in project.boards if b.owner_node_id == method.id), None)
-    if board is None:
-        raise HTTPException(500, "Review board was not created")
-
-    board.cards = [
-        ExperimentCard(
-            id=review_card_id(),
-            board_id=board.id,
-            column_id="backlog",
-            title=str(result["title"]),
-            description=str(result["arxiv_url"]),
+    try:
+        result = literature_commands.create_review_set(
+            literature_commands.CreateReviewSetCommand(
+                query=body.query,
+                limit=body.limit,
+                papers=body.papers,
+            )
         )
-        for result in results
-    ]
-    update_board(project, board)
-
-    for card, result in zip(board.cards, results):
-        write_report(
-            project,
-            board.id,
-            card.id,
-            card.title,
-            build_review_report(result, query),
-        )
+    except ValueError as error:
+        raise HTTPException(400, str(error)) from error
+    except RuntimeError as error:
+        raise HTTPException(500, str(error)) from error
 
     return {
-        "project": project_to_client(project),
-        "query": query,
-        "count": len(results),
+        "project": project_to_client(result.project),
+        "query": result.query,
+        "count": result.count,
     }

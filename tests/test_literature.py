@@ -7,6 +7,8 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from api.main import app
+from koi.application import literature_commands
+from koi.core.models import Project
 from koi.services.literature import (
     LIBRARY_FIELDNAMES,
     discover_library_with_agent,
@@ -174,6 +176,56 @@ class LiteratureBootstrapTests(unittest.TestCase):
             )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["backend"], "passthrough")
+
+    def test_review_set_route_delegates_to_application_command(self) -> None:
+        project = Project(id="review-demo", title="Review Set")
+        client = TestClient(app)
+        with patch(
+            "api.routers.library.literature_commands.create_review_set",
+            return_value=literature_commands.ReviewSetResult(
+                project=project,
+                query="embodied agents",
+                count=1,
+            ),
+        ) as create_review_set:
+            response = client.post(
+                "/library/review-set",
+                json={
+                    "query": " embodied agents ",
+                    "limit": 4,
+                    "papers": [
+                        {
+                            "title": "Paper",
+                            "arxiv_url": "https://arxiv.org/abs/1",
+                        }
+                    ],
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        command = create_review_set.call_args.args[0]
+        self.assertEqual(command.query, " embodied agents ")
+        self.assertEqual(command.limit, 4)
+        self.assertEqual(command.papers[0]["title"], "Paper")
+        self.assertEqual(response.json()["project"]["id"], "review-demo")
+        self.assertEqual(response.json()["count"], 1)
+
+    def test_review_set_route_maps_application_validation_to_http_400(self) -> None:
+        client = TestClient(app)
+        with patch(
+            "api.routers.library.literature_commands.create_review_set",
+            side_effect=ValueError("No ranked papers available for this query"),
+        ):
+            response = client.post(
+                "/library/review-set",
+                json={"query": "missing papers", "limit": 4},
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.json()["detail"],
+            "No ranked papers available for this query",
+        )
 
     def test_related_works_endpoint_returns_generated_markdown(self) -> None:
         client = TestClient(app)

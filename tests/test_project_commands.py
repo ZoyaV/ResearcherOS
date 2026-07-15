@@ -64,6 +64,7 @@ def command_context(monkeypatch, project: Project) -> dict[str, list]:
     calls: dict[str, list] = {
         "created_projects": [],
         "saved_projects": [],
+        "updated_boards": [],
         "reports": [],
         "renames": [],
         "deletions": [],
@@ -84,6 +85,12 @@ def command_context(monkeypatch, project: Project) -> dict[str, list]:
         project_commands.repository,
         "save_project",
         lambda loaded: calls["saved_projects"].append(loaded),
+    )
+    monkeypatch.setattr(
+        project_commands.repository,
+        "update_board",
+        lambda loaded, board: calls["updated_boards"].append((loaded, board))
+        or board,
     )
     monkeypatch.setattr(
         project_commands.card_reports,
@@ -249,6 +256,44 @@ def test_update_card_rejects_dependency_cycle(
         )
 
     assert command_context["saved_projects"] == []
+
+
+def test_suggest_board_dependencies_applies_persists_and_enqueues_sync(
+    project: Project,
+    command_context: dict[str, list],
+    monkeypatch,
+) -> None:
+    suggestions = [
+        {
+            "from_card_id": "card-a",
+            "to_card_id": "card-b",
+            "confidence": 0.8,
+        }
+    ]
+    monkeypatch.setattr(
+        project_commands,
+        "suggest_board_dag",
+        lambda loaded, board: suggestions,
+    )
+    monkeypatch.setattr(
+        project_commands,
+        "apply_dag_suggestions",
+        lambda board, items: 1,
+    )
+
+    result = project_commands.suggest_board_dependencies(
+        "demo",
+        "board-method",
+        apply=True,
+    )
+
+    assert result.project is project
+    assert result.suggestions == suggestions
+    assert result.applied == 1
+    assert command_context["updated_boards"] == [(project, project.boards[0])]
+    assert command_context["sync"] == [
+        ("demo", "kanban_updated", "применены предложения DAG")
+    ]
 
 
 def test_update_card_renames_report_and_enqueues_edit(

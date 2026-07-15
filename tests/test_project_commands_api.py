@@ -122,6 +122,56 @@ def test_update_card_route_maps_domain_validation_to_http_400() -> None:
     assert response.json()["detail"] == "depends_on would create a cycle"
 
 
+def test_dag_suggest_route_delegates_to_application_command() -> None:
+    project = Project(id="demo", title="Demo")
+    suggestions = [
+        {
+            "from_card_id": "card-a",
+            "to_card_id": "card-b",
+            "confidence": 0.8,
+        }
+    ]
+    client = TestClient(app)
+    with patch(
+        "api.routers.projects.project_commands.suggest_board_dependencies",
+        return_value=project_commands.DagSuggestionResult(
+            project=project,
+            suggestions=suggestions,
+            applied=1,
+        ),
+    ) as suggest:
+        response = client.post(
+            "/projects/demo/boards/board-method/dag/suggest",
+            json={"apply": True},
+        )
+
+    assert response.status_code == 200
+    suggest.assert_called_once_with("demo", "board-method", apply=True)
+    assert response.json()["suggestions"] == suggestions
+    assert response.json()["applied"] == 1
+    assert response.json()["project"]["id"] == "demo"
+
+
+def test_dag_suggest_preview_preserves_minimal_response() -> None:
+    project = Project(id="demo", title="Demo")
+    suggestions = [{"from_card_id": "card-a", "to_card_id": "card-b"}]
+    client = TestClient(app)
+    with patch(
+        "api.routers.projects.project_commands.suggest_board_dependencies",
+        return_value=project_commands.DagSuggestionResult(
+            project=project,
+            suggestions=suggestions,
+        ),
+    ):
+        response = client.post(
+            "/projects/demo/boards/board-method/dag/suggest",
+            json={"apply": False},
+        )
+
+    assert response.status_code == 200
+    assert response.json() == {"suggestions": suggestions}
+
+
 def test_delete_node_route_maps_application_not_found_to_http_404() -> None:
     client = TestClient(app)
     with patch(

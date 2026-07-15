@@ -24,17 +24,13 @@ from koi.adapters.card_reports import (
     save_report_asset,
     write_report,
 )
-from koi.adapters.repository import list_projects, update_board
+from koi.adapters.repository import list_projects
 from koi.services import dag_layout
 from koi.services.card_live import (
     live_monitor_cards,
     live_snapshot,
     merge_live_hints,
     resolve_project_path,
-)
-from koi.services.dag_suggest import (
-    apply_dag_suggestions,
-    suggest_board_dag,
 )
 from koi.services.rq_discoveries import running_kanban_activity
 
@@ -201,22 +197,21 @@ def patch_card(
 def post_board_dag_suggest(
     project_id: str, board_id: str, body: DagSuggestBody
 ) -> dict:
-    project = require_project(project_id)
-    board = next((b for b in project.boards if b.id == board_id), None)
-    if board is None:
-        raise HTTPException(404, "Board not found")
-    suggestions = suggest_board_dag(project, board)
-    if body.apply:
-        updated = apply_dag_suggestions(board, suggestions)
-        if updated:
-            update_board(project, board)
-            enqueue_sync(project_id, "kanban_updated", "применены предложения DAG")
+    try:
+        result = project_commands.suggest_board_dependencies(
+            project_id,
+            board_id,
+            apply=body.apply,
+        )
+    except project_commands.EntityNotFoundError as error:
+        raise HTTPException(404, str(error)) from error
+    if result.applied is not None:
         return {
-            "suggestions": suggestions,
-            "applied": updated,
-            "project": project_to_client(project),
+            "suggestions": result.suggestions,
+            "applied": result.applied,
+            "project": project_to_client(result.project),
         }
-    return {"suggestions": suggestions}
+    return {"suggestions": result.suggestions}
 
 
 @router.get("/projects/{project_id}/boards/{board_id}/dag-layout")

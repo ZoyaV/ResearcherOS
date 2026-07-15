@@ -21,7 +21,12 @@ from koi.core.models import (
     ResearchQuestionCertainty,
     Verdict,
 )
-from koi.services.dag_suggest import normalize_dependency_ids, would_create_cycle
+from koi.services.dag_suggest import (
+    apply_dag_suggestions,
+    normalize_dependency_ids,
+    suggest_board_dag,
+    would_create_cycle,
+)
 from koi.services import programs as program_service
 
 
@@ -82,6 +87,13 @@ class UpdateCardCommand:
     depends_on: Optional[tuple[str, ...]] = None
 
 
+@dataclass(frozen=True)
+class DagSuggestionResult:
+    project: Project
+    suggestions: list[dict[str, object]]
+    applied: Optional[int] = None
+
+
 def _require_project(project_id: str) -> Project:
     project = repository.load_project(project_id, sync_reports=False)
     if project is None:
@@ -111,6 +123,29 @@ def _enqueue_sync(project_id: str, reason: str, detail: str) -> None:
     except Exception:
         # Sync is best-effort and must not make a local edit fail.
         pass
+
+
+def suggest_board_dependencies(
+    project_id: str,
+    board_id: str,
+    *,
+    apply: bool = False,
+) -> DagSuggestionResult:
+    project = _require_project(project_id)
+    board = _require_board(project, board_id)
+    suggestions = suggest_board_dag(project, board)
+    if not apply:
+        return DagSuggestionResult(project=project, suggestions=suggestions)
+
+    updated = apply_dag_suggestions(board, suggestions)
+    if updated:
+        repository.update_board(project, board)
+        _enqueue_sync(project_id, "kanban_updated", "применены предложения DAG")
+    return DagSuggestionResult(
+        project=project,
+        suggestions=suggestions,
+        applied=updated,
+    )
 
 
 def create_project(command: CreateProjectCommand) -> Project:
