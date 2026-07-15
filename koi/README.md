@@ -6,10 +6,10 @@ koi/
   adapters/   Workspace paths, filesystem stores, git sync, agent backends
   projects/   Project capability — commands, views, reports, live, kanban, sync
   laboratory/ Cross-project programs and portfolio views
-  application/ Cross-feature use-cases and temporary project compatibility shims
+  application/ Cross-feature use-cases and temporary compatibility shims
   services/   Remaining use-cases — knowledge, literature, review, paper, agent chat
     review/     Paper review agent (arxiv, analysis, pipeline)
-  *.py        Temporary external compatibility shims
+  *.py        Temporary capability entry points still awaiting migration
 ```
 
 **Dependency rule:** `core` has no imports from `adapters`, `projects`, or `services`.
@@ -18,5 +18,6 @@ koi/
 
 Bundled code must import from canonical paths (`koi.core.models`,
 `koi.projects.commands`, …); `tests/test_architecture.py` enforces this rule.
-The root and `koi.application` project shims remain only for external compatibility
-and can be removed after an explicit compatibility decision.
+Stabilized root shims for `core`, `adapters`, `projects`, and `laboratory` have been
+removed. The remaining root entry points belong to capabilities that have not yet
+completed their package migration; bundled code must not import through them.

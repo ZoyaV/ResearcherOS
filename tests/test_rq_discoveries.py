@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import subprocess
-from importlib import import_module
 
 from koi.projects import discoveries
 from koi.projects.discoveries import (
@@ -226,9 +225,3 @@ def test_pending_initializes_snapshots_without_historical_discoveries(
     assert heads == {"/repo": "head"}
     assert signatures == {"demo:rq-1": "sig"}
     assert initialized is True
-
-
-def test_root_discovery_import_remains_compatible() -> None:
-    assert import_module("koi.rq_discoveries") is import_module(
-        "koi.projects.discoveries"
-    )

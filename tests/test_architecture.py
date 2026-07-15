@@ -7,8 +7,35 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE_DIRS = ("agent", "api", "examples", "hub", "koi", "scripts", "tests")
+SOURCE_DIRS = (
+    ".cursor",
+    "agent",
+    "api",
+    "examples",
+    "hub",
+    "koi",
+    "scripts",
+    "tests",
+)
 LEGACY_MODULES = {
+    "koi.agent_backends",
+    "koi.agent_chat_queue",
+    "koi.api_helpers",
+    "koi.card_reports",
+    "koi.done_research_queue",
+    "koi.hooks_paths",
+    "koi.md_io",
+    "koi.migrate",
+    "koi.models",
+    "koi.programs",
+    "koi.project_sync",
+    "koi.project_sync_queue",
+    "koi.repository",
+    "koi.research_store",
+    "koi.rq_discoveries",
+    "koi.rq_discoveries_feed",
+    "koi.settings_store",
+    "koi.workspace",
     "koi.application.live_queries",
     "koi.application.project_commands",
     "koi.application.project_views",

@@ -16,8 +16,12 @@ KOI_ROOT = (
 )
 sys.path.insert(0, str(KOI_ROOT))
 
-from koi.project_sync import git_summary, pull_projects  # noqa: E402
-from koi.project_sync_queue import list_pending_push, should_periodic_pull  # noqa: E402
+from koi.adapters.project_sync import git_summary  # noqa: E402
+from koi.adapters.project_sync_queue import (  # noqa: E402
+    list_pending_push,
+    should_periodic_pull,
+)
+from koi.projects.sync import pull_projects  # noqa: E402
 
 MODE = sys.argv[1] if len(sys.argv) > 1 else "session"
 

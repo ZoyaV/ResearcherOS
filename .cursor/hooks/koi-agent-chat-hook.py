@@ -16,8 +16,11 @@ KOI_ROOT = (
 )
 sys.path.insert(0, str(KOI_ROOT))
 
-from koi.agent_chat_queue import list_pending  # noqa: E402
-from koi.settings_store import is_cursor_ide_agent_mode, load_env_file  # noqa: E402
+from koi.adapters.agent_chat_queue import list_pending  # noqa: E402
+from koi.adapters.settings_store import (  # noqa: E402
+    is_cursor_ide_agent_mode,
+    load_env_file,
+)
 
 MODE = sys.argv[1] if len(sys.argv) > 1 else "session"
 VENV_PY = KOI_ROOT / ".venv" / "bin" / "python"

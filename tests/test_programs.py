@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from importlib import import_module
 from pathlib import Path
 
 import pytest
@@ -98,7 +97,3 @@ def test_project_summaries_include_programs_and_composite(program_layout: None) 
 
     assert projects["proj-a"]["programs"] == ["embodied-ai"]
     assert projects["proj-a"]["composite_id"] == "shared-problem"
-
-
-def test_root_programs_import_remains_compatible() -> None:
-    assert import_module("koi.programs") is import_module("koi.laboratory.programs")

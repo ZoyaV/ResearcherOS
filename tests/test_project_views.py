@@ -61,11 +61,9 @@ def test_allowed_children_exposes_domain_rules_as_values() -> None:
     assert allowed_children("method") == []
 
 
-def test_legacy_api_helper_imports_remain_compatible() -> None:
-    root_helpers = import_module("koi.api_helpers")
+def test_service_api_helper_import_remains_compatible() -> None:
     service_helpers = import_module("koi.services.api_helpers")
 
-    assert root_helpers.project_to_client is project_to_client
     assert service_helpers.allowed_children is allowed_children
 
 
