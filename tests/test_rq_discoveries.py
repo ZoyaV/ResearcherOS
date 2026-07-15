@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import json
 import subprocess
+from importlib import import_module
 
-from koi.services.rq_discoveries import (
+from koi.projects import discoveries
+from koi.projects.discoveries import (
     _answer_signature,
     _author_for_card_done,
     _card_column_in_row,
@@ -150,7 +152,7 @@ Method
     new_ref = git("rev-parse", "HEAD")
 
     monkeypatch.setattr(
-        "koi.services.rq_discoveries._project_md_git_candidates",
+        "koi.projects.discoveries._project_md_git_candidates",
         lambda _project_id: [(tmp_path, "koi-structure/project.md")],
     )
     author = _author_for_card_done(
@@ -202,3 +204,31 @@ def test_filesystem_detects_new_question_with_answer(tmp_path, monkeypatch) -> N
     assert len(items) == 1
     assert items[0]["question_id"] == "rq-new"
     assert items[0]["answer"] == "Готовый ответ"
+
+
+def test_pending_initializes_snapshots_without_historical_discoveries(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(discoveries, "current_heads", lambda: {"/repo": "head"})
+    monkeypatch.setattr(
+        discoveries,
+        "_filesystem_signature_snapshot",
+        lambda: {"demo:rq-1": "sig"},
+    )
+
+    items, heads, signatures, initialized = discoveries.pending_rq_discoveries(
+        {},
+        {},
+        sigs_initialized=False,
+    )
+
+    assert items == []
+    assert heads == {"/repo": "head"}
+    assert signatures == {"demo:rq-1": "sig"}
+    assert initialized is True
+
+
+def test_root_discovery_import_remains_compatible() -> None:
+    assert import_module("koi.rq_discoveries") is import_module(
+        "koi.projects.discoveries"
+    )

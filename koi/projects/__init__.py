@@ -1,1 +1,1 @@
-"""Project capability: commands, read models, reports, and live artifacts."""
+"""Project commands, views, reports, live artifacts, discoveries, and sync."""

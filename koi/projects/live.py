@@ -6,8 +6,8 @@ from pathlib import Path
 
 from koi.adapters import repository
 from koi.core.models import ExperimentCard, KanbanBoard, Project
+from koi.projects import discoveries
 from koi.projects import live_artifacts
-from koi.services import rq_discoveries
 
 
 class EntityNotFoundError(LookupError):
@@ -37,7 +37,7 @@ def _require_card(board: KanbanBoard, card_id: str) -> ExperimentCard:
 
 def running_activity(project_id: str) -> list[dict]:
     _require_project(project_id)
-    return rq_discoveries.running_kanban_activity(project_id)
+    return discoveries.running_kanban_activity(project_id)
 
 
 def live_monitor(project_id: str) -> list[dict]:

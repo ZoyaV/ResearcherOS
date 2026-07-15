@@ -44,7 +44,7 @@ def test_live_queries_coordinate_project_services(monkeypatch, project: Project)
         lambda project_id, *, sync_reports=False: project if project_id == "demo" else None,
     )
     monkeypatch.setattr(
-        live_queries.rq_discoveries,
+        live_queries.discoveries,
         "running_kanban_activity",
         lambda project_id: calls["activity"].append(project_id) or [{"card_id": "card-a"}],
     )

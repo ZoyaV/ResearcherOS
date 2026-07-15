@@ -1,6 +1,6 @@
-"""Compatibility shim — use koi.services.rq_discoveries."""
+"""Compatibility shim — use :mod:`koi.projects.discoveries`."""
 import sys
 
-from koi.services import rq_discoveries as _module
+from koi.projects import discoveries as _module
 
 sys.modules[__name__] = _module

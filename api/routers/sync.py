@@ -4,6 +4,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Query
 
+from koi.adapters.project_discovery_watch import discovery_status
 from koi.adapters.project_sync import git_summary, push_projects
 from koi.adapters.project_sync_queue import (
     get_last_rq_heads,
@@ -11,10 +12,9 @@ from koi.adapters.project_sync_queue import (
     rq_sigs_initialized,
     set_rq_discovery_state,
 )
-from koi.adapters.project_discovery_watch import discovery_status
-from koi.projects.sync import ensure_discovery_state_initialized, pull_projects
-from koi.services.rq_discoveries import pending_rq_discoveries
 from koi.adapters.rq_discoveries_feed import append_discoveries, list_feed
+from koi.projects.discoveries import pending_rq_discoveries
+from koi.projects.sync import ensure_discovery_state_initialized, pull_projects
 
 router = APIRouter(tags=["sync"])
 
@@ -66,7 +66,7 @@ def get_sync_rq_discoveries_feed(limit: int = 50) -> dict:
 
 @router.post("/sync/rq-discoveries/ack")
 def post_sync_rq_discoveries_ack() -> dict:
-    from koi.services.rq_discoveries import _filesystem_signature_snapshot, current_heads
+    from koi.projects.discoveries import _filesystem_signature_snapshot, current_heads
 
     heads = current_heads() or get_last_rq_heads()
     sigs = _filesystem_signature_snapshot()

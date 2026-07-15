@@ -28,7 +28,7 @@ def test_discover_ref_changes_appends_detected_items(monkeypatch) -> None:
     items = [{"key": "demo:rq-1:sig"}]
     appended: list[list[dict]] = []
     monkeypatch.setattr(
-        project_sync.rq_discoveries,
+        project_sync.discoveries,
         "detect_rq_discoveries",
         lambda old_ref, new_ref, *, repo_root: items,
     )
@@ -56,12 +56,12 @@ def test_discovery_state_initialization_pins_heads_and_signatures(monkeypatch) -
         lambda: "head",
     )
     monkeypatch.setattr(
-        project_sync.rq_discoveries,
+        project_sync.discoveries,
         "current_heads",
         lambda: {"/repo": "head"},
     )
     monkeypatch.setattr(
-        project_sync.rq_discoveries,
+        project_sync.discoveries,
         "_filesystem_signature_snapshot",
         lambda: {"demo:rq-1": "sig"},
     )
