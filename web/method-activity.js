@@ -168,8 +168,7 @@ function activitySvgMarkup(theme, uid) {
 export function formatActivityPreview(meta) {
   const author = String(meta?.author || "коллега").trim() || "коллега";
   const task = String(meta?.task || "эксперимент").trim() || "эксперимент";
-  const project = String(meta?.projectTitle || "проект").trim() || "проект";
-  return `${author} и агент решают задачу «${task}» в проекте «${project}»`;
+  return `${author} и агент работают над задачей «${task}»`;
 }
 
 /**
@@ -213,6 +212,7 @@ export function methodActivityHtml(state, node, context = {}) {
     { ...context, methodTitle: node?.title }
   );
   const previewText = formatActivityPreview(preview);
+  const hideInspect = Boolean(context.hideInspect);
 
   const firstCard = state.running[0];
   const cardId = firstCard?.id ? String(firstCard.id) : "";
@@ -221,21 +221,25 @@ export function methodActivityHtml(state, node, context = {}) {
       ? `Монитор — ${state.running.length} в работе`
       : "Открыть монитор";
 
+  const inspectBtn = hideInspect
+    ? ""
+    : `<button type="button" class="method-activity-inspect" data-card-id="${escapeHtml(cardId)}" title="${escapeHtml(monitorHint)}" aria-label="${escapeHtml(monitorHint)}">
+        <svg class="method-activity-inspect-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="10.5" cy="10.5" r="5.75" fill="none" stroke="currentColor" stroke-width="2.25"/>
+          <path d="M14.8 14.8 L19.5 19.5" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round"/>
+        </svg>
+      </button>`;
+
   return `<div class="method-activity" data-theme="${theme}"
     data-preview-author="${escapeHtml(preview.author)}"
     data-preview-task="${escapeHtml(preview.task)}"
     data-preview-project="${escapeHtml(preview.projectTitle)}"
     data-running-count="${state.running.length}"
     ${cardId ? `data-card-id="${escapeHtml(cardId)}"` : ""}
-    title="${escapeHtml(previewText)}">
+    aria-label="${escapeHtml(previewText)}">
     <div class="method-activity-stage">
       ${activitySvgMarkup(theme, uid)}
-      <button type="button" class="method-activity-inspect" data-card-id="${escapeHtml(cardId)}" title="${escapeHtml(monitorHint)}" aria-label="${escapeHtml(monitorHint)}">
-        <svg class="method-activity-inspect-icon" viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="10.5" cy="10.5" r="5.75" fill="none" stroke="currentColor" stroke-width="2.25"/>
-          <path d="M14.8 14.8 L19.5 19.5" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round"/>
-        </svg>
-      </button>
+      ${inspectBtn}
     </div>
   </div>`;
 }
@@ -447,8 +451,7 @@ export function syncMethodActivityZoomMode(viewport, cam, overlayActive = null) 
   const zoomedOut = isMapZoomedOut(cam);
   viewport.classList.toggle("is-activity-overlay", overlay);
   viewport.classList.toggle("is-map-zoomed-out", zoomedOut);
-  if (!zoomedOut) hideActivityPreview();
-  else onPreviewReposition();
+  onPreviewReposition();
 }
 
 function onPreviewReposition() {
@@ -463,7 +466,6 @@ export function bindMethodActivityZoomPreview(viewport, getCamera) {
   previewBoundViewport = viewport;
 
   viewport.addEventListener("pointerover", (e) => {
-    if (!viewport.classList.contains("is-map-zoomed-out")) return;
     const block = e.target.closest?.(".method-activity");
     if (!block || !viewport.contains(block)) return;
     showActivityPreview(block);
@@ -517,7 +519,9 @@ function applyActivityPreviewDataset(block, state, node, context = {}) {
   block.dataset.previewAuthor = preview.author;
   block.dataset.previewTask = preview.task;
   block.dataset.previewProject = preview.projectTitle;
-  block.title = previewText;
+  block.setAttribute("aria-label", previewText);
+  block.removeAttribute("title");
+  block.querySelector(":scope > .method-activity-author")?.remove();
 }
 
 function mountActivityInBelow(belowEl, block) {

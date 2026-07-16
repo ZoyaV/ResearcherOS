@@ -7,23 +7,18 @@
   <script>
     (function () {
       var m = location.pathname.match(/^\/p\/([^/?#]+)/);
-      if (m) {
-        window.__HUB__ = { slug: decodeURIComponent(m[1]) };
-        var base = document.createElement("base");
-        base.href = "/core/";
-        document.head.insertBefore(base, document.head.firstChild);
-        document.documentElement.classList.add("hub-viewer");
-        var l = document.createElement("link");
-        l.rel = "stylesheet";
-        l.href = "/static/hub-overrides.css?v=2";
-        document.head.appendChild(l);
-      }
+      if (!m) return;
+      window.__HUB__ = { slug: decodeURIComponent(m[1]) };
+      document.documentElement.classList.add("hub-viewer");
+      // document.write so <base> exists before any relative CSS/JS is parsed.
+      document.write('<base href="/core/">');
+      document.write('<link rel="stylesheet" href="/static/hub-overrides.css?v=16">');
     })();
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20260713q" />
+  <link rel="stylesheet" href="styles.css?v=20260716h" />
   <script>
     (function () {
       var t = localStorage.getItem("koi-theme");
@@ -40,17 +35,6 @@
           <span class="tagline" id="brand-tagline" aria-live="polite"></span>
         </div>
         <div class="topbar-nav">
-          <div
-            class="view-control"
-            title="Режим представления — только отображение, не права доступа"
-          >
-            <label class="view-control__label" for="view-mode-select">View</label>
-            <select id="view-mode-select" aria-label="Режим представления">
-              <option value="chief">Chief researcher</option>
-              <option value="teamlead">Team lead researcher</option>
-              <option value="researcher">Researcher</option>
-            </select>
-          </div>
           <a href="tour.html" class="btn btn-tour" title="Интерактивная презентация о платформе">О платформе</a>
         </div>
       </div>
@@ -116,13 +100,65 @@
       </button>
     </div>
     <main class="canvas-wrap">
-      <p id="canvas-hint" class="canvas-hint">Лаборатория: все программы и проекты · колёсико — масштаб · перетаскивание — панорама · клик по проекту в списке — навигация</p>
       <div id="mindmap" class="mindmap" aria-label="Карта лаборатории">
         <div id="mindmap-viewport" class="mindmap-viewport">
           <div id="mindmap-canvas" class="mindmap-canvas">
             <div id="nodes-layer" class="nodes-layer"></div>
             <svg id="edges" class="edges" aria-hidden="true"></svg>
           </div>
+        </div>
+        <div class="mindmap-view-chrome">
+          <div
+            class="view-control view-control--canvas"
+            title="Режим карты — только отображение, не права доступа"
+          >
+            <div
+              class="view-control__segmented"
+              role="radiogroup"
+              aria-label="Режим представления"
+              id="view-mode-group"
+            >
+              <button
+                type="button"
+                class="view-control__seg"
+                role="radio"
+                data-view-mode="chief"
+                aria-checked="true"
+                aria-label="Chief researcher — вся лаборатория"
+                title="Chief researcher — вся лаборатория"
+              >
+                Chief
+              </button>
+              <button
+                type="button"
+                class="view-control__seg"
+                role="radio"
+                data-view-mode="teamlead"
+                aria-checked="false"
+                aria-label="Team lead — программа выбранного проекта"
+                title="Team lead — программа выбранного проекта"
+              >
+                Lead
+              </button>
+              <button
+                type="button"
+                class="view-control__seg"
+                role="radio"
+                data-view-mode="researcher"
+                aria-checked="false"
+                aria-label="Researcher — один проект"
+                title="Researcher — один проект"
+              >
+                Focus
+              </button>
+            </div>
+            <select id="view-mode-select" class="view-control__native" aria-hidden="true" tabindex="-1">
+              <option value="chief">Chief researcher</option>
+              <option value="teamlead">Team lead researcher</option>
+              <option value="researcher">Researcher</option>
+            </select>
+          </div>
+          <p id="canvas-hint" class="sr-only" aria-live="polite"></p>
         </div>
         <div class="mindmap-corner-tr">
           <button type="button" id="btn-agent-chat" class="agent-chat-trigger" title="Ask the agent in Cursor">
@@ -726,6 +762,6 @@
     </button>
   </div>
 
-  <script type="module" src="app.js?v=20260713r"></script>
+  <script type="module" src="app.js?v=20260716g"></script>
 </body>
 </html>

@@ -43,6 +43,89 @@ function isHubMode() {
   return Boolean(window.__HUB__?.slug);
 }
 
+function escapeHubHtml(s) {
+  return String(s || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function bindHubAccountMenu(root) {
+  const trigger = root.querySelector("#hub-account-trigger");
+  const menu = root.querySelector("#hub-account-menu");
+  if (!trigger || !menu) return;
+
+  function closeMenu() {
+    menu.classList.add("hidden");
+    trigger.setAttribute("aria-expanded", "false");
+  }
+
+  function openMenu() {
+    menu.classList.remove("hidden");
+    trigger.setAttribute("aria-expanded", "true");
+  }
+
+  trigger.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (menu.classList.contains("hidden")) openMenu();
+    else closeMenu();
+  });
+
+  menu.querySelector('[data-action="logout"]')?.addEventListener("click", async () => {
+    closeMenu();
+    await fetch("/auth/logout", { method: "POST", credentials: "same-origin" });
+    location.href = "/";
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!root.contains(e.target)) closeMenu();
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeMenu();
+  });
+}
+
+function renderHubViewerAccount(slot, me) {
+  if (!slot) return;
+  if (!me?.authenticated || !me.user) {
+    slot.innerHTML =
+      '<a class="hub-nav-link hub-nav-link--accent" href="/auth/github">Войти</a>';
+    return;
+  }
+  const u = me.user;
+  slot.innerHTML =
+    '<div class="hub-account">' +
+    '<button type="button" class="user-chip hub-account__trigger" id="hub-account-trigger" aria-expanded="false" aria-haspopup="menu" aria-controls="hub-account-menu">' +
+    '<img src="' +
+    escapeHubHtml(u.avatar_url) +
+    '" alt="" width="22" height="22" />' +
+    "<span>@" +
+    escapeHubHtml(u.login) +
+    "</span>" +
+    '<span class="hub-account__chevron" aria-hidden="true">▾</span>' +
+    "</button>" +
+    '<div class="hub-account__menu hidden" id="hub-account-menu" role="menu">' +
+    '<a class="hub-account__item" href="/connect" role="menuitem">Подключить репозиторий</a>' +
+    '<button type="button" class="hub-account__item hub-account__item--danger" data-action="logout" role="menuitem">Выйти</button>' +
+    "</div>" +
+    "</div>";
+  bindHubAccountMenu(slot);
+}
+
+async function hydrateHubViewerAccount() {
+  const slot = document.getElementById("hub-viewer-account");
+  if (!slot) return;
+  try {
+    const res = await fetch("/api/me", { credentials: "same-origin" });
+    if (!res.ok) throw new Error("auth");
+    renderHubViewerAccount(slot, await res.json());
+  } catch {
+    renderHubViewerAccount(slot, null);
+  }
+}
+
 function applyHubReadonlyChrome() {
   document.body.classList.add("hub-readonly");
   for (const id of [
@@ -63,17 +146,22 @@ function applyHubReadonlyChrome() {
   document.querySelector(".projects-sidebar__footer")?.classList.add("hidden");
   document.querySelector(".agent-chat-panel")?.classList.add("hidden");
   document.querySelector(".topbar-nav a[href='tour.html']")?.classList.add("hidden");
-  document.getElementById("method-activity-overlay")?.classList.add("hidden");
   const toolbar = document.querySelector(".toolbar");
-  if (toolbar && !document.getElementById("hub-toolbar-links")) {
-    const wrap = document.createElement("div");
-    wrap.id = "hub-toolbar-links";
+  if (toolbar) {
+    let wrap = document.getElementById("hub-toolbar-links");
+    if (!wrap) {
+      wrap = document.createElement("div");
+      wrap.id = "hub-toolbar-links";
+      toolbar.prepend(wrap);
+    }
     wrap.className = "hub-toolbar-links";
     wrap.innerHTML =
-      '<a href="/" class="btn">Каталог</a>' +
-      '<a href="/connect" class="btn">Подключить</a>' +
-      '<a href="/onboarding" class="btn btn-tour">Onboarding</a>';
-    toolbar.prepend(wrap);
+      '<a class="hub-nav-link" href="/" title="К каталогу Hub">← Каталог</a>' +
+      '<span class="hub-toolbar-sep" aria-hidden="true"></span>' +
+      '<div id="hub-viewer-account" class="hub-viewer-account">' +
+      '<span class="hub-nav-link hub-nav-link--muted">…</span>' +
+      "</div>";
+    void hydrateHubViewerAccount();
   }
   const tagline = document.getElementById("brand-tagline");
   if (tagline && window.__HUB__?.meta?.owner_login) {
@@ -550,9 +638,13 @@ function syncKanbanProgressBar(el, s) {
 
 function activityContextForProject(project) {
   const pid = project?.id;
+  const authors = pid ? runningAuthorsByProject.get(pid) || {} : {};
+  const hubOwner = window.__HUB__?.meta?.owner_login || "";
   return {
     projectTitle: project?.title || pid || "",
-    authors: pid ? runningAuthorsByProject.get(pid) || {} : {},
+    authors,
+    author: hubOwner || Object.values(authors)[0] || "",
+    hideInspect: isHubMode(),
   };
 }
 
@@ -596,15 +688,375 @@ async function ensureRunningAuthors(projectId, { force = false } = {}) {
     return runningAuthorsByProject.get(projectId) || {};
   }
   try {
-    const data = await KoiApi.getKanbanRunningActivity(projectId);
-    const authors = Object.fromEntries(
-      (data.items || []).map((item) => [item.card_id, item.author || "коллега"])
-    );
+    let authors = {};
+    if (isCompositeVirtualId(projectId)) {
+      const project =
+        state.lab?.projectsById?.[projectId] ||
+        (state.project?.id === projectId ? state.project : null);
+      const memberIds = [
+        ...new Set(
+          (project?.members || [])
+            .map((m) => m.project_id || m.id)
+            .filter((id) => id && !isCompositeVirtualId(id))
+        ),
+      ];
+      const maps = await Promise.all(
+        memberIds.map((id) => ensureRunningAuthors(id, { force }))
+      );
+      for (const map of maps) Object.assign(authors, map);
+    } else {
+      const data = await KoiApi.getKanbanRunningActivity(projectId);
+      authors = Object.fromEntries(
+        (data.items || []).map((item) => [item.card_id, item.author || "коллега"])
+      );
+    }
     runningAuthorsByProject.set(projectId, authors);
     return authors;
   } catch {
-    return runningAuthorsByProject.get(projectId) || {};
+    // Cache miss so we do not retry a failing endpoint on every paint.
+    runningAuthorsByProject.set(projectId, {});
+    return {};
   }
+}
+
+function formatRunningAuthorHint(author, task) {
+  const who = String(author || "коллега").trim() || "коллега";
+  const what = String(task || "эксперимент").trim() || "эксперимент";
+  return `${who} и агент работают над задачей «${what}»`;
+}
+
+function applyRunningCardAuthorTitles(root, projectId) {
+  if (!root || !projectId) return;
+  const authors = runningAuthorsByProject.get(projectId) || {};
+  const project =
+    state.lab?.projectsById?.[projectId] ||
+    (state.project?.id === projectId ? state.project : null);
+  if (!project) return;
+  const fallbackAuthor = window.__HUB__?.meta?.owner_login || "";
+
+  const cardsById = new Map();
+  for (const board of Object.values(project.boards || {})) {
+    for (const card of board.cards || []) cardsById.set(card.id, card);
+  }
+
+  root.querySelectorAll(".kanban-card[data-card-id]").forEach((el) => {
+    el.querySelector(":scope > .kanban-card-author")?.remove();
+    const cardId = el.dataset.cardId;
+    const card = cardsById.get(cardId);
+    if (!card || card.column_id !== "running") return;
+    const author = authors[cardId] || fallbackAuthor;
+    if (!author) return;
+    let task = card.title;
+    const body = String(card.description || "").replace(/\\n/g, "\n");
+    const m = body.match(/-\s*\[ \]\s*([^\n]+)/);
+    if (m?.[1]?.trim()) task = m[1].trim();
+    el.title = formatRunningAuthorHint(author, task);
+    el.classList.add("kanban-card--running-active");
+  });
+
+  root.querySelectorAll(".kanban-dag-card--running[data-node-id]").forEach((el) => {
+    el.querySelector(":scope > .kanban-dag-card__author")?.remove();
+    const cardId = el.dataset.nodeId;
+    const author = authors[cardId] || fallbackAuthor;
+    if (!author) return;
+    const card = cardsById.get(cardId);
+    el.title = formatRunningAuthorHint(author, card?.title || cardId);
+  });
+}
+
+/** @type {HTMLElement | null} */
+let nodeWorkersPanelEl = null;
+/** @type {ReturnType<typeof setTimeout> | null} */
+let nodeWorkersHideTimer = null;
+/** @type {HTMLElement | null} */
+let nodeWorkersAnchor = null;
+
+function descendantNodeIds(project, rootId) {
+  const children = new Map();
+  for (const node of project?.nodes || []) {
+    const parent = node.parent_id;
+    if (!parent) continue;
+    if (!children.has(parent)) children.set(parent, []);
+    children.get(parent).push(node.id);
+  }
+  const out = new Set([rootId]);
+  const stack = [rootId];
+  while (stack.length) {
+    const id = stack.pop();
+    for (const child of children.get(id) || []) {
+      if (out.has(child)) continue;
+      out.add(child);
+      stack.push(child);
+    }
+  }
+  return out;
+}
+
+function authorMapsForProject(project) {
+  const maps = [];
+  const seen = new Set();
+  const push = (id) => {
+    if (!id || seen.has(id)) return;
+    seen.add(id);
+    maps.push(runningAuthorsByProject.get(id) || {});
+  };
+  push(project?.id);
+  for (const m of project?.members || []) {
+    push(m.project_id || m.id);
+  }
+  return maps;
+}
+
+function resolveRunningAuthor(project, cardId) {
+  for (const map of authorMapsForProject(project)) {
+    const who = String(map[cardId] || "").trim();
+    if (who) return who;
+  }
+  return String(window.__HUB__?.meta?.owner_login || "").trim();
+}
+
+/**
+ * People with running cards under this node (self + descendants).
+ * @returns {Array<{ login: string, tasks: string[] }>}
+ */
+function runningWorkersUnderNode(project, nodeId) {
+  if (!project || !nodeId) return [];
+  const scope = descendantNodeIds(project, nodeId);
+  /** @type {Map<string, string[]>} */
+  const byAuthor = new Map();
+
+  for (const node of project.nodes || []) {
+    if (!scope.has(node.id) || node.node_type !== "method") continue;
+    const board = getBoardForNode(project, node);
+    for (const card of board?.cards || []) {
+      if (card.column_id !== "running") continue;
+      const login = resolveRunningAuthor(project, card.id) || "коллега";
+      const task = String(card.title || card.id).trim();
+      if (!byAuthor.has(login)) byAuthor.set(login, []);
+      if (task) byAuthor.get(login).push(task);
+    }
+  }
+
+  return [...byAuthor.entries()].map(([login, tasks]) => ({ login, tasks }));
+}
+
+function runningWorkersForCard(project, cardId) {
+  if (!project || !cardId) return [];
+  let card = null;
+  for (const board of Object.values(project.boards || {})) {
+    card = (board.cards || []).find((c) => c.id === cardId) || null;
+    if (card) break;
+  }
+  if (!card || card.column_id !== "running") return [];
+  const login = resolveRunningAuthor(project, cardId) || "коллега";
+  return [{ login, tasks: [String(card.title || cardId).trim()].filter(Boolean) }];
+}
+
+function ensureNodeWorkersPanel() {
+  if (nodeWorkersPanelEl) return nodeWorkersPanelEl;
+  nodeWorkersPanelEl = document.createElement("aside");
+  nodeWorkersPanelEl.id = "node-workers-panel";
+  nodeWorkersPanelEl.className = "node-workers-panel hidden";
+  nodeWorkersPanelEl.setAttribute("aria-live", "polite");
+  document.body.appendChild(nodeWorkersPanelEl);
+  nodeWorkersPanelEl.addEventListener("mouseenter", () => {
+    if (nodeWorkersHideTimer) {
+      clearTimeout(nodeWorkersHideTimer);
+      nodeWorkersHideTimer = null;
+    }
+  });
+  nodeWorkersPanelEl.addEventListener("mouseleave", () => hideNodeWorkersPanel());
+  return nodeWorkersPanelEl;
+}
+
+function positionNodeWorkersPanel(anchor) {
+  const panel = ensureNodeWorkersPanel();
+  if (!anchor) return;
+  const rect = anchor.getBoundingClientRect();
+  const margin = 12;
+  const panelRect = panel.getBoundingClientRect();
+  let left = rect.right + margin;
+  let top = rect.top;
+  if (left + panelRect.width > window.innerWidth - margin) {
+    left = rect.left - panelRect.width - margin;
+  }
+  if (left < margin) left = margin;
+  if (top + panelRect.height > window.innerHeight - margin) {
+    top = Math.max(margin, window.innerHeight - panelRect.height - margin);
+  }
+  if (top < margin) top = margin;
+  panel.style.left = `${left}px`;
+  panel.style.top = `${top}px`;
+}
+
+function githubAvatarUrl(login) {
+  const who = String(login || "").trim().replace(/^@/, "");
+  if (!who || who === "коллега") return "";
+  // Direct avatars host (no redirect). github.com/{user}.png is flaky with no-referrer.
+  return `https://avatars.githubusercontent.com/${encodeURIComponent(who)}?s=64&v=4`;
+}
+
+function resolveWorkerAvatar(login) {
+  const who = String(login || "").trim().replace(/^@/, "");
+  const hubLogin = String(window.__HUB__?.meta?.owner_login || "").trim();
+  const hubAvatar = String(window.__HUB__?.meta?.owner_avatar_url || "").trim();
+  if (hubAvatar && who && who.toLowerCase() === hubLogin.toLowerCase()) {
+    return hubAvatar;
+  }
+  return githubAvatarUrl(who);
+}
+
+function workerInitials(login) {
+  const who = String(login || "·").trim().replace(/^@/, "");
+  return (who.slice(0, 1) || "·").toUpperCase();
+}
+
+function renderNodeWorkersPanel(workers, _scopeLabel) {
+  const panel = ensureNodeWorkersPanel();
+  panel.innerHTML =
+    `<p class="node-workers-panel__head">Тут работают:</p>` +
+    `<ul class="node-workers-panel__list" role="list">` +
+    workers
+      .map((w) => {
+        const login = String(w.login || "коллега").trim() || "коллега";
+        const avatar = resolveWorkerAvatar(login);
+        const initials = escapeHtml(workerInitials(login));
+        const avatarHtml = avatar
+          ? `<img class="node-workers-panel__avatar" src="${escapeHtml(avatar)}" alt="" width="28" height="28" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-fallback="${initials}" />`
+          : `<span class="node-workers-panel__avatar node-workers-panel__avatar--fallback" aria-hidden="true">${initials}</span>`;
+        return (
+          `<li class="node-workers-panel__item">` +
+          avatarHtml +
+          `<span class="node-workers-panel__nick">@${escapeHtml(login)}</span>` +
+          `</li>`
+        );
+      })
+      .join("") +
+    `</ul>`;
+
+  panel.querySelectorAll("img.node-workers-panel__avatar").forEach((img) => {
+    img.addEventListener(
+      "error",
+      () => {
+        const fallback = document.createElement("span");
+        fallback.className = "node-workers-panel__avatar node-workers-panel__avatar--fallback";
+        fallback.setAttribute("aria-hidden", "true");
+        fallback.textContent = img.dataset.fallback || "·";
+        img.replaceWith(fallback);
+      },
+      { once: true }
+    );
+  });
+}
+
+function showNodeWorkersPanel(anchor, workers, scopeLabel) {
+  if (!anchor || !workers?.length) {
+    hideNodeWorkersPanel(true);
+    return;
+  }
+  if (nodeWorkersHideTimer) {
+    clearTimeout(nodeWorkersHideTimer);
+    nodeWorkersHideTimer = null;
+  }
+  nodeWorkersAnchor = anchor;
+  renderNodeWorkersPanel(workers, scopeLabel);
+  const panel = ensureNodeWorkersPanel();
+  panel.classList.remove("hidden", "is-leaving");
+  panel.classList.add("is-entering");
+  positionNodeWorkersPanel(anchor);
+  requestAnimationFrame(() => {
+    positionNodeWorkersPanel(anchor);
+    panel.classList.add("is-visible");
+    panel.classList.remove("is-entering");
+  });
+}
+
+function hideNodeWorkersPanel(immediate = false) {
+  const panel = ensureNodeWorkersPanel();
+  const hide = () => {
+    nodeWorkersHideTimer = null;
+    nodeWorkersAnchor = null;
+    panel.classList.remove("is-visible", "is-entering", "is-leaving");
+    panel.classList.add("hidden");
+  };
+  if (immediate) {
+    if (nodeWorkersHideTimer) clearTimeout(nodeWorkersHideTimer);
+    hide();
+    return;
+  }
+  if (nodeWorkersHideTimer) clearTimeout(nodeWorkersHideTimer);
+  panel.classList.add("is-leaving");
+  panel.classList.remove("is-visible");
+  nodeWorkersHideTimer = setTimeout(hide, 180);
+}
+
+function wireNodeWorkersHover(wrap, project, node) {
+  if (!wrap || !project || !node || wrap.dataset.workersBound === "1") return;
+  wrap.dataset.workersBound = "1";
+  const scopeLabel = TYPE_LABELS[node.node_type] || "узел";
+
+  const show = () => {
+    const reveal = () => {
+      const workers = runningWorkersUnderNode(project, node.id);
+      if (!workers.length) {
+        hideNodeWorkersPanel(true);
+        return;
+      }
+      showNodeWorkersPanel(wrap, workers, scopeLabel);
+    };
+    reveal();
+    if (project?.id) {
+      void ensureRunningAuthors(project.id).then(() => {
+        if (!wrap.matches(":hover") && !ensureNodeWorkersPanel().matches(":hover")) return;
+        reveal();
+      });
+    }
+  };
+
+  wrap.addEventListener("mouseenter", show);
+  wrap.addEventListener("mouseleave", () => hideNodeWorkersPanel());
+  wrap.addEventListener("focusin", show);
+  wrap.addEventListener("focusout", () => hideNodeWorkersPanel());
+}
+
+function wireCardWorkersHover(root, project) {
+  if (!root) return;
+  if (project?.id) root.dataset.workersProjectId = project.id;
+  if (root.dataset.workersBound === "1") return;
+  root.dataset.workersBound = "1";
+
+  const resolveProject = () => {
+    const pid = root.dataset.workersProjectId;
+    return (
+      (pid && state.lab?.projectsById?.[pid]) ||
+      (pid && state.project?.id === pid ? state.project : null) ||
+      state.project
+    );
+  };
+
+  root.addEventListener("pointerover", (e) => {
+    const card =
+      e.target.closest?.(".kanban-card[data-card-id]") ||
+      e.target.closest?.(".kanban-dag-card[data-node-id]");
+    if (!card || !root.contains(card)) return;
+    const proj = resolveProject();
+    if (!proj) return;
+    const cardId = card.dataset.cardId || card.dataset.nodeId;
+    const workers = runningWorkersForCard(proj, cardId);
+    if (!workers.length) return;
+    if (proj.id) void ensureRunningAuthors(proj.id);
+    showNodeWorkersPanel(card, workers, "карточкой");
+  });
+
+  root.addEventListener("pointerout", (e) => {
+    const card =
+      e.target.closest?.(".kanban-card[data-card-id]") ||
+      e.target.closest?.(".kanban-dag-card[data-node-id]");
+    if (!card) return;
+    const related = e.relatedTarget;
+    if (related && (card.contains(related) || ensureNodeWorkersPanel().contains(related))) return;
+    hideNodeWorkersPanel();
+  });
 }
 
 function rebuildLabWorldLayoutFull() {
@@ -680,7 +1132,7 @@ function collectRunningActivityItems() {
   const scope = runningActivityProjectIds();
   const items = collectAllRunningActivityItems();
   if (!scope) return items;
-  return items.filter((item) => scope.has(item.key.split(":")[0]));
+  return items.filter((item) => scope.has(item.projectId));
 }
 
 function labCameraLayout() {
@@ -690,8 +1142,7 @@ function labCameraLayout() {
 function refreshAllMethodActivityAuthors() {
   const ids = new Set(runningAuthorsByProject.keys());
   for (const item of collectAllRunningActivityItems()) {
-    const pid = item.key.split(":")[0];
-    if (pid) ids.add(pid);
+    if (item.projectId) ids.add(item.projectId);
   }
   for (const pid of ids) refreshMethodActivityAuthors(pid);
   syncLabActivityOverlay();
@@ -701,22 +1152,20 @@ async function preloadAllRunningAuthors() {
   if (!state.lab?.projectsById) return;
   const ids = new Set();
   for (const item of collectAllRunningActivityItems()) {
-    const pid = item.key.split(":")[0];
-    if (pid) ids.add(pid);
+    if (item.projectId) ids.add(item.projectId);
   }
   await Promise.all([...ids].map((id) => ensureRunningAuthors(id)));
   refreshAllMethodActivityAuthors();
 }
 
 function syncLabActivityOverlay() {
-  if (isHubMode()) return;
   const viewport = document.getElementById("mindmap-viewport");
   if (!viewport || !labCamera || !state.lab?.projectsById) return;
   const items = collectRunningActivityItems();
   const showOverlay = shouldUseActivityOverlay(labCamera) && items.length > 0;
   const overlayRebuilt = syncMethodActivityOverlay(viewport, labCamera, items, showOverlay);
   syncMethodActivityZoomMode(viewport, labCamera, showOverlay);
-  if (showOverlay && overlayRebuilt) {
+  if (showOverlay && overlayRebuilt && !isHubMode()) {
     const layer = document.getElementById("method-activity-overlay");
     for (const item of items) {
       const project = state.lab.projectsById[item.projectId];
@@ -744,6 +1193,8 @@ function refreshMethodActivityAuthors(projectId) {
       const board = getBoardForNode(project, node);
       syncMethodActivity(below, node, board, context);
     });
+  applyRunningCardAuthorTitles(document.getElementById("kanban-board"), projectId);
+  applyRunningCardAuthorTitles(document.getElementById("kanban-dag-view"), projectId);
   syncLabActivityOverlay();
 }
 
@@ -779,16 +1230,16 @@ function appendKanbanBelow(wrap, node, project = state.project) {
     openKanbanFromBelow(e);
   });
   wrap.appendChild(below);
-  if (isHubMode()) return;
   syncMethodActivity(below, node, board, context);
-  bindMethodLiveInspect(below, node, board, project);
+  if (!isHubMode()) {
+    bindMethodLiveInspect(below, node, board, project);
+  }
   if (project?.id && activityState.running.length) {
     void ensureRunningAuthors(project.id).then(() => refreshMethodActivityAuthors(project.id));
   }
 }
 
 function refreshKanbanActivityForProject(projectId, { nodeId = null } = {}) {
-  if (isHubMode()) return;
   const project =
     state.lab?.projectsById?.[projectId] ||
     (state.project?.id === projectId ? state.project : null);
@@ -1712,7 +2163,7 @@ async function loadLab() {
   syncRunningSeedProvider();
   rebuildLabWorldLayoutFull();
   ensureLabCamera();
-  if (!isHubMode()) void preloadAllRunningAuthors();
+  void preloadAllRunningAuthors();
 }
 
 function mountMapNode(pos, layer, project, node, nodeSizes) {
@@ -1806,6 +2257,7 @@ function mountMapNode(pos, layer, project, node, nodeSizes) {
   if (hasKanban) {
     appendKanbanBelow(wrap, node, project);
   }
+  wireNodeWorkersHover(wrap, project, node);
   state.nodeSizes = savedSizes;
   return wrap;
 }
@@ -1968,6 +2420,7 @@ function renderLabMindmap(options = {}) {
         projectId: project.id,
         labels,
         allowedTypes: allowedChildTypes(pos.parentNode.node_type),
+        readOnly: isHubMode(),
         onOpen: (parent) => {
           state.project = project;
           openAddChildModal(parent);
@@ -1989,7 +2442,7 @@ function renderLabMindmap(options = {}) {
     requestAnimationFrame(() => {
       syncLabActivityOverlay();
     });
-    if (!isHubMode()) void preloadAllRunningAuthors();
+    void preloadAllRunningAuthors();
   }
   updateViewChrome();
 }
@@ -2050,6 +2503,11 @@ function updateViewChrome() {
   document.body.dataset.viewMode = mode;
   const modeSelect = document.getElementById("view-mode-select");
   if (modeSelect) modeSelect.value = mode;
+  document.querySelectorAll("[data-view-mode]").forEach((btn) => {
+    const active = btn.getAttribute("data-view-mode") === mode;
+    btn.setAttribute("aria-checked", active ? "true" : "false");
+    btn.classList.toggle("is-active", active);
+  });
 }
 
 function setViewMode(mode, { rerender = true } = {}) {
@@ -2075,6 +2533,26 @@ function loadViewPreferences() {
 
 function initViewControls() {
   loadViewPreferences();
+  const group = document.getElementById("view-mode-group");
+  group?.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-view-mode]");
+    if (!btn || !group.contains(btn)) return;
+    setViewMode(btn.getAttribute("data-view-mode"));
+  });
+  group?.addEventListener("keydown", (e) => {
+    const modes = Object.keys(VIEW_MODES);
+    const current = modes.indexOf(getViewMode());
+    if (current < 0) return;
+    let next = current;
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") next = (current + 1) % modes.length;
+    else if (e.key === "ArrowLeft" || e.key === "ArrowUp") next = (current - 1 + modes.length) % modes.length;
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = modes.length - 1;
+    else return;
+    e.preventDefault();
+    setViewMode(modes[next]);
+    group.querySelector(`[data-view-mode="${modes[next]}"]`)?.focus();
+  });
   document.getElementById("view-mode-select")?.addEventListener("change", (e) => {
     setViewMode(e.target.value);
   });
@@ -2276,6 +2754,7 @@ function renderMindmap(options = {}) {
     }
     mountNodeTypeHelp(wrap, n.node_type);
     if (hasKanban) appendKanbanBelow(wrap, n);
+    wireNodeWorkersHover(wrap, state.project, n);
   });
 
   updateLayerExtent();
@@ -2288,6 +2767,7 @@ function renderMindmap(options = {}) {
       parent: pos.parentNode,
       labels,
       allowedTypes: allowedChildTypes(pos.parentNode.node_type),
+      readOnly: isHubMode(),
       onOpen: openAddChildModal,
       mount: (addWrap) => layer.appendChild(addWrap),
     });
@@ -2938,6 +3418,10 @@ function fillNodeEdit(node) {
 }
 
 function openAddChildModal(parent) {
+  if (isHubMode()) {
+    setStatus("В Hub нельзя добавлять узлы — только просмотр", true);
+    return;
+  }
   state.activeNodeId = parent.id;
   document.getElementById("node-edit-block").classList.add("hidden");
   document.getElementById("node-content-hint")?.classList.add("hidden");
@@ -3778,6 +4262,7 @@ function renderKanbanDagBoard(board, node) {
   if (!dagEl || !board) return;
   refreshKanbanDagView(dagEl, board, getKanbanDagContext(board, node));
   requestAnimationFrame(() => fitKanbanDagView());
+  if (state.project) wireCardWorkersHover(dagEl, state.project);
 }
 
 function renderActiveKanbanView(board, node) {
@@ -4742,6 +5227,16 @@ async function hydrateKanbanCardTodoFromReports(boardEl, board, project, liveCtx
   if (addedLiveBtn && liveCtx) {
     bindLiveInspectButtons(boardEl, liveCtx, cardLiveUi);
   }
+  const pid = boardWriteProjectId(board) || project?.id;
+  if (pid) {
+    void ensureRunningAuthors(pid).then(() => applyRunningCardAuthorTitles(boardEl, pid));
+  }
+  const workersProject =
+    project ||
+    state.lab?.projectsById?.[pid] ||
+    (state.project?.id === pid ? state.project : null) ||
+    state.project;
+  if (workersProject) wireCardWorkersHover(boardEl, workersProject);
 }
 
 function kanbanCardLiveInspectBtnHtml(cardId) {
@@ -4972,16 +5467,19 @@ const VIEW_MODES = {
   chief: {
     id: "chief",
     label: "Chief researcher",
+    shortLabel: "Chief",
     hint: "На экране — вся лаборатория · колёсико — масштаб до карточек метода · перетаскивание — панорама",
   },
   teamlead: {
     id: "teamlead",
     label: "Team lead researcher",
+    shortLabel: "Lead",
     hint: "На экране — программа выбранного проекта · список слева — полный",
   },
   researcher: {
     id: "researcher",
     label: "Researcher",
+    shortLabel: "Focus",
     hint: "На экране — один проект · зум до карточек метода · двойной клик по методу — приблизить",
   },
 };
@@ -9085,11 +9583,11 @@ async function init() {
 
   try {
     state.meta = await KoiApi.meta();
-    await loadLab();
     let requestedProjectId = new URLSearchParams(window.location.search).get("project");
     if (hubMode) {
       requestedProjectId = await resolveHubProjectId();
     }
+    await loadLab();
     const preferred = resolvePreferredProjectId(
       requestedProjectId,
       state.lab.grouped,

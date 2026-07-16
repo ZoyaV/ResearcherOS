@@ -138,12 +138,14 @@ export const KoiApi = {
     }),
   getProgram: (id) => api(`/programs/${id}`),
   getLaboratory: () => api("/laboratory"),
-  getProject: (id) => api(`/projects/${id}`),
-  getKanbanRunningActivity: (id) => api(`/projects/${id}/kanban/running-activity`),
-  getKanbanLiveMonitor: (id) => api(`/projects/${id}/kanban/live-monitor`),
+  getProject: (id) => api(`/projects/${encodeURIComponent(id)}`),
+  getKanbanRunningActivity: (id) =>
+    api(`/projects/${encodeURIComponent(id)}/kanban/running-activity`),
+  getKanbanLiveMonitor: (id) =>
+    api(`/projects/${encodeURIComponent(id)}/kanban/live-monitor`),
   getCardLive: (projectId, boardId, cardId, tailLines = 100) =>
     api(
-      `/projects/${projectId}/boards/${boardId}/cards/${cardId}/live?tail_lines=${tailLines}`
+      `/projects/${encodeURIComponent(projectId)}/boards/${encodeURIComponent(boardId)}/cards/${encodeURIComponent(cardId)}/live?tail_lines=${tailLines}`
     ),
   liveFileUrl: (projectId, path) => {
     const q = encodeURIComponent(String(path || ""));
@@ -190,12 +192,17 @@ export const KoiApi = {
       body: JSON.stringify(body),
     }),
   getBoardDagLayout: (projectId, boardId) =>
-    api(`/projects/${projectId}/boards/${boardId}/dag-layout`),
+    api(
+      `/projects/${encodeURIComponent(projectId)}/boards/${encodeURIComponent(boardId)}/dag-layout`
+    ),
   saveBoardDagLayout: (projectId, boardId, body) =>
-    api(`/projects/${projectId}/boards/${boardId}/dag-layout`, {
-      method: "PUT",
-      body: JSON.stringify(body),
-    }),
+    api(
+      `/projects/${encodeURIComponent(projectId)}/boards/${encodeURIComponent(boardId)}/dag-layout`,
+      {
+        method: "PUT",
+        body: JSON.stringify(body),
+      }
+    ),
   deleteCard: (projectId, boardId, cardId) =>
     api(`/projects/${projectId}/boards/${boardId}/cards/${cardId}`, {
       method: "DELETE",

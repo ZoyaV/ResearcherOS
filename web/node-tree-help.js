@@ -253,6 +253,7 @@ function buildAddPreviewGhosts(items) {
 
 /**
  * Кнопка «+» с подсветкой родителя и превью добавляемых типов.
+ * @param {{ readOnly?: boolean }} opts
  */
 export function mountAddNodeButton({
   pos,
@@ -262,31 +263,42 @@ export function mountAddNodeButton({
   allowedTypes,
   onOpen,
   mount,
+  readOnly = false,
 }) {
   const size = { w: 80, h: 80, round: "50%" };
   const items = addChildPreviewItems(parent.node_type, allowedTypes, labels);
   const singleLabel = items.length === 1 ? items[0].label : null;
+  const hubHint = "В Hub нельзя добавлять узлы — только просмотр";
 
   const el = document.createElement("button");
   el.type = "button";
-  el.className = "map-node add-node";
+  el.className = "map-node add-node" + (readOnly ? " add-node--readonly" : "");
   el.dataset.parentId = parent.id;
-  const ariaLabel =
-    items.length === 1
-      ? `Добавить ${items[0].label.toLowerCase()}`
-      : `Добавить: ${items.map((i) => i.label.toLowerCase()).join(" или ")}`;
-  el.setAttribute("aria-label", ariaLabel);
+  if (readOnly) {
+    el.disabled = true;
+    el.setAttribute("aria-disabled", "true");
+    el.title = hubHint;
+    el.setAttribute("aria-label", hubHint);
+  } else {
+    const ariaLabel =
+      items.length === 1
+        ? `Добавить ${items[0].label.toLowerCase()}`
+        : `Добавить: ${items.map((i) => i.label.toLowerCase()).join(" или ")}`;
+    el.setAttribute("aria-label", ariaLabel);
+  }
   el.innerHTML = `
     <span class="node-label add-node-dynamic-label">${singleLabel ? `+ ${singleLabel}` : "Добавить"}</span>
     <span class="add-plus">+</span>`;
 
   const addWrap = document.createElement("div");
-  addWrap.className = "node-wrap add-slot-wrap";
+  addWrap.className =
+    "node-wrap add-slot-wrap" + (readOnly ? " add-slot-wrap--readonly" : "");
   if (projectId) addWrap.dataset.projectId = projectId;
   addWrap.dataset.parentId = parent.id;
   addWrap.style.left = `${pos.x}px`;
   addWrap.style.top = `${pos.y}px`;
   addWrap.style.transform = "translate(-50%, -50%)";
+  if (readOnly) addWrap.title = hubHint;
 
   addWrap.appendChild(buildAddPreviewGhosts(items));
 
@@ -295,6 +307,7 @@ export function mountAddNodeButton({
   el.style.borderRadius = size.round;
 
   const showPreview = () => {
+    if (readOnly) return;
     addWrap.classList.add("is-add-preview-active");
     setAddParentHighlight(parent, projectId, true);
   };
@@ -312,6 +325,7 @@ export function mountAddNodeButton({
 
   el.addEventListener("click", (e) => {
     e.stopPropagation();
+    if (readOnly) return;
     hidePreview();
     onOpen(parent);
   });
