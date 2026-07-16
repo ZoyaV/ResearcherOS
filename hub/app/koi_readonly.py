@@ -2,15 +2,20 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any, Optional
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.responses import FileResponse, PlainTextResponse
 
 from hub.app.auth import get_session
 from hub.app.config import HubConfig
 from hub.app.access import can_view_project_with_store
 from hub.app.hub_composite import list_hub_composites, load_hub_composite
+from hub.app.hub_programs import hub_project_programs, program_ids
 from hub.app.project_identity import dedupe_hub_projects, project_rank
+from hub.app.running_activity import running_activity_for_project
 from hub.app.store import HubProject, HubStore
 from koi.projects.views import allowed_children
 from koi.core.models import NodeType
@@ -70,14 +75,139 @@ def _find_slug_by_project_id(store: HubStore, project_id: str) -> Optional[str]:
     return best_slug
 
 
-def _project_summary(hub_project: HubProject, project: dict[str, Any]) -> dict[str, Any]:
+def _resolve_hub_project(
+    request: Request, project_id: str
+) -> tuple[HubConfig, HubStore, HubProject]:
+    config: HubConfig = request.app.state.hub_config
+    store: HubStore = request.app.state.hub_store
+
+    slug = project_id
+    hub_project = store.get_project(slug)
+    if hub_project is None:
+        slug = _find_slug_by_project_id(store, project_id) or ""
+        hub_project = store.get_project(slug) if slug else None
+    if hub_project is None:
+        raise HTTPException(404, "Project not found")
+
+    viewer = _viewer_id(request, config, store)
+    if not can_view_project_with_store(hub_project, viewer, store):
+        raise HTTPException(403, "Not allowed to view this project")
+    return config, store, hub_project
+
+
+def _load_reports_index(store: HubStore, slug: str) -> dict[str, str]:
+    path = store.resolve_report_file(slug, "index.json")
+    if path is None:
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if not isinstance(data, dict):
+        return {}
     return {
+        str(k): str(v)
+        for k, v in data.items()
+        if isinstance(k, str) and isinstance(v, str)
+    }
+
+
+def _find_card(
+    project: dict[str, Any], board_id: str, card_id: str
+) -> Optional[dict[str, Any]]:
+    boards = project.get("boards") or {}
+    board = boards.get(board_id) if isinstance(boards, dict) else None
+    if not isinstance(board, dict):
+        return None
+    return next(
+        (c for c in board.get("cards") or [] if c.get("id") == card_id),
+        None,
+    )
+
+
+def _read_hub_card_report(
+    store: HubStore, slug: str, project: dict[str, Any], board_id: str, card_id: str
+) -> dict[str, Any]:
+    card = _find_card(project, board_id, card_id)
+    index = _load_reports_index(store, slug)
+    rel = index.get(card_id)
+    if rel:
+        path = store.resolve_report_file(slug, rel)
+        if path is not None:
+            try:
+                content = path.read_text(encoding="utf-8")
+            except OSError:
+                content = ""
+            if content.strip():
+                return {
+                    "content": content,
+                    "filename": path.name,
+                    "relative_path": f"reports/{rel}",
+                    "hypothesis_dir": rel.split("/")[0] if "/" in rel else "",
+                    "source": "saved",
+                    "path": f"reports/{rel}",
+                    "readonly": True,
+                }
+            run_rel = str(Path(rel).with_name(Path(rel).stem + ".run.md"))
+            run_path = store.resolve_report_file(slug, run_rel)
+            if run_path is not None:
+                try:
+                    run_text = run_path.read_text(encoding="utf-8")
+                except OSError:
+                    run_text = ""
+                if run_text.strip():
+                    return {
+                        "content": run_text,
+                        "filename": run_path.name,
+                        "relative_path": f"reports/{rel}",
+                        "run_relative_path": f"reports/{run_rel}",
+                        "hypothesis_dir": rel.split("/")[0] if "/" in rel else "",
+                        "source": "run",
+                        "path": f"reports/{rel}",
+                        "readonly": True,
+                    }
+
+    if card is None:
+        raise HTTPException(404, "Card not found")
+    desc = str(card.get("description") or "").strip()
+    content = (
+        desc
+        or f"_Отчёт ещё не синхронизирован в Hub. Карточка: {card.get('title', card_id)}._"
+    )
+    return {
+        "content": content,
+        "filename": None,
+        "relative_path": None,
+        "path": None,
+        "source": "description",
+        "readonly": True,
+    }
+
+
+def _project_summary(
+    hub_project: HubProject,
+    project: dict[str, Any],
+    *,
+    programs: list[dict[str, str]] | None = None,
+) -> dict[str, Any]:
+    summary = {
         "id": project.get("id") or hub_project.slug,
         "title": project.get("title") or hub_project.title,
         "description": project.get("description") or "",
         "hub_slug": hub_project.slug,
         "owner_login": hub_project.owner_login,
+        "programs": program_ids(programs or hub_project_programs(hub_project)),
     }
+    if hub_project.composite_id:
+        summary["composite_id"] = hub_project.composite_id
+    return summary
+
+
+def _member_program_entries(
+    store: HubStore, hub_project: HubProject
+) -> list[dict[str, str]]:
+    snap = store.get_snapshot(hub_project.slug)
+    return hub_project_programs(hub_project, snapshot=snap)
 
 
 @router.get("/health")
@@ -133,7 +263,8 @@ def list_projects(request: Request) -> list[dict[str, Any]]:
         if pid in seen_ids:
             continue
         seen_ids.add(pid)
-        items.append(_project_summary(hub_project, project))
+        programs = _member_program_entries(store, hub_project)
+        items.append(_project_summary(hub_project, project, programs=programs))
     items.sort(key=lambda x: str(x.get("title") or ""))
     return items
 
@@ -143,45 +274,82 @@ def projects_grouped(request: Request) -> dict[str, Any]:
     config: HubConfig = request.app.state.hub_config
     store: HubStore = request.app.state.hub_store
     members = _viewable_members(request, config, store)
-    composites = list_hub_composites(members)
+
+    # Attach programs (HubProject field, else snapshot meta) for grouping + composites.
+    enriched: list[tuple[HubProject, dict[str, Any], list[dict[str, str]]]] = []
+    for hub_project, project in members:
+        programs = _member_program_entries(store, hub_project)
+        if programs and not hub_project.programs:
+            hub_project.programs = programs
+        enriched.append((hub_project, project, programs))
+
+    composites = list_hub_composites([(hp, proj) for hp, proj, _programs in enriched])
     hidden_member_ids: set[str] = set()
     for composite in composites:
         hidden_member_ids.update(composite.get("member_ids") or [])
 
-    projects: list[dict[str, Any]] = []
-    seen_ids: set[str] = set()
-    for hub_project, project in members:
-        pid = str(project.get("id") or hub_project.slug)
-        if pid in hidden_member_ids or pid in seen_ids:
+    program_meta: dict[str, dict[str, str]] = {}
+    membership: dict[str, list[dict[str, Any]]] = {}
+    all_summaries: dict[str, dict[str, Any]] = {}
+
+    for hub_project, project, programs in enriched:
+        summary = _project_summary(hub_project, project, programs=programs)
+        pid = str(summary["id"])
+        if pid in all_summaries:
             continue
-        seen_ids.add(pid)
-        summary = _project_summary(hub_project, project)
-        if hub_project.composite_id:
-            summary["composite_id"] = hub_project.composite_id
-        projects.append(summary)
-    projects.sort(key=lambda x: str(x.get("title") or ""))
+        all_summaries[pid] = summary
+        for entry in programs:
+            program_id = entry["id"]
+            existing = program_meta.get(program_id)
+            if existing is None or (
+                entry["title"] != program_id and existing["title"] == program_id
+            ):
+                program_meta[program_id] = {
+                    "title": entry["title"],
+                    "description": entry.get("description") or "",
+                }
+            membership.setdefault(program_id, []).append(summary)
 
     lab = get_laboratory()
-    if composites:
-        return {
-            "laboratory": lab,
-            "composites": composites,
-            "groups": [
-                {
-                    "id": "",
-                    "title": "Проекты",
-                    "description": "",
-                    "composites": composites,
-                    "projects": projects,
-                }
-            ],
-            "ungrouped": [],
+    groups: list[dict[str, Any]] = []
+    assigned: set[str] = set()
+
+    for program_id in sorted(membership.keys()):
+        projects = []
+        for summary in membership[program_id]:
+            pid = str(summary["id"])
+            if pid in hidden_member_ids:
+                continue
+            projects.append(summary)
+            assigned.add(pid)
+        program_composites = [
+            comp for comp in composites if program_id in (comp.get("programs") or [])
+        ]
+        meta = program_meta.get(program_id) or {
+            "title": program_id,
+            "description": "",
         }
+        groups.append(
+            {
+                "id": program_id,
+                "title": meta["title"],
+                "description": meta.get("description") or "",
+                "composites": program_composites,
+                "projects": projects,
+            }
+        )
+
+    ungrouped = [
+        summary
+        for pid, summary in sorted(all_summaries.items())
+        if pid not in assigned and pid not in hidden_member_ids
+    ]
+
     return {
         "laboratory": lab,
-        "composites": [],
-        "groups": [],
-        "ungrouped": projects,
+        "composites": composites,
+        "groups": groups,
+        "ungrouped": ungrouped,
     }
 
 
@@ -228,13 +396,28 @@ def get_project(request: Request, project_id: str) -> dict[str, Any]:
 
 
 @router.get("/projects/{project_id}/kanban/running-activity")
-def kanban_running_activity(_request: Request, project_id: str) -> dict[str, Any]:
-    return {"project_id": project_id, "cards": []}
+def kanban_running_activity(request: Request, project_id: str) -> dict[str, Any]:
+    # Virtual composite ids are resolved client-side from member projects.
+    if project_id.startswith("composite:") or project_id == "composite":
+        return {"ok": True, "project_id": project_id, "items": []}
+    _config, store, hub_project = _resolve_hub_project(request, project_id)
+    project = _snapshot_project(store, hub_project.slug)
+    if project is None:
+        raise HTTPException(404, "Snapshot missing")
+    snap = store.get_snapshot(hub_project.slug) or {}
+    cached = snap.get("running_activity")
+    if isinstance(cached, list) and cached:
+        items = cached
+    else:
+        items = running_activity_for_project(
+            project, author=hub_project.owner_login or "коллега"
+        )
+    return {"ok": True, "project_id": project_id, "items": items}
 
 
 @router.get("/projects/{project_id}/kanban/live-monitor")
 def kanban_live_monitor(_request: Request, project_id: str) -> dict[str, Any]:
-    return {"project_id": project_id, "boards": {}}
+    return {"ok": True, "project_id": project_id, "items": [], "boards": {}}
 
 
 @router.get("/projects/{project_id}/boards/{board_id}/dag-layout")
@@ -271,26 +454,101 @@ def get_board_dag_layout(request: Request, project_id: str, board_id: str) -> di
 
 
 @router.get("/projects/{project_id}/boards/{board_id}/cards/{card_id}/report")
-def card_report_stub(
+def card_report(
     request: Request, project_id: str, board_id: str, card_id: str
 ) -> dict[str, Any]:
-    project = get_project(request, project_id)
-    boards = project.get("boards") or {}
-    board = boards.get(board_id) or {}
-    card = next((c for c in board.get("cards") or [] if c.get("id") == card_id), None)
-    if not card:
-        raise HTTPException(404, "Card not found")
-    desc = str(card.get("description") or "").strip()
-    content = desc or f"_Отчёт недоступен в Hub (только снимок канбана). Карточка: {card.get('title', card_id)}._"
-    return {"content": content, "path": None, "readonly": True}
+    _config, store, hub_project = _resolve_hub_project(request, project_id)
+    project = _snapshot_project(store, hub_project.slug)
+    if project is None:
+        raise HTTPException(404, "Snapshot missing")
+    return _read_hub_card_report(store, hub_project.slug, project, board_id, card_id)
 
 
 @router.get("/projects/{project_id}/boards/{board_id}/cards/{card_id}/report-path")
-def card_report_path_stub(
+def card_report_path(
     request: Request, project_id: str, board_id: str, card_id: str
 ) -> dict[str, Any]:
-    card_report_stub(request, project_id, board_id, card_id)
-    return {"path": None, "readonly": True}
+    data = card_report(request, project_id, board_id, card_id)
+    return {
+        "card_id": card_id,
+        "relative_path": data.get("relative_path"),
+        "path": data.get("relative_path") or data.get("path"),
+        "readonly": True,
+    }
+
+
+@router.get(
+    "/projects/{project_id}/boards/{board_id}/cards/{card_id}/report/assets/{asset_name:path}"
+)
+def card_report_asset(
+    request: Request,
+    project_id: str,
+    board_id: str,
+    card_id: str,
+    asset_name: str,
+) -> FileResponse:
+    _config, store, hub_project = _resolve_hub_project(request, project_id)
+    project = _snapshot_project(store, hub_project.slug)
+    if project is None:
+        raise HTTPException(404, "Snapshot missing")
+    index = _load_reports_index(store, hub_project.slug)
+    rel = index.get(card_id)
+    if not rel:
+        raise HTTPException(404, "Report not found")
+    owner_dir = rel.rsplit("/", 1)[0] if "/" in rel else ""
+    safe = asset_name.strip().lstrip("/")
+    if not safe or ".." in Path(safe).parts:
+        raise HTTPException(400, "Invalid asset path")
+    candidates = [
+        f"{owner_dir}/assets/{safe}" if owner_dir else f"assets/{safe}",
+        f"{owner_dir}/{safe}" if owner_dir else safe,
+    ]
+    for candidate in candidates:
+        path = store.resolve_report_file(hub_project.slug, candidate)
+        if path is not None:
+            return FileResponse(path)
+    raise HTTPException(404, "Asset not found")
+
+
+@router.get("/projects/{project_id}/knowledge/asset")
+def knowledge_asset(
+    request: Request,
+    project_id: str,
+    path: str = Query(..., min_length=1),
+) -> FileResponse:
+    _config, store, hub_project = _resolve_hub_project(request, project_id)
+    raw = path.strip().lstrip("/")
+    if not raw or ".." in Path(raw).parts:
+        raise HTTPException(400, "Invalid path")
+    if not raw.startswith("reports/"):
+        raise HTTPException(404, f"Файл не найден: {path}")
+    rel = raw[len("reports/") :]
+    file_path = store.resolve_report_file(hub_project.slug, rel)
+    if file_path is None:
+        raise HTTPException(404, f"Файл не найден: {path}")
+    return FileResponse(file_path)
+
+
+@router.get("/projects/{project_id}/knowledge/file")
+def knowledge_file(
+    request: Request,
+    project_id: str,
+    path: str = Query(..., min_length=1),
+) -> PlainTextResponse:
+    _config, store, hub_project = _resolve_hub_project(request, project_id)
+    raw = path.strip().lstrip("/")
+    if not raw or ".." in Path(raw).parts or not raw.endswith(".md"):
+        raise HTTPException(400, "Invalid path")
+    if not raw.startswith("reports/"):
+        raise HTTPException(404, f"Файл не найден: {path}")
+    rel = raw[len("reports/") :]
+    file_path = store.resolve_report_file(hub_project.slug, rel)
+    if file_path is None:
+        raise HTTPException(404, f"Файл не найден: {path}")
+    return PlainTextResponse(
+        file_path.read_text(encoding="utf-8"),
+        media_type="text/markdown; charset=utf-8",
+    )
 
 
 @router.get("/settings")

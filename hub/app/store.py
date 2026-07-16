@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import mimetypes
 import secrets
+import shutil
 import uuid
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -37,6 +39,7 @@ class HubProject:
     visibility: str  # public | network | unlisted
     secret_token: str = ""
     composite_id: str = ""
+    programs: list[dict[str, str]] = field(default_factory=list)
     enabled: bool = True
     last_sync_at: str = ""
     last_commit: str = ""
@@ -47,6 +50,28 @@ def parse_hub_project(raw: dict) -> HubProject:
     data = dict(raw)
     data.setdefault("enabled", True)
     data.setdefault("composite_id", "")
+    data.setdefault("programs", [])
+    programs = data.get("programs") or []
+    if not isinstance(programs, list):
+        programs = []
+    normalized: list[dict[str, str]] = []
+    for item in programs:
+        if isinstance(item, dict):
+            pid = str(item.get("id") or "").strip()
+            if not pid:
+                continue
+            normalized.append(
+                {
+                    "id": pid,
+                    "title": str(item.get("title") or pid),
+                    "description": str(item.get("description") or ""),
+                }
+            )
+        elif item:
+            pid = str(item).strip()
+            if pid:
+                normalized.append({"id": pid, "title": pid, "description": ""})
+    data["programs"] = normalized
     return HubProject(**data)
 
 
@@ -151,13 +176,17 @@ class HubStore:
         if self._s3:
             self._s3.delete_object(Bucket=self.config.s3_bucket, Key=f"projects/{slug}.json")
             self._s3.delete_object(Bucket=self.config.s3_bucket, Key=f"snapshots/{slug}.json")
+            self._delete_prefix(f"reports/{slug}/")
         else:
             project_path = self.config.data_dir / "projects" / f"{slug}.json"
             snapshot_path = self.config.data_dir / "snapshots" / f"{slug}.json"
+            reports_path = self.reports_dir(slug)
             if project_path.exists():
                 project_path.unlink()
             if snapshot_path.exists():
                 snapshot_path.unlink()
+            if reports_path.exists():
+                shutil.rmtree(reports_path, ignore_errors=True)
         index = self._read_json("projects/index.json") or []
         if slug in index:
             index = [s for s in index if s != slug]
@@ -168,6 +197,90 @@ class HubStore:
 
     def get_snapshot(self, slug: str) -> Optional[dict[str, Any]]:
         return self._read_json(f"snapshots/{slug}.json")
+
+    def reports_dir(self, slug: str) -> Path:
+        return self.config.data_dir / "reports" / slug
+
+    def save_reports_tree(self, slug: str, src: Path) -> int:
+        """Copy ``koi-structure/reports`` into Hub storage. Returns file count."""
+        if not src.is_dir():
+            self._clear_reports(slug)
+            return 0
+        if self._s3:
+            self._delete_prefix(f"reports/{slug}/")
+            count = 0
+            for path in src.rglob("*"):
+                if not path.is_file():
+                    continue
+                rel = path.relative_to(src).as_posix()
+                key = f"reports/{slug}/{rel}"
+                body = path.read_bytes()
+                content_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+                self._s3.put_object(
+                    Bucket=self.config.s3_bucket,
+                    Key=key,
+                    Body=body,
+                    ContentType=content_type,
+                )
+                count += 1
+            return count
+
+        dest = self.reports_dir(slug)
+        if dest.exists():
+            shutil.rmtree(dest, ignore_errors=True)
+        shutil.copytree(src, dest)
+        return sum(1 for p in dest.rglob("*") if p.is_file())
+
+    def resolve_report_file(self, slug: str, relative: str) -> Optional[Path]:
+        """Resolve a path under stored reports/; materializes from S3 when needed."""
+        rel = relative.strip().lstrip("/")
+        if not rel or ".." in Path(rel).parts:
+            return None
+        if self._s3:
+            key = f"reports/{slug}/{rel}"
+            cache = self.config.data_dir / ".s3-cache" / "reports" / slug / rel
+            try:
+                obj = self._s3.get_object(Bucket=self.config.s3_bucket, Key=key)
+                cache.parent.mkdir(parents=True, exist_ok=True)
+                cache.write_bytes(obj["Body"].read())
+                return cache
+            except Exception:
+                return None
+        path = (self.reports_dir(slug) / rel).resolve()
+        root = self.reports_dir(slug).resolve()
+        if not str(path).startswith(str(root) + "/") and path != root:
+            return None
+        return path if path.is_file() else None
+
+    def _clear_reports(self, slug: str) -> None:
+        if self._s3:
+            self._delete_prefix(f"reports/{slug}/")
+            return
+        dest = self.reports_dir(slug)
+        if dest.exists():
+            shutil.rmtree(dest, ignore_errors=True)
+
+    def _delete_prefix(self, prefix: str) -> None:
+        if not self._s3:
+            return
+        token = None
+        while True:
+            kwargs: dict[str, Any] = {
+                "Bucket": self.config.s3_bucket,
+                "Prefix": prefix,
+            }
+            if token:
+                kwargs["ContinuationToken"] = token
+            resp = self._s3.list_objects_v2(**kwargs)
+            objs = [{"Key": item["Key"]} for item in resp.get("Contents") or []]
+            if objs:
+                self._s3.delete_objects(
+                    Bucket=self.config.s3_bucket,
+                    Delete={"Objects": objs},
+                )
+            if not resp.get("IsTruncated"):
+                break
+            token = resp.get("NextContinuationToken")
 
     def create_session(self, github_id: int, access_token: str) -> HubSession:
         session = HubSession(

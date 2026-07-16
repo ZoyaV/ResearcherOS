@@ -27,10 +27,12 @@ from hub.app.auth import (
 from hub.app.config import HubConfig
 from hub.app.github_client import GitHubClient
 from hub.app.koi_loader import project_snapshot, read_koi_meta
+from koi.laboratory.programs import parse_program_entries
 from koi.projects.kanban.layout import load_dag_layouts_from_root
 from hub.app.access import can_view_project_with_store, is_project_listed
 from hub.app.link_utils import parse_hub_project_url, project_share_url, project_view_href
 from hub.app.koi_readonly import router as koi_readonly_router
+from hub.app.running_activity import running_activity_for_project
 from hub.app.project_identity import (
     dedupe_hub_projects,
     find_canonical_slug,
@@ -94,9 +96,13 @@ async def _sync_project(project: HubProject, access_token: str) -> dict[str, Any
             project.title = str(snapshot.get("title") or project.slug)
         meta = read_koi_meta(tmp)
         project.composite_id = str(meta.get("composite_id") or "").strip()
+        project.programs = parse_program_entries(meta.get("programs"))
         project.last_sync_at = datetime.now(timezone.utc).isoformat()
         project.last_commit = commit or ""
         store.save_project(project)
+        reports_src = tmp / "reports"
+        store.save_reports_tree(project.slug, reports_src)
+        owner = store.get_user(project.owner_github_id)
         payload = {
             "meta": {
                 "slug": project.slug,
@@ -104,11 +110,17 @@ async def _sync_project(project: HubProject, access_token: str) -> dict[str, Any
                 "branch": project.branch,
                 "visibility": project.visibility,
                 "owner_login": project.owner_login,
+                "owner_avatar_url": (owner.avatar_url if owner else "")
+                or f"https://avatars.githubusercontent.com/{project.owner_login}?s=64&v=4",
                 "composite_id": project.composite_id,
+                "programs": project.programs,
                 "last_sync_at": project.last_sync_at,
             },
             "project": snapshot,
             "dag_layouts": load_dag_layouts_from_root(tmp),
+            "running_activity": running_activity_for_project(
+                snapshot, author=project.owner_login or "коллега"
+            ),
         }
         store.save_snapshot(project.slug, payload)
         return payload
@@ -570,6 +582,24 @@ def get_project(
     snap = store.get_snapshot(slug)
     if snap is None:
         raise HTTPException(404, "Snapshot missing — owner should sync")
+    # Enrich avatar for UI without requiring a re-sync.
+    meta = snap.get("meta") if isinstance(snap.get("meta"), dict) else {}
+    if not meta.get("owner_avatar_url"):
+        owner = store.get_user(project.owner_github_id)
+        avatar = (owner.avatar_url if owner else "") or (
+            f"https://avatars.githubusercontent.com/{project.owner_login}?s=64&v=4"
+            if project.owner_login
+            else ""
+        )
+        if avatar:
+            snap = {
+                **snap,
+                "meta": {
+                    **meta,
+                    "owner_login": meta.get("owner_login") or project.owner_login,
+                    "owner_avatar_url": avatar,
+                },
+            }
     return snap
 
 
@@ -588,13 +618,11 @@ def manage_page() -> RedirectResponse:
     return RedirectResponse(url="/?tab=mine", status_code=302)
 
 
-@app.get("/onboarding", response_class=HTMLResponse)
-def onboarding_page() -> FileResponse:
-    return FileResponse(WEB_ROOT / "onboarding.html")
-
-
 @app.get("/p/{slug}", response_class=HTMLResponse)
-def project_page() -> FileResponse:
+def project_page(slug: str) -> FileResponse:
+    # Relative asset misses (app.js, styles.css) must not be treated as projects.
+    if "." in slug or slug in {"app.js", "styles.css"}:
+        raise HTTPException(404, "Not found")
     index = CORE_WEB_ROOT / "index.html"
     if not index.exists():
         raise HTTPException(503, "Core web UI not found")
