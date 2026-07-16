@@ -238,5 +238,6 @@ Where research lives: tree + kanban in UI or `koi-structure/project.md`; reports
 
 | | |
 |---|---|
+| Public site (GitHub Pages) | [docs-site/](docs-site/) → after deploy: `https://zoyav.github.io/ReseacherOS/` |
 | Documentation | [docs/](docs/) |
 | Issues | [github.com/ZoyaV/ReseacherOS/issues](https://github.com/ZoyaV/ReseacherOS/issues) |
