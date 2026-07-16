@@ -30,6 +30,7 @@
 
 | Задача | Как |
 |--------|-----|
+| Спроектировать новый эксперимент (до прогона) | скилл **koi-grill-experiment** — интервью по одному вопросу с рекомендацией: постановка, реализация, таблицы/графики, критерии done; затем черновик §1–§3 и **koi-report-review** |
 | Выполнить карточку канбана | скилл **koi-execute-card** — **сначала** `backlog` → `running`, отмечай `- [x]` в §3 «Подзадачи» **сразу** по мере выполнения, в конце `running` → `done`; затем **koi-done-research** |
 | Проверить гипотезу (карточку канбана) | `python -m koi.projects.report_ingest.cli <project_id> <card_id>`. Если серверный бэкенд недоступен (обычный случай в клоне) — **выполни работу агента сам** (**koi-execute-card**): проведи эксперимент, заполни `agents/skills/koi-report-review/experiment-report.md` → `projects/<id>/reports/<узел>/<карточка>.run.md` (**koi-report-review**, критик 4), затем `… --ingest-only` (сначала `--dry-run`). Публичный отчёт по skeleton — **koi-report-review** на каждой фазе |
 | Вывод по done-карточке | скилл `koi-done-research` (question/narrative — человеческим языком, метрики — в `answer`) |
