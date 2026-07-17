@@ -26,11 +26,37 @@
    очередь `.run/agent-chat-queue.json` — плейбук
    `agents/skills/koi-agent-chat/SKILL.md`.
 
+## Layout проектов (обязательно)
+
+Канон (ADR-001):
+
+```text
+workspace/
+├── ReseachOS/                         # engine (этот репозиторий)
+├── tree/
+│   └── <repo>/koi-structure/          # материалы исследования, ветка koi/research
+└── <repo>/                            # код эксперимента, любая ветка
+```
+
+- Discovery: если папка называется `tree` — на следующем уровне ищи
+  `*/koi-structure/project.md`. Legacy `<repo>/koi-structure/` ещё подхватывается.
+- Пути к дереву/отчётам/KB — через mount (`tree/<repo>/koi-structure/…`), не
+  предполагай, что `koi-structure` лежит внутри code-репо.
+- Установка / миграция layout:
+
+```bash
+python -m koi.projects.install_cli status
+python -m koi.projects.install_cli install <repo>          # или migrate
+python -m koi.projects.install_cli install <name> --create # пустой проект
+```
+
 ## Рабочие циклы
 
 | Задача | Как |
 |--------|-----|
-| Подключить существующий code-репо к ResearchOS | скилл **koi-project-onboard** — диалог → `onboard-brief.md` → clarity loop по titles → prose → `koi-structure/`; если git — orphan push |
+| Подключить существующий code-репо к ResearchOS | скилл **koi-project-onboard** — диалог → brief → clarity → prose → писать в `tree/<repo>/koi-structure/`; затем **`install_cli install <repo>`** (orphan `koi/research` + tree worktree) |
+| Только layout / ветка koi/research без онбординга | `python -m koi.projects.install_cli install <repo>` |
+| Синхронизация research-данных | скилл **koi-project-sync** / `sync_cli push|pull` (working copy = `tree/<repo>/koi-structure`) |
 | Спроектировать новый эксперимент (до прогона) | скилл **koi-grill-experiment** — интервью по одному вопросу с рекомендацией: постановка, реализация, таблицы/графики, критерии done; затем черновик §1–§3 и **koi-report-review** |
 | Выполнить карточку канбана | скилл **koi-execute-card** — **сначала** `backlog` → `running`, отмечай `- [x]` в §3 «Подзадачи» **сразу** по мере выполнения, в конце `running` → `done`; затем **koi-done-research** |
 | Длинный прогон / автоисследование (Manager → Researcher → Debugger) | скилл **koi-card-autoresearch** — роли и cadence поверх **koi-execute-card**; project-specific скилл (например `verl-experiment-run`) подключает скрипты запуска |
@@ -40,7 +66,6 @@
 | Глубокая суммаризация знаний | скилл `koi-knowledge-curator` — кросс-анализ отчётов и инсайтов, курируемые документы в `projects/<id>/knowledge/` |
 | Карточки, описания, человекочитаемый текст | скилл `koi-prose-style` — черновик → subagent-ревью → переписать до PASS, затем запись в файл |
 | Отчёт по эксперименту (постановка / результаты) | скилл `koi-report-review` — критики 1–3 при §1–§3, критик 4 при §4+ / `.run.md` |
-| Синхронизация `projects/` с git | скилл `koi-project-sync` |
 
 ## Форматные ворота (правила; агенту их не обходить)
 
@@ -60,9 +85,12 @@
 
 ## Онбординг и справка
 
-- Attach репо с кодом (агент): скилл `koi-project-onboard` — `agents/skills/koi-project-onboard/SKILL.md`.
+- Layout + install CLI: `python -m koi.projects.install_cli` · ADR
+  `docs/adr-001-project-discovery.md` · README § «Add a project».
+- Attach репо с кодом (агент): скилл `koi-project-onboard` —
+  `agents/skills/koi-project-onboard/SKILL.md` (запись в `tree/<repo>/koi-structure/`).
 - Полный путь новичка (для людей): `docs/human/getting-started.md`.
 - Доменная модель: `docs/domain-model.md`.
-- Документация: `docs/README.md`.
+- Документация: `docs/README.md` · публичный сайт: `docs-site/start/`.
 - Процесс накопления знаний и матрица ревью: `docs/research-workflow.md`.
 - Inbox-чат UI: `docs/agent-chat-inbox.md`.

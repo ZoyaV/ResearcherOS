@@ -107,15 +107,25 @@ API и агент добавляют записи при значимых изм
 
 ## Связанные скиллы
 
-- `koi-project-onboard` — после attach дерева сам вызывает `init-sync-branch` +
-  `push` на orphan-ветку репо человека (§6c); дальше обычный sync здесь
+- `koi-project-onboard` — после attach пишет в `tree/<repo>/koi-structure/` и
+  вызывает `install_cli` + первый `push` (§6c); дальше обычный sync здесь
 - `koi-done-research` — после вывода проверь push
-- `koi-dev-server` — API пишет в `projects/`, очередь push пополняется автоматически
+- `koi-dev-server` — API пишет в mounts, очередь push пополняется автоматически
 - `loop` — фоновый pull каждые 30 мин
 
-## Sibling repos (`koi-structure/` + orphan branch)
+## Sibling repos (`tree/<repo>/koi-structure` + orphan branch)
 
-Для проектов с `git_repo: true` и `git_sync_branch` каноничный CLI:
+Канон: working copy research-данных — `tree/<repo>/koi-structure/` (git worktree
+на `git_sync_branch`, обычно `koi/research`). Code-репо — sibling `<repo>/`.
+
+Если layout ещё не `tree/`:
+
+```bash
+python -m koi.projects.install_cli status
+python -m koi.projects.install_cli install <repo>   # или migrate
+```
+
+Для проектов с `git_repo: true` и `git_sync_branch` каноничный sync CLI:
 
 ```bash
 python -m koi.projects.sync_cli init-sync-branch --project-id <id>
@@ -123,3 +133,6 @@ python -m koi.projects.sync_cli push --project-id <id>
 python -m koi.projects.sync_cli pull --project-id <id>
 python -m koi.projects.sync_cli status
 ```
+
+Push/pull работают с mount `koi_root` (под `tree/`); не копируй дерево обратно
+в code-ветку.
