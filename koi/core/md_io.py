@@ -134,16 +134,17 @@ def _parse_card_comment(meta: str) -> tuple[Optional[str], str, list[str], list[
     if deps_m:
         depends_on = _parse_card_deps(deps_m.group(1).strip())
 
-    tags_m = re.search(r"\btags:(.+?)\s*$", meta)
-    meta_without_tags = meta
+    # Same token shape as deps — not $-anchored. Writer emits `tags:… deps:…`,
+    # so a trailing tags:(.+?)$ would swallow deps and drop/corrupt tags.
+    tags_m = re.search(r"\btags:([^\s]+)", meta)
     if tags_m:
         tags = _parse_card_tags(tags_m.group(1).strip())
-        meta_without_tags = meta[: tags_m.start()].rstrip()
 
-    if deps_m:
-        meta_without_tags = meta_without_tags[: deps_m.start()].rstrip()
+    meta_for_desc = meta
+    for m in sorted((m for m in (deps_m, tags_m) if m), key=lambda m: m.start(), reverse=True):
+        meta_for_desc = (meta_for_desc[: m.start()] + meta_for_desc[m.end() :]).rstrip()
 
-    desc_m = re.search(r"\bdesc:(.*)$", meta_without_tags, re.DOTALL)
+    desc_m = re.search(r"\bdesc:(.*)$", meta_for_desc, re.DOTALL)
     if desc_m:
         desc = _decode_card_desc(desc_m.group(1).strip())
 

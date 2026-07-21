@@ -162,3 +162,44 @@ Method
     reloaded = parse_project_md(reserialized, project_id="proj-deps")
     reloaded_by_id = {c.id: c.depends_on for c in reloaded.boards[0].cards}
     assert reloaded_by_id == {"c-a": [], "c-b": ["c-a"]}
+
+
+def test_roundtrip_preserves_card_tags_with_depends_on() -> None:
+    """Tags and deps share the same HTML comment; both write orders must roundtrip."""
+    text = """---
+id: proj-tags-deps
+title: Tags and deps
+card_tags:
+  - gpu
+  - ablation
+---
+# problem: root
+
+Root
+
+#### method: m1
+
+Method
+
+<!-- koi:kanban board-m1 -->
+| backlog | running | done | successful |
+| --- | --- | --- | --- |
+| Writer order <!-- id:c-writer desc:plan tags:gpu,ablation deps:c-base --> | | | |
+| Deps first <!-- id:c-legacy desc:legacy deps:c-base tags:gpu --> | | Base <!-- id:c-base desc:baseline --> | |
+"""
+    project = parse_project_md(text, project_id="proj-tags-deps")
+    by_id = {c.id: c for c in project.boards[0].cards}
+    assert by_id["c-writer"].tags == ["gpu", "ablation"]
+    assert by_id["c-writer"].depends_on == ["c-base"]
+    assert by_id["c-legacy"].tags == ["gpu"]
+    assert by_id["c-legacy"].depends_on == ["c-base"]
+
+    reserialized = serialize_project_md(project)
+    assert "tags:gpu,ablation" in reserialized
+    assert "deps:c-base" in reserialized
+    reloaded = parse_project_md(reserialized, project_id="proj-tags-deps")
+    reloaded_by_id = {c.id: c for c in reloaded.boards[0].cards}
+    assert reloaded_by_id["c-writer"].tags == ["gpu", "ablation"]
+    assert reloaded_by_id["c-writer"].depends_on == ["c-base"]
+    assert reloaded_by_id["c-legacy"].tags == ["gpu"]
+    assert reloaded_by_id["c-legacy"].depends_on == ["c-base"]
