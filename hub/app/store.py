@@ -177,26 +177,154 @@ class HubStore:
             self._s3.delete_object(Bucket=self.config.s3_bucket, Key=f"projects/{slug}.json")
             self._s3.delete_object(Bucket=self.config.s3_bucket, Key=f"snapshots/{slug}.json")
             self._delete_prefix(f"reports/{slug}/")
+            self._delete_prefix(f"skills/entries/{slug}/")
         else:
             project_path = self.config.data_dir / "projects" / f"{slug}.json"
             snapshot_path = self.config.data_dir / "snapshots" / f"{slug}.json"
             reports_path = self.reports_dir(slug)
+            skills_path = self.config.data_dir / "skills" / "entries" / slug
             if project_path.exists():
                 project_path.unlink()
             if snapshot_path.exists():
                 snapshot_path.unlink()
             if reports_path.exists():
                 shutil.rmtree(reports_path, ignore_errors=True)
+            if skills_path.exists():
+                shutil.rmtree(skills_path, ignore_errors=True)
         index = self._read_json("projects/index.json") or []
         if slug in index:
             index = [s for s in index if s != slug]
             self._write_json("projects/index.json", index)
+        self.clear_project_skills(slug)
 
     def save_snapshot(self, slug: str, payload: dict[str, Any]) -> None:
         self._write_json(f"snapshots/{slug}.json", payload)
 
     def get_snapshot(self, slug: str) -> Optional[dict[str, Any]]:
         return self._read_json(f"snapshots/{slug}.json")
+
+    # --- Public skills pool (git SoT → snapshot on sync) ---
+
+    def _skill_entry_key(self, project_slug: str, skill_id: str) -> str:
+        return f"skills/entries/{project_slug}/{skill_id}.json"
+
+    def get_skill(self, project_slug: str, skill_id: str) -> Optional[dict[str, Any]]:
+        return self._read_json(self._skill_entry_key(project_slug, skill_id))
+
+    def list_skills_catalog(self) -> list[dict[str, Any]]:
+        rows = self._read_json("skills/index.json") or []
+        return rows if isinstance(rows, list) else []
+
+    def clear_project_skills(self, project_slug: str) -> None:
+        """Remove all skills published from a project and refresh the catalog."""
+        if self._s3:
+            self._delete_prefix(f"skills/entries/{project_slug}/")
+        else:
+            path = self.config.data_dir / "skills" / "entries" / project_slug
+            if path.exists():
+                shutil.rmtree(path, ignore_errors=True)
+        self._write_json(f"skills/by-project/{project_slug}.json", [])
+        self._rebuild_skills_index()
+
+    def replace_project_skills(
+        self, project_slug: str, entries: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """Replace the skill set for one project, then rebuild the global catalog."""
+        prev_ids = self._read_json(f"skills/by-project/{project_slug}.json") or []
+        if not isinstance(prev_ids, list):
+            prev_ids = []
+        new_ids = [str(e["id"]) for e in entries if e.get("id")]
+        removed = [sid for sid in prev_ids if sid not in new_ids]
+        for skill_id in removed:
+            self._delete_skill_entry(project_slug, skill_id)
+        for entry in entries:
+            skill_id = str(entry.get("id") or "").strip()
+            if not skill_id:
+                continue
+            self._write_json(self._skill_entry_key(project_slug, skill_id), entry)
+        self._write_json(f"skills/by-project/{project_slug}.json", new_ids)
+        self._rebuild_skills_index()
+        return new_ids
+
+    def _delete_skill_entry(self, project_slug: str, skill_id: str) -> None:
+        key = self._skill_entry_key(project_slug, skill_id)
+        if self._s3:
+            try:
+                self._s3.delete_object(Bucket=self.config.s3_bucket, Key=key)
+            except Exception:
+                pass
+            return
+        path = self.config.data_dir / key
+        if path.exists():
+            path.unlink()
+
+    def _rebuild_skills_index(self) -> None:
+        """Rebuild ``skills/index.json`` from all by-project id lists."""
+        by_project_index = self._read_json("skills/by-project/index.json")
+        # Discover project slugs that have skill lists.
+        project_slugs: list[str] = []
+        if self._s3:
+            prefix = "skills/by-project/"
+            token = None
+            while True:
+                kwargs: dict[str, Any] = {
+                    "Bucket": self.config.s3_bucket,
+                    "Prefix": prefix,
+                }
+                if token:
+                    kwargs["ContinuationToken"] = token
+                resp = self._s3.list_objects_v2(**kwargs)
+                for item in resp.get("Contents") or []:
+                    key = str(item.get("Key") or "")
+                    name = key[len(prefix) :]
+                    if name.endswith(".json") and name != "index.json":
+                        project_slugs.append(name[: -len(".json")])
+                if not resp.get("IsTruncated"):
+                    break
+                token = resp.get("NextContinuationToken")
+        else:
+            root = self.config.data_dir / "skills" / "by-project"
+            if root.is_dir():
+                for path in root.glob("*.json"):
+                    if path.name == "index.json":
+                        continue
+                    project_slugs.append(path.stem)
+
+        # Keep discovery list for debugging; not required for reads.
+        if by_project_index is None or set(by_project_index or []) != set(project_slugs):
+            self._write_json("skills/by-project/index.json", sorted(set(project_slugs)))
+
+        catalog: list[dict[str, Any]] = []
+        for slug in sorted(set(project_slugs)):
+            ids = self._read_json(f"skills/by-project/{slug}.json") or []
+            if not isinstance(ids, list):
+                continue
+            for skill_id in ids:
+                entry = self.get_skill(slug, str(skill_id))
+                if not entry:
+                    continue
+                catalog.append(
+                    {
+                        "key": entry.get("key") or f"{slug}/{skill_id}",
+                        "id": entry.get("id") or skill_id,
+                        "title": entry.get("title") or skill_id,
+                        "summary": entry.get("summary") or "",
+                        "project_slug": entry.get("project_slug") or slug,
+                        "project_title": entry.get("project_title") or "",
+                        "owner_login": entry.get("owner_login") or "",
+                        "repo_full_name": entry.get("repo_full_name") or "",
+                        "synced_at": entry.get("synced_at") or "",
+                        "has_skill_md": bool(entry.get("has_skill_md")),
+                        "view_url": entry.get("view_url")
+                        or f"/skills/{slug}/{skill_id}",
+                        "project_url": entry.get("project_url") or f"/p/{slug}",
+                    }
+                )
+        catalog.sort(
+            key=lambda row: (row.get("synced_at") or "", row.get("title") or ""),
+            reverse=True,
+        )
+        self._write_json("skills/index.json", catalog)
 
     def reports_dir(self, slug: str) -> Path:
         return self.config.data_dir / "reports" / slug
@@ -355,6 +483,44 @@ class HubStore:
             if not (r.get("user_id") == user_id and r.get("slug") == slug)
         ]
         self._write_json("social/bookmarks.json", rows)
+
+    def _likes_key(self, slug: str) -> str:
+        return f"social/likes/{slug}.json"
+
+    def get_likes(self, slug: str) -> dict[str, Any]:
+        raw = self._read_json(self._likes_key(slug)) or {}
+        user_ids: list[int] = []
+        for item in raw.get("user_ids") or []:
+            try:
+                user_ids.append(int(item))
+            except (TypeError, ValueError):
+                continue
+        # Preserve order, drop duplicates.
+        seen: set[int] = set()
+        ordered: list[int] = []
+        for uid in user_ids:
+            if uid in seen:
+                continue
+            seen.add(uid)
+            ordered.append(uid)
+        return {
+            "user_ids": ordered,
+            "updated_at": str(raw.get("updated_at") or ""),
+            "count": len(ordered),
+        }
+
+    def toggle_like(self, user_id: int, slug: str) -> dict[str, Any]:
+        data = self.get_likes(slug)
+        user_ids = list(data["user_ids"])
+        if user_id in user_ids:
+            user_ids = [uid for uid in user_ids if uid != user_id]
+            liked = False
+        else:
+            user_ids.append(user_id)
+            liked = True
+        payload = {"user_ids": user_ids, "updated_at": _utcnow()}
+        self._write_json(self._likes_key(slug), payload)
+        return {"liked": liked, "count": len(user_ids)}
 
     @staticmethod
     def new_slug(title: str, repo_full_name: str) -> str:

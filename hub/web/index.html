@@ -8,11 +8,16 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/core/styles.css?v=20260713q" />
-  <link rel="stylesheet" href="/static/hub-overrides.css?v=13" />
+  <link rel="stylesheet" href="/static/hub-overrides.css?v=19" />
   <script>
     (function () {
+      // Hub catalog defaults to light; respect an explicit saved preference.
       var t = localStorage.getItem("koi-theme");
-      if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t);
+      if (t !== "light" && t !== "dark") t = "light";
+      document.documentElement.setAttribute("data-theme", t);
+      try {
+        localStorage.setItem("koi-theme", t);
+      } catch (_) {}
     })();
   </script>
 </head>
@@ -23,8 +28,18 @@
         <div class="brand hub-brand">
           <a href="/" class="hub-brand__link"><span class="hub-brand__name">ResearchOS</span><span class="hub-brand__hub">Hub</span></a>
         </div>
+        <nav class="hub-nav" aria-label="Разделы">
+          <a href="/" class="hub-nav__link is-active" aria-current="page">Проекты</a>
+          <a href="/skills" class="hub-nav__link">Skills</a>
+        </nav>
       </div>
-      <div class="toolbar hub-topbar__tools" id="auth-toolbar"></div>
+      <div class="toolbar hub-topbar__tools">
+        <button type="button" id="btn-theme" class="btn btn-theme" title="Тёмная тема" aria-label="Включить тёмную тему">
+          <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"/><path fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+          <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 14.5A8.5 8.5 0 0 1 9.5 3 7 7 0 1 0 21 14.5z"/></svg>
+        </button>
+        <div id="auth-toolbar"></div>
+      </div>
     </div>
   </header>
 
@@ -70,7 +85,7 @@
       </form>
     </div>
   </div>
-  <script src="/static/hub-shell.js?v=1"></script>
-  <script src="/static/hub.js?v=15"></script>
+  <script src="/static/hub-shell.js?v=2"></script>
+  <script src="/static/hub.js?v=20"></script>
 </body>
 </html>

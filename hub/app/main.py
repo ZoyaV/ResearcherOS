@@ -40,6 +40,7 @@ from hub.app.project_identity import (
     source_key,
 )
 from hub.app.store import HubProject, HubStore
+from hub.app.skills import public_skills_for_publish, skill_to_entry
 
 HUB_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = HUB_ROOT.parent
@@ -123,6 +124,28 @@ async def _sync_project(project: HubProject, access_token: str) -> dict[str, Any
             ),
         }
         store.save_snapshot(project.slug, payload)
+        # Skills pool: only from enabled public projects; else clear.
+        if project.enabled and project.visibility == "public":
+            skill_entries = [
+                skill_to_entry(
+                    skill,
+                    project_slug=project.slug,
+                    project_title=project.title,
+                    owner_login=project.owner_login,
+                    repo_full_name=project.repo_full_name,
+                    branch=project.branch,
+                    synced_at=project.last_sync_at,
+                )
+                for skill in public_skills_for_publish(tmp)
+            ]
+            published_ids = store.replace_project_skills(project.slug, skill_entries)
+            payload["skills"] = {
+                "published": published_ids,
+                "count": len(published_ids),
+            }
+        else:
+            store.clear_project_skills(project.slug)
+            payload["skills"] = {"published": [], "count": 0}
         return payload
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
@@ -249,6 +272,7 @@ def _catalog_project_item(
     is_following = is_self or (
         viewer_id is not None and project.owner_github_id in following
     )
+    likes = store.get_likes(project.slug)
     href = view_href or project_view_href(project)
     return {
         "slug": project.slug,
@@ -263,6 +287,10 @@ def _catalog_project_item(
         "is_self": is_self,
         "view_href": href,
         "saved_by_link": saved_by_link,
+        "like_count": likes["count"],
+        "liked_by_me": bool(
+            viewer_id is not None and viewer_id in likes["user_ids"]
+        ),
         "preview": {
             "node_count": len((snap or {}).get("project", {}).get("nodes", [])),
         },
@@ -415,28 +443,49 @@ def api_follow(request: Request, body: FollowBody) -> dict[str, bool]:
     return {"ok": True}
 
 
+@app.post("/api/projects/{slug}/like")
+def api_toggle_like(
+    request: Request,
+    slug: str,
+    token: Optional[str] = Query(default=None),
+) -> dict[str, Any]:
+    session = require_session(request, config, store)
+    project = store.get_project(slug)
+    if project is None or not project.enabled:
+        raise HTTPException(404, "Project not found")
+    if not can_view_project_with_store(project, session.github_id, store, token=token):
+        raise HTTPException(403, "Not allowed to like this project")
+    result = store.toggle_like(session.github_id, project.slug)
+    return {"ok": True, "slug": project.slug, **result}
+
+
 @app.get("/api/projects/mine")
 def projects_mine(request: Request) -> dict[str, Any]:
     session = require_session(request, config, store)
-    items = [
-        {
-            "slug": p.slug,
-            "title": p.title,
-            "repo_full_name": p.repo_full_name,
-            "branch": p.branch,
-            "visibility": p.visibility,
-            "enabled": p.enabled,
-            "is_canonical": find_canonical_slug(store, p) == p.slug,
-            "canonical_slug": find_canonical_slug(store, p),
-            "secret_token": p.secret_token if p.visibility == "unlisted" else None,
-            "share_url": project_share_url(config, p),
-            "last_sync_at": p.last_sync_at,
-            "view_url": f"/p/{p.slug}",
-            "view_href": project_view_href(p),
-        }
-        for p in store.list_projects()
-        if p.owner_github_id == session.github_id
-    ]
+    items = []
+    for p in store.list_projects():
+        if p.owner_github_id != session.github_id:
+            continue
+        likes = store.get_likes(p.slug)
+        items.append(
+            {
+                "slug": p.slug,
+                "title": p.title,
+                "repo_full_name": p.repo_full_name,
+                "branch": p.branch,
+                "visibility": p.visibility,
+                "enabled": p.enabled,
+                "is_canonical": find_canonical_slug(store, p) == p.slug,
+                "canonical_slug": find_canonical_slug(store, p),
+                "secret_token": p.secret_token if p.visibility == "unlisted" else None,
+                "share_url": project_share_url(config, p),
+                "last_sync_at": p.last_sync_at,
+                "view_url": f"/p/{p.slug}",
+                "view_href": project_view_href(p),
+                "like_count": likes["count"],
+                "liked_by_me": session.github_id in likes["user_ids"],
+            }
+        )
     return {"projects": items}
 
 
@@ -538,6 +587,8 @@ def update_project(request: Request, slug: str, body: UpdateProjectBody) -> dict
         raise HTTPException(400, "Nothing to update")
     project.enabled = bool(body.enabled)
     store.save_project(project)
+    if not project.enabled or project.visibility != "public":
+        store.clear_project_skills(project.slug)
     return {
         "ok": True,
         "slug": project.slug,
@@ -570,13 +621,12 @@ def get_project(
     session = get_session(request, config, store)
     viewer_id = session.github_id if session else None
 
-    if not project.enabled and project.owner_github_id != viewer_id:
-        raise HTTPException(404, "Project not found")
-
-    if project.visibility == "unlisted":
-        if token != project.secret_token and project.owner_github_id != viewer_id:
+    if not can_view_project_with_store(project, viewer_id, store, token=token):
+        # Unlisted: hide existence unless token / owner / bookmark grants access.
+        if project.visibility == "unlisted" or (
+            not project.enabled and project.owner_github_id != viewer_id
+        ):
             raise HTTPException(404, "Project not found")
-    elif not can_view_project_with_store(project, viewer_id, store):
         raise HTTPException(403, "Not allowed to view this project")
 
     snap = store.get_snapshot(slug)
@@ -603,9 +653,37 @@ def get_project(
     return snap
 
 
+@app.get("/api/catalog/skills")
+def catalog_skills() -> dict[str, Any]:
+    """Global pool of skills published from public Hub projects."""
+    items = store.list_skills_catalog()
+    return {"skills": items, "count": len(items)}
+
+
+@app.get("/api/skills/{project_slug}/{skill_id}")
+def get_skill(project_slug: str, skill_id: str) -> dict[str, Any]:
+    project = store.get_project(project_slug)
+    if project is None or not project.enabled or project.visibility != "public":
+        raise HTTPException(404, "Skill not found")
+    entry = store.get_skill(project_slug, skill_id)
+    if entry is None:
+        raise HTTPException(404, "Skill not found")
+    return entry
+
+
 @app.get("/", response_class=HTMLResponse)
 def index_page() -> FileResponse:
     return FileResponse(WEB_ROOT / "index.html")
+
+
+@app.get("/skills", response_class=HTMLResponse)
+def skills_catalog_page() -> FileResponse:
+    return FileResponse(WEB_ROOT / "skills.html")
+
+
+@app.get("/skills/{project_slug}/{skill_id}", response_class=HTMLResponse)
+def skill_detail_page(project_slug: str, skill_id: str) -> FileResponse:
+    return FileResponse(WEB_ROOT / "skill.html")
 
 
 @app.get("/connect", response_class=HTMLResponse)
