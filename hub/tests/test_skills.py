@@ -48,8 +48,12 @@ def test_public_skills_only(tmp_path: Path) -> None:
     )
     assert entry["key"] == "demo-slug/alpha"
     assert entry["view_url"] == "/skills/demo-slug/alpha"
+    assert entry["download_url"] == "/api/skills/demo-slug/alpha/download"
     assert entry["has_skill_md"] is True
     assert "Body." in entry["readme_md"]
+    paths = {f["path"] for f in entry["files"]}
+    assert paths >= {"manifest.yaml", "README.md", "SKILL.md"}
+    assert "README.md" in entry["file_contents"]
 
 
 def test_id_must_match_folder(tmp_path: Path) -> None:

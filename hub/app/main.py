@@ -40,7 +40,12 @@ from hub.app.project_identity import (
     source_key,
 )
 from hub.app.store import HubProject, HubStore
-from hub.app.skills import public_skills_for_publish, skill_to_entry
+from hub.app.skills import (
+    public_skills_for_publish,
+    skill_file_contents_for_download,
+    skill_public_payload,
+    skill_to_entry,
+)
 
 HUB_ROOT = Path(__file__).resolve().parents[1]
 REPO_ROOT = HUB_ROOT.parent
@@ -668,7 +673,41 @@ def get_skill(project_slug: str, skill_id: str) -> dict[str, Any]:
     entry = store.get_skill(project_slug, skill_id)
     if entry is None:
         raise HTTPException(404, "Skill not found")
-    return entry
+    return skill_public_payload(entry)
+
+
+@app.get("/api/skills/{project_slug}/{skill_id}/download")
+def download_skill(project_slug: str, skill_id: str) -> Response:
+    """Download the skill package as a zip (all text files from sync)."""
+    import io
+    import zipfile
+
+    project = store.get_project(project_slug)
+    if project is None or not project.enabled or project.visibility != "public":
+        raise HTTPException(404, "Skill not found")
+    entry = store.get_skill(project_slug, skill_id)
+    if entry is None:
+        raise HTTPException(404, "Skill not found")
+
+    contents = skill_file_contents_for_download(entry)
+    if not contents:
+        raise HTTPException(404, "Skill package is empty")
+
+    buf = io.BytesIO()
+    root = str(entry.get("id") or skill_id)
+    with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        for rel, text in sorted(contents.items()):
+            zf.writestr(f"{root}/{rel}", text.encode("utf-8"))
+    data = buf.getvalue()
+    filename = f"{root}.zip"
+    return Response(
+        content=data,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Length": str(len(data)),
+        },
+    )
 
 
 @app.get("/", response_class=HTMLResponse)

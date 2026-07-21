@@ -1207,3 +1207,74 @@ body.hub-readonly .kanban-col-body .col-empty:not(.col-empty--filtered) {
   padding: 0.4rem 0.55rem;
   text-align: left;
 }
+
+.hub-skill-files {
+  margin: 0 0 1.5rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg) 90%, var(--border));
+  max-width: 42rem;
+}
+
+.hub-skill-files__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.hub-skill-files__head h2 {
+  margin: 0;
+  font-family: "Syne", system-ui, sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.hub-skill-download {
+  text-decoration: none;
+  font-size: 0.88rem;
+  padding: 0.4rem 0.9rem;
+}
+
+.hub-skill-files__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.hub-skill-files__list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: baseline;
+  font-size: 0.9rem;
+  padding: 0.35rem 0.45rem;
+  border-radius: 6px;
+}
+
+.hub-skill-files__list li:nth-child(odd) {
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+}
+
+.hub-skill-files__list code {
+  font-size: 0.86em;
+  word-break: break-all;
+}
+
+.hub-skill-files__list span {
+  color: var(--muted);
+  white-space: nowrap;
+  font-size: 0.8rem;
+}
+
+.hub-skill-files__empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}

@@ -44,8 +44,8 @@
       var skills = data.skills || [];
       if (!skills.length) {
         root.innerHTML =
-          '<p class="hub-empty">Пока пусто. Положите skill в <code>koi-structure/skills/&lt;id&gt;/</code> ' +
-          "(manifest.yaml + README.md, visibility: public) и сделайте sync публичного проекта.</p>";
+          '<p class="hub-empty">Пока здесь пусто. Когда авторы публичных проектов ' +
+          "поделятся скилами, они появятся в этом каталоге.</p>";
         return;
       }
       root.innerHTML = skills.map(card).join("");

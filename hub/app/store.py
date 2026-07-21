@@ -315,8 +315,11 @@ class HubStore:
                         "repo_full_name": entry.get("repo_full_name") or "",
                         "synced_at": entry.get("synced_at") or "",
                         "has_skill_md": bool(entry.get("has_skill_md")),
+                        "files_count": len(entry.get("files") or []),
                         "view_url": entry.get("view_url")
                         or f"/skills/{slug}/{skill_id}",
+                        "download_url": entry.get("download_url")
+                        or f"/api/skills/{slug}/{skill_id}/download",
                         "project_url": entry.get("project_url") or f"/p/{slug}",
                     }
                 )

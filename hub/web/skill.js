@@ -7,12 +7,56 @@
       .replace(/"/g, "&quot;");
   }
 
+  function formatSize(n) {
+    var bytes = Number(n) || 0;
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  }
+
   function pathParts() {
-    // /skills/{project_slug}/{skill_id}
     var parts = location.pathname.replace(/\/+$/, "").split("/");
     var i = parts.indexOf("skills");
     if (i < 0 || parts.length < i + 3) return null;
-    return { projectSlug: decodeURIComponent(parts[i + 1]), skillId: decodeURIComponent(parts[i + 2]) };
+    return {
+      projectSlug: decodeURIComponent(parts[i + 1]),
+      skillId: decodeURIComponent(parts[i + 2]),
+    };
+  }
+
+  function filesBlock(skill) {
+    var files = skill.files || [];
+    var downloadUrl = skill.download_url || "";
+    var list =
+      files.length === 0
+        ? '<p class="hub-skill-files__empty">Список файлов появится после следующего sync проекта.</p>'
+        : "<ul class=\"hub-skill-files__list\">" +
+          files
+            .map(function (f) {
+              return (
+                "<li><code>" +
+                esc(f.path) +
+                "</code><span>" +
+                esc(formatSize(f.size)) +
+                "</span></li>"
+              );
+            })
+            .join("") +
+          "</ul>";
+
+    return (
+      '<aside class="hub-skill-files">' +
+      '<div class="hub-skill-files__head">' +
+      "<h2>Файлы в пакете</h2>" +
+      (downloadUrl
+        ? '<a class="btn btn-primary hub-skill-download" href="' +
+          esc(downloadUrl) +
+          '">Скачать ZIP</a>'
+        : "") +
+      "</div>" +
+      list +
+      "</aside>"
+    );
   }
 
   async function load() {
@@ -66,6 +110,7 @@
           : "") +
         "</p>" +
         "</header>" +
+        filesBlock(skill) +
         '<div class="hub-skill-body prose">' +
         html +
         "</div>";
