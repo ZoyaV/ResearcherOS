@@ -36,8 +36,6 @@ def _viewable_members(
     for hub_project in dedupe_hub_projects(store.list_projects()):
         if not hub_project.enabled:
             continue
-        if hub_project.visibility == "unlisted":
-            continue
         if not can_view_project_with_store(hub_project, viewer, store):
             continue
         project = _snapshot_project(store, hub_project.slug)

@@ -35,9 +35,10 @@ if [[ -z "$REGISTRY_ID" ]]; then
 fi
 REGISTRY_URI="cr.yandex/${REGISTRY_ID}/${CONTAINER_NAME}:${IMAGE_TAG}"
 
-echo "==> Build & push image ${REGISTRY_URI}"
+echo "==> Build & push image ${REGISTRY_URI} (linux/amd64)"
 cd "$ROOT"
-docker build -f hub/Dockerfile -t "$REGISTRY_URI" .
+# YC Serverless Containers need amd64; Mac arm64 builds fail revision deploy with Internal error.
+docker build --platform linux/amd64 -f hub/Dockerfile -t "$REGISTRY_URI" .
 yc container registry configure-docker
 docker push "$REGISTRY_URI"
 

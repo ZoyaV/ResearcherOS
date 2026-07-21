@@ -33,6 +33,16 @@
   display: none;
 }
 
+.hub-topbar__tools #auth-toolbar {
+  display: inline-flex;
+  align-items: center;
+}
+
+.hub-login-btn {
+  font-size: 0.88rem;
+  padding: 0.35rem 0.85rem;
+}
+
 .hub-topbar .btn-theme:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--purple) 55%, transparent);
   outline-offset: 2px;
