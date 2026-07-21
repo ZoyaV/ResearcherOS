@@ -85,6 +85,7 @@ yc serverless container revision deploy \
   --environment "GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}" \
   --environment "GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}" \
   --environment "HUB_SESSION_SECRET=${HUB_SESSION_SECRET}" \
+  --environment "HUB_PUBLIC_URL=${HUB_PUBLIC_URL:-}" \
   --environment "HUB_S3_BUCKET=${BUCKET_NAME}" \
   --environment "HUB_S3_ENDPOINT=https://storage.yandexcloud.net" \
   --environment "HUB_S3_ACCESS_KEY=${HUB_S3_ACCESS_KEY}" \
