@@ -28,15 +28,40 @@ def _viewer_id(request: Request, config: HubConfig, store: HubStore) -> Optional
     return session.github_id if session else None
 
 
+def _request_share_token(request: Request) -> Optional[str]:
+    """Secret token from ``?token=`` (unlisted share links)."""
+    params = getattr(request, "query_params", None)
+    if params is None:
+        return None
+    raw = params.get("token") if hasattr(params, "get") else None
+    if raw is None:
+        return None
+    token = str(raw).strip()
+    return token or None
+
+
+def _can_view(
+    request: Request,
+    hub_project: HubProject,
+    config: HubConfig,
+    store: HubStore,
+) -> bool:
+    return can_view_project_with_store(
+        hub_project,
+        _viewer_id(request, config, store),
+        store,
+        token=_request_share_token(request),
+    )
+
+
 def _viewable_members(
     request: Request, config: HubConfig, store: HubStore
 ) -> list[tuple[HubProject, dict[str, Any]]]:
-    viewer = _viewer_id(request, config, store)
     members: list[tuple[HubProject, dict[str, Any]]] = []
     for hub_project in dedupe_hub_projects(store.list_projects()):
         if not hub_project.enabled:
             continue
-        if not can_view_project_with_store(hub_project, viewer, store):
+        if not _can_view(request, hub_project, config, store):
             continue
         project = _snapshot_project(store, hub_project.slug)
         if project:
@@ -87,8 +112,7 @@ def _resolve_hub_project(
     if hub_project is None:
         raise HTTPException(404, "Project not found")
 
-    viewer = _viewer_id(request, config, store)
-    if not can_view_project_with_store(hub_project, viewer, store):
+    if not _can_view(request, hub_project, config, store):
         raise HTTPException(403, "Not allowed to view this project")
     return config, store, hub_project
 
@@ -383,8 +407,7 @@ def get_project(request: Request, project_id: str) -> dict[str, Any]:
     if hub_project is None:
         raise HTTPException(404, "Project not found")
 
-    viewer = _viewer_id(request, config, store)
-    if not can_view_project_with_store(hub_project, viewer, store):
+    if not _can_view(request, hub_project, config, store):
         raise HTTPException(403, "Not allowed to view this project")
 
     project = _snapshot_project(store, hub_project.slug)
@@ -431,8 +454,7 @@ def get_board_dag_layout(request: Request, project_id: str, board_id: str) -> di
     if hub_project is None:
         raise HTTPException(404, "Project not found")
 
-    viewer = _viewer_id(request, config, store)
-    if not can_view_project_with_store(hub_project, viewer, store):
+    if not _can_view(request, hub_project, config, store):
         raise HTTPException(403, "Not allowed to view this project")
 
     snap = store.get_snapshot(hub_project.slug)

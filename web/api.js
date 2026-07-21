@@ -15,10 +15,28 @@ export function apiBase() {
 
 export const API_BASE = apiBase();
 
+/** Unlisted Hub share links use ``?token=`` — forward it on every API call. */
+function hubShareToken() {
+  if (typeof window === "undefined" || !window.__HUB__) return "";
+  try {
+    return new URLSearchParams(window.location.search).get("token") || "";
+  } catch {
+    return "";
+  }
+}
+
+function withHubShareToken(path) {
+  const token = hubShareToken();
+  if (!token) return path;
+  const join = String(path).includes("?") ? "&" : "?";
+  return `${path}${join}token=${encodeURIComponent(token)}`;
+}
+
 /** GET, возвращающий сырой текст (markdown базы знаний). */
 async function apiText(path, options = {}) {
-  const res = await fetch(`${apiBase()}${path}`, {
+  const res = await fetch(`${apiBase()}${withHubShareToken(path)}`, {
     cache: "no-store",
+    credentials: "same-origin",
     ...options,
   });
   if (!res.ok) {
@@ -29,8 +47,9 @@ async function apiText(path, options = {}) {
 }
 
 async function api(path, options = {}) {
-  const res = await fetch(`${apiBase()}${path}`, {
+  const res = await fetch(`${apiBase()}${withHubShareToken(path)}`, {
     cache: "no-store",
+    credentials: "same-origin",
     headers: { "Content-Type": "application/json", ...options.headers },
     ...options,
   });
@@ -74,8 +93,9 @@ export const KoiApi = {
   uploadLibrary: async (file) => {
     const fd = new FormData();
     fd.append("file", file, file.name || "library.csv");
-    const res = await fetch(`${apiBase()}/library/upload`, {
+    const res = await fetch(`${apiBase()}${withHubShareToken("/library/upload")}`, {
       method: "POST",
+      credentials: "same-origin",
       body: fd,
     });
     if (!res.ok) {
