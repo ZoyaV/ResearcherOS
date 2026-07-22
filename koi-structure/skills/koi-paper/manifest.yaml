@@ -1,4 +1,0 @@
-id: koi-paper
-title: Генерация статьи (NeurIPS)
-summary: Генерация NeurIPS-статьи (LaTeX → PDF) из очереди paper UI.
-visibility: public

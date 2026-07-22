@@ -1,4 +1,0 @@
-id: koi-execute-card
-title: Выполнение карточки канбана
-summary: 'Строгое выполнение карточки канбана: running → подзадачи → done.'
-visibility: public
