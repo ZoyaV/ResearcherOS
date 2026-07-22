@@ -5,6 +5,8 @@ from pathlib import Path
 
 import pytest
 
+from koi.adapters.hooks_paths import koi_root_from_hook
+
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTENT_SKILLS = (
@@ -23,15 +25,21 @@ CONTENT_SKILLS = (
 @pytest.mark.parametrize(
     "relative_path",
     (
-        ".cursor/hooks/koi-agent-chat-hook.py",
-        ".cursor/hooks/koi-done-research-hook.py",
-        ".cursor/hooks/koi-project-sync-hook.py",
+        "agents/skills/koi-agent-chat/hooks/koi-agent-chat-hook.py",
+        "agents/skills/koi-done-research/hooks/koi-done-research-hook.py",
+        "agents/skills/koi-project-sync/hooks/koi-project-sync-hook.py",
+        "agents/skills/researchos-channel-news/hooks/researchos-channel-news-hook.py",
     ),
 )
 def test_cursor_hook_imports(relative_path: str) -> None:
-    namespace = runpy.run_path(str(ROOT / relative_path), run_name="cursor_hook_smoke")
-
-    assert callable(namespace["main"])
+    path = ROOT / relative_path
+    assert path.is_file()
+    assert koi_root_from_hook(path) == ROOT
+    namespace = runpy.run_path(str(path), run_name="cursor_hook_smoke")
+    if relative_path.endswith("researchos-channel-news-hook.py"):
+        assert callable(namespace["main"])
+    else:
+        assert callable(namespace["main"])
 
 
 @pytest.mark.parametrize("skill_name", CONTENT_SKILLS)
@@ -39,6 +47,8 @@ def test_cursor_content_skill_links_to_canonical_skill(skill_name: str) -> None:
     cursor_skill = ROOT / ".cursor" / "skills" / skill_name
     canonical_skill = ROOT / "agents" / "skills" / skill_name
 
+    if not cursor_skill.exists() and not cursor_skill.is_symlink():
+        pytest.skip("local Cursor skill link not installed")
     assert cursor_skill.is_symlink()
     assert cursor_skill.resolve() == canonical_skill.resolve()
     assert (cursor_skill / "SKILL.md").is_file()
@@ -49,3 +59,10 @@ def test_report_skill_owns_its_templates() -> None:
 
     for name in ("experiment-report.md", "report-rules.md", "report-skeleton.md"):
         assert (skill / name).is_file()
+
+
+def test_cursor_hooks_template_points_at_agents_hooks() -> None:
+    template = (ROOT / "agents" / "cursor-hooks.json").read_text(encoding="utf-8")
+    assert "agents/skills/koi-agent-chat/hooks/" in template
+    assert "agents/hooks/koi-session-start.sh" in template
+    assert ".cursor/hooks/" not in template

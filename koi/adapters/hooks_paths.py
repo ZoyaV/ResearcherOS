@@ -1,4 +1,4 @@
-"""Resolve KOI root from a hook script path (workspace may be KOI or parent zverl)."""
+"""Resolve ResearchOS root from a Cursor hook script path."""
 
 from __future__ import annotations
 
@@ -6,11 +6,20 @@ from pathlib import Path
 
 
 def koi_root_from_hook(hook_file: str | Path) -> Path:
-    """Return KOI package root for hooks living in <workspace>/.cursor/hooks/."""
-    workspace = Path(hook_file).resolve().parent.parent.parent
-    if (workspace / "koi" / "agent_chat" / "cli.py").is_file():
-        return workspace
-    nested = workspace / "KOI"
-    if (nested / "koi" / "agent_chat" / "cli.py").is_file():
-        return nested
-    return workspace
+    """Walk up from *hook_file* until the package root (``koi/agent_chat/cli.py``).
+
+    Hooks may live under ``.cursor/hooks/`` (legacy) or
+    ``agents/skills/<skill>/hooks/`` / ``agents/hooks/``.
+    """
+    cur = Path(hook_file).resolve().parent
+    for _ in range(10):
+        if (cur / "koi" / "agent_chat" / "cli.py").is_file():
+            return cur
+        nested = cur / "KOI"
+        if (nested / "koi" / "agent_chat" / "cli.py").is_file():
+            return nested
+        if cur.parent == cur:
+            break
+        cur = cur.parent
+    # Last-resort fallback for odd layouts.
+    return Path(hook_file).resolve().parents[3]

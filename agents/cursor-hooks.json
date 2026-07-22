@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": "agents/hooks/koi-session-start.sh"
+      },
+      {
+        "command": "agents/skills/koi-project-sync/hooks/koi-project-sync-session.sh"
+      },
+      {
+        "command": "agents/skills/koi-agent-chat/hooks/koi-agent-chat-session.sh"
+      },
+      {
+        "command": "agents/skills/koi-done-research/hooks/koi-done-research-session.sh"
+      }
+    ],
+    "stop": [
+      {
+        "command": "agents/skills/koi-agent-chat/hooks/koi-agent-chat-stop.sh",
+        "loop_limit": 10
+      },
+      {
+        "command": "agents/skills/koi-done-research/hooks/koi-done-research-stop.sh",
+        "loop_limit": 10
+      },
+      {
+        "command": "agents/skills/koi-project-sync/hooks/koi-project-sync-stop.sh",
+        "loop_limit": 10
+      }
+    ],
+    "postToolUse": [
+      {
+        "command": "agents/skills/researchos-channel-news/hooks/researchos-channel-news-post.sh",
+        "matcher": "Write|StrReplace|EditNotebook"
+      }
+    ]
+  }
+}

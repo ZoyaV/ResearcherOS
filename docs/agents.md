@@ -47,9 +47,22 @@ Discovery входит в папку `tree` и ищет `*/koi-structure/project
 
 ## Cursor
 
-`.cursor/hooks/` содержит только интеграционные hooks. Ссылки в
-`.cursor/skills/` дают Cursor доступ к тем же общим skills без копирования.
-Developer skills самого ResearchOS физически остаются в `.cursor/skills/`.
+Локальный `.cursor/` (gitignored) только подключает IDE:
+
+- `.cursor/hooks.json` — скопируй из [`agents/cursor-hooks.json`](../agents/cursor-hooks.json);
+- `.cursor/skills/<name>` — symlink на `agents/skills/<name>` (без копирования).
+
+Сами hooks лежат рядом со скиллами:
+
+| Скилл / место | Hooks |
+|---|---|
+| `agents/hooks/` | `koi-session-start.sh` (старт API) |
+| `agents/skills/koi-agent-chat/hooks/` | session / stop → очередь UI-чата |
+| `agents/skills/koi-done-research/hooks/` | session / stop → очередь done-research |
+| `agents/skills/koi-project-sync/hooks/` | session / stop → pull / push reminders |
+| `agents/skills/researchos-channel-news/hooks/` | postToolUse → напоминание про News |
+
+Содержательные skills — в [`agents/skills/`](../agents/skills/).
 
 Подробнее: [исследовательский workflow](research-workflow.md),
 [доменная модель](domain-model.md), [Inbox](agent-chat-inbox.md),

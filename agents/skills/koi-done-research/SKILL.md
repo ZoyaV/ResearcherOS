@@ -113,7 +113,8 @@ KOI/.venv/bin/python -m koi.projects.done_research_cli complete \
 
 ### Cursor hooks
 
-Hooks в **корне workspace** (например `research_os_dev/.cursor/hooks.json` → `ReseachOS/.cursor/hooks/`). Если открыт только подкаталог `ReseachOS` — достаточно `ReseachOS/.cursor/hooks.json`.
+Скрипты: `agents/skills/koi-done-research/hooks/`. В IDE: `.cursor/hooks.json`
+из шаблона `agents/cursor-hooks.json`.
 
 | Hook | Скрипт | Поведение |
 |------|--------|-----------|

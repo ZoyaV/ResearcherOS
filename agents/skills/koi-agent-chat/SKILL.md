@@ -119,6 +119,8 @@ curl -s -X PATCH "http://127.0.0.1:8010/agent-chat/<queue_id>" \
 
 ## Очередь и hooks
 
+Скрипты: `agents/skills/koi-agent-chat/hooks/`. IDE: `.cursor/hooks.json` ← `agents/cursor-hooks.json`.
+
 | Hook | Скрипт | Поведение |
 |------|--------|-----------|
 | `sessionStart` | `koi-agent-chat-session.sh` | `additional_context` со списком вопросов |

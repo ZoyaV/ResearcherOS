@@ -100,6 +100,9 @@ API и агент добавляют записи при значимых изм
 
 ## Cursor hooks (ResearchOS workspace)
 
+Скрипты: `agents/skills/koi-project-sync/hooks/`. Подключение: скопируй
+`agents/cursor-hooks.json` → `.cursor/hooks.json`.
+
 | Hook | Скрипт | Поведение |
 |------|--------|-----------|
 | `sessionStart` | `koi-project-sync-session.sh` | pull + `additional_context` при очереди push или проблемах |
