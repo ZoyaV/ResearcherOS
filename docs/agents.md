@@ -60,7 +60,9 @@ Discovery входит в папку `tree` и ищет `*/koi-structure/project
 | `agents/skills/koi-agent-chat/hooks/` | session / stop → очередь UI-чата |
 | `agents/skills/koi-done-research/hooks/` | session / stop → очередь done-research |
 | `agents/skills/koi-project-sync/hooks/` | session / stop → pull / push reminders |
-| `agents/skills/researchos-channel-news/hooks/` | postToolUse → напоминание про News |
+
+Developer-скиллы продукта (например channel news) остаются только в локальном
+`.cursor/skills/` и в `agents/skills/` не кладутся — см. [`AGENTS.md`](../AGENTS.md).
 
 Содержательные skills — в [`agents/skills/`](../agents/skills/).
 

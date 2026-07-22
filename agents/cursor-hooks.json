@@ -28,12 +28,6 @@
         "command": "agents/skills/koi-project-sync/hooks/koi-project-sync-stop.sh",
         "loop_limit": 10
       }
-    ],
-    "postToolUse": [
-      {
-        "command": "agents/skills/researchos-channel-news/hooks/researchos-channel-news-post.sh",
-        "matcher": "Write|StrReplace|EditNotebook"
-      }
     ]
   }
 }

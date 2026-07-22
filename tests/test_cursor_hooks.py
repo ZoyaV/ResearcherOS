@@ -28,7 +28,6 @@ CONTENT_SKILLS = (
         "agents/skills/koi-agent-chat/hooks/koi-agent-chat-hook.py",
         "agents/skills/koi-done-research/hooks/koi-done-research-hook.py",
         "agents/skills/koi-project-sync/hooks/koi-project-sync-hook.py",
-        "agents/skills/researchos-channel-news/hooks/researchos-channel-news-hook.py",
     ),
 )
 def test_cursor_hook_imports(relative_path: str) -> None:
@@ -36,10 +35,7 @@ def test_cursor_hook_imports(relative_path: str) -> None:
     assert path.is_file()
     assert koi_root_from_hook(path) == ROOT
     namespace = runpy.run_path(str(path), run_name="cursor_hook_smoke")
-    if relative_path.endswith("researchos-channel-news-hook.py"):
-        assert callable(namespace["main"])
-    else:
-        assert callable(namespace["main"])
+    assert callable(namespace["main"])
 
 
 @pytest.mark.parametrize("skill_name", CONTENT_SKILLS)
@@ -66,3 +62,11 @@ def test_cursor_hooks_template_points_at_agents_hooks() -> None:
     assert "agents/skills/koi-agent-chat/hooks/" in template
     assert "agents/hooks/koi-session-start.sh" in template
     assert ".cursor/hooks/" not in template
+    assert "researchos-channel-news" not in template
+
+
+def test_research_skills_catalog_excludes_product_devtools() -> None:
+    names = {p.name for p in (ROOT / "agents" / "skills").iterdir() if p.is_dir()}
+    assert "researchos-channel-news" not in names
+    assert "literature-cluster-orchestrator" in names
+    assert "koi-related-work" in names
