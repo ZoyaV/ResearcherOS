@@ -31,8 +31,8 @@ THEME_BTN = """        <button type="button" id="btn-theme" class="btn-theme" ti
 
 HEADER = f"""  <header class="site-header site-header--detail">
     <div class="site-header__inner">
-      <a class="brand" href="../index.html" aria-label="ResearchOS — на главную">
-        <img class="brand__logo" src="../assets/logo.png?v=3" alt="ResearchOS" height="27" />
+      <a class="brand" href="../index.html" aria-label="ResearcherOS — на главную">
+        <img class="brand__logo" src="../assets/logo.png?v=5" alt="ResearcherOS" height="27" />
       </a>
       <nav class="nav" aria-label="Основное">
         <a href="../index.html#about">About</a>
@@ -46,7 +46,7 @@ HEADER = f"""  <header class="site-header site-header--detail">
 
 FOOTER = f"""  <footer class="site-footer">
     <div class="site-footer__inner">
-      <span>ResearchOS · code / hub</span>
+      <span>ResearcherOS · code / hub</span>
       <a href="https://github.com/ZoyaV/ResearcherOS">ZoyaV/ResearcherOS</a>
     </div>
   </footer>
@@ -82,7 +82,7 @@ def skill_page(s: dict) -> str:
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>{title} · ResearchOS</title>
+  <title>{title} · ResearcherOS</title>
   <meta name="description" content="{summary}" />
 {THEME_BOOT}
 {FONT}
@@ -140,7 +140,7 @@ def index_page(skills: list[dict]) -> str:
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="refresh" content="0;url=../index.html#skills" />
-  <title>Skills · ResearchOS</title>
+  <title>Skills · ResearcherOS</title>
   <link rel="canonical" href="../index.html#skills" />
   <script>location.replace("../index.html#skills");</script>
 </head>

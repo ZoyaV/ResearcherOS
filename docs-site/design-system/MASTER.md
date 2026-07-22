@@ -1,7 +1,7 @@
-# ResearchOS docs-site — Design System
+# ResearcherOS docs-site — Design System
 
 ## Product
-Public landing for ResearchOS (code / hub): one continuous page + deep-link detail pages.
+Public landing for ResearcherOS (code / hub): one continuous page + deep-link detail pages.
 
 ## Pattern (UI/UX Pro Max)
 **Scroll-Triggered Storytelling**
@@ -26,7 +26,7 @@ Keep `web/styles.css` tokens (not indigo academic defaults from generic DS):
 
 ## Navigation
 - Landing anchors: `#about` · `#start` · `#skills`
-- Detail pages (`skills/*`, `start/*`): always **← ResearchOS** back to landing section
+- Detail pages (`skills/*`, `start/*`): always **← ResearcherOS** back to landing section
 - No emoji icons; SVG only
 
 ## Detail pages (skills / tutorials)

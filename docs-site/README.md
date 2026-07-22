@@ -1,4 +1,4 @@
-# ResearchOS docs-site
+# ResearcherOS docs-site
 
 Публичный сайт (RU) для GitHub Pages: о проекте, три пути старта, каталог скиллов.
 
