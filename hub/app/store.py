@@ -333,18 +333,23 @@ class HubStore:
         return self.config.data_dir / "reports" / slug
 
     def save_reports_tree(self, slug: str, src: Path) -> int:
-        """Copy ``koi-structure/reports`` into Hub storage. Returns file count."""
+        """Copy ``koi-structure/reports`` into Hub storage. Returns file count.
+
+        Uploads first, then prunes removed keys. Never wipe-then-upload: a
+        timeout mid-sync would leave the Hub with an empty/partial reports tree.
+        """
         if not src.is_dir():
             self._clear_reports(slug)
             return 0
         if self._s3:
-            self._delete_prefix(f"reports/{slug}/")
+            prefix = f"reports/{slug}/"
+            keep: set[str] = set()
             count = 0
             for path in src.rglob("*"):
                 if not path.is_file():
                     continue
                 rel = path.relative_to(src).as_posix()
-                key = f"reports/{slug}/{rel}"
+                key = f"{prefix}{rel}"
                 body = path.read_bytes()
                 content_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
                 self._s3.put_object(
@@ -353,7 +358,33 @@ class HubStore:
                     Body=body,
                     ContentType=content_type,
                 )
+                keep.add(key)
                 count += 1
+            # Drop orphans from previous syncs (paginated).
+            token = None
+            while True:
+                kwargs: dict[str, Any] = {
+                    "Bucket": self.config.s3_bucket,
+                    "Prefix": prefix,
+                }
+                if token:
+                    kwargs["ContinuationToken"] = token
+                resp = self._s3.list_objects_v2(**kwargs)
+                stale = [
+                    {"Key": item["Key"]}
+                    for item in resp.get("Contents") or []
+                    if item.get("Key") and item["Key"] not in keep
+                ]
+                if stale:
+                    # delete_objects accepts ≤1000 keys per call
+                    for i in range(0, len(stale), 1000):
+                        self._s3.delete_objects(
+                            Bucket=self.config.s3_bucket,
+                            Delete={"Objects": stale[i : i + 1000]},
+                        )
+                if not resp.get("IsTruncated"):
+                    break
+                token = resp.get("NextContinuationToken")
             return count
 
         dest = self.reports_dir(slug)

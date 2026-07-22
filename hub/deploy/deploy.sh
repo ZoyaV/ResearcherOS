@@ -80,7 +80,7 @@ yc serverless container revision deploy \
   --image "$REGISTRY_URI" \
   --cores 1 \
   --memory 512MB \
-  --execution-timeout 120s \
+  --execution-timeout 600s \
   --service-account-id "$SA_ID" \
   --environment "GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}" \
   --environment "GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}" \

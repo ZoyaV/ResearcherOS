@@ -103,11 +103,10 @@ async def _sync_project(project: HubProject, access_token: str) -> dict[str, Any
         meta = read_koi_meta(tmp)
         project.composite_id = str(meta.get("composite_id") or "").strip()
         project.programs = parse_program_entries(meta.get("programs"))
-        project.last_sync_at = datetime.now(timezone.utc).isoformat()
-        project.last_commit = commit or ""
-        store.save_project(project)
-        reports_src = tmp / "reports"
-        store.save_reports_tree(project.slug, reports_src)
+        # Snapshot first, then mark sync success. Large reports trees can exceed the
+        # serverless time limit — if they run before save_snapshot, Hub keeps a
+        # stale kanban while last_commit looks fresh (seen on dophamine_agent).
+        synced_at = datetime.now(timezone.utc).isoformat()
         owner = store.get_user(project.owner_github_id)
         payload = {
             "meta": {
@@ -120,7 +119,7 @@ async def _sync_project(project: HubProject, access_token: str) -> dict[str, Any
                 or f"https://avatars.githubusercontent.com/{project.owner_login}?s=64&v=4",
                 "composite_id": project.composite_id,
                 "programs": project.programs,
-                "last_sync_at": project.last_sync_at,
+                "last_sync_at": synced_at,
             },
             "project": snapshot,
             "dag_layouts": load_dag_layouts_from_root(tmp),
@@ -129,6 +128,9 @@ async def _sync_project(project: HubProject, access_token: str) -> dict[str, Any
             ),
         }
         store.save_snapshot(project.slug, payload)
+        project.last_sync_at = synced_at
+        project.last_commit = commit or ""
+        store.save_project(project)
         # Skills pool: only from enabled public projects; else clear.
         if project.enabled and project.visibility == "public":
             skill_entries = [
@@ -151,6 +153,13 @@ async def _sync_project(project: HubProject, access_token: str) -> dict[str, Any
         else:
             store.clear_project_skills(project.slug)
             payload["skills"] = {"published": [], "count": 0}
+        # Reports are best-effort: thousands of assets can time out the container.
+        reports_src = tmp / "reports"
+        try:
+            reports_count = store.save_reports_tree(project.slug, reports_src)
+            payload["reports"] = {"ok": True, "count": reports_count}
+        except Exception as exc:  # noqa: BLE001 — surface partial sync to the owner
+            payload["reports"] = {"ok": False, "error": str(exc)[:300]}
         return payload
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
