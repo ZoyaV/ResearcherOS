@@ -1,4 +1,0 @@
-interface:
-  display_name: "Add ResearchOS Skill"
-  short_description: "Create canonical ResearchOS skills safely"
-  default_prompt: "Use $koi-add-research-skill to add a new ResearchOS skill and expose it to the appropriate agent harnesses."

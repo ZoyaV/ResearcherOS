@@ -11,3 +11,5 @@ hub/.data/
 hub/.env
 hub/deploy/*.rendered
 REFACTORING_PLAN.md
+# Local Cursor IDE config/hooks/skill links
+.cursor/

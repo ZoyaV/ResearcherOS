@@ -1,4 +1,0 @@
-interface:
-  display_name: "ResearchOS Refactoring"
-  short_description: "Safely reshape ResearchOS without regressions"
-  default_prompt: "Use $researchos-refactoring to plan and execute a safe architecture refactor in ResearchOS."
