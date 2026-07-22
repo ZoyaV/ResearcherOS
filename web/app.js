@@ -310,6 +310,8 @@ let state = {
   reportDirty: false,
   nodeSizes: {},
   literatureResults: [],
+  /** Explicit tree/ branch project id for Related Work (when composite is focused). */
+  literatureBranchId: null,
 };
 
 let labCamera = null;
@@ -1368,10 +1370,95 @@ function setSyncError(msg) {
 function updatePaperReviewLink() {
   const link = document.getElementById("btn-related-work");
   if (!link) return;
-  const pid = primaryMemberProjectId();
+  const pid = relatedWorkProjectId();
   link.href = pid
     ? `literature.html?project=${encodeURIComponent(pid)}`
     : "literature.html";
+  const needsBranch = isCompositeView() && !pid;
+  link.classList.toggle("is-needs-branch", needsBranch);
+  link.title = needsBranch
+    ? "Сначала выберите ветку проекта в Laboratory"
+    : "Related work — литература и обзор статей";
+}
+
+/** Project id that Related Work / literature should bind to. */
+function relatedWorkProjectId() {
+  if (state.literatureBranchId) return state.literatureBranchId;
+  if (isCompositeView()) return null;
+  const pid = state.project?.id;
+  if (pid && !isCompositeVirtualId(pid)) return pid;
+  return null;
+}
+
+function compositeMembersForCurrent() {
+  if (!isCompositeView()) return [];
+  const members = state.project?.members || [];
+  if (members.length) {
+    return members.map((m) => ({
+      id: m.project_id,
+      title: m.title || m.project_id,
+    }));
+  }
+  const cid = state.project?.composite_id;
+  if (!cid || !state.lab?.grouped) return [];
+  for (const g of state.lab.grouped.groups || []) {
+    const c = (g.composites || []).find((item) => item.id === cid);
+    if (c) return compositeMemberMetas(c);
+  }
+  return [];
+}
+
+function shortBranchLabel(title, id) {
+  const raw = String(title || id || "").trim();
+  const head = raw.split(/[—\-·|]/)[0]?.trim() || raw;
+  return head.length > 42 ? `${head.slice(0, 40)}…` : head;
+}
+
+function setLiteratureBranchId(projectId, { refreshList = true } = {}) {
+  state.literatureBranchId = projectId || null;
+  updatePaperReviewLink();
+  renderLabBranchPicker();
+  if (refreshList) {
+    setActiveProjectInList(state.project?.id);
+  }
+}
+
+function renderLabBranchPicker() {
+  const root = document.getElementById("lab-branch-picker");
+  if (!root) return;
+  const members = compositeMembersForCurrent();
+  if (!isCompositeView() || members.length < 2) {
+    root.classList.add("hidden");
+    root.innerHTML = "";
+    root.hidden = true;
+    return;
+  }
+  const active = state.literatureBranchId || "";
+  root.hidden = false;
+  root.classList.remove("hidden");
+  root.innerHTML =
+    `<span class="lab-branch-picker__label">Ветка</span>` +
+    members
+      .map((m) => {
+        const selected = m.id === active;
+        return (
+          `<button type="button" class="lab-branch-picker__btn${selected ? " is-active" : ""}"` +
+          ` data-branch-id="${escapeHtml(m.id)}"` +
+          ` title="${escapeHtml(m.title)}"` +
+          (selected ? ' aria-pressed="true"' : ' aria-pressed="false"') +
+          `>${escapeHtml(shortBranchLabel(m.title, m.id))}</button>`
+        );
+      })
+      .join("");
+}
+
+function selectLiteratureBranch(branchId) {
+  if (!branchId) return;
+  setLiteratureBranchId(branchId);
+  setStatus(`Related Work → ${shortBranchLabel(
+    compositeMembersForCurrent().find((m) => m.id === branchId)?.title,
+    branchId
+  )}`);
 }
 
 function setLiteratureStatus(msg, isError = false) {
@@ -2397,6 +2484,9 @@ function renderLabMindmap(options = {}) {
     frame.style.height = `${region.height}px`;
     frame.title = region.title;
     frame.setAttribute("aria-label", `Проект: ${region.title}`);
+    if (state.project?.id === placement.project.id) {
+      frame.classList.add("is-active");
+    }
     frame.addEventListener("click", (e) => {
       e.stopPropagation();
       void focusLabProject(placement.project.id, { animate: true });
@@ -2431,6 +2521,7 @@ function renderLabMindmap(options = {}) {
   }
 
   renderLabEdges(svg, visiblePlacements, worldW, worldH);
+  renderLabBranchPicker();
 
   ensureLabCamera();
   if (labCamera) {
@@ -2570,8 +2661,23 @@ async function focusLabProject(projectId, { animate = false, reload = false } = 
     }
   }
   state.project = state.lab.projectsById[projectId];
+  if (isCompositeVirtualId(projectId)) {
+    const members = new Set(
+      (state.project?.members || []).map((m) => m.project_id).filter(Boolean)
+    );
+    if (!state.literatureBranchId || !members.has(state.literatureBranchId)) {
+      // Keep one tree; branch is an optional navigation target.
+      setLiteratureBranchId(null, { refreshList: false });
+    } else {
+      updatePaperReviewLink();
+      renderLabBranchPicker();
+    }
+  } else {
+    setLiteratureBranchId(projectId, { refreshList: false });
+  }
   setActiveProjectInList(projectId);
   updatePaperReviewLink();
+  renderLabBranchPicker();
   updateAgentChatScope();
   void refreshAgentChat();
   const mode = getViewMode();
@@ -5504,15 +5610,49 @@ function renderProjectListButton(p, currentId) {
   );
 }
 
-function renderCompositeListButton(c, currentId) {
+function compositeMemberMetas(c) {
+  const byId = state.lab?.projectsById || {};
+  return (c.member_ids || []).map((id) => {
+    const project = byId[id];
+    return {
+      id,
+      title: project?.title || id,
+    };
+  });
+}
+
+function renderCompositeMemberBranch(member, currentId, selectedBranchId) {
+  const branchActive = member.id === selectedBranchId;
+  const compositeActive = isCompositeVirtualId(currentId);
+  const active = branchActive && (compositeActive || currentId === member.id);
+  return (
+    `<li class="project-list__item project-list__item--branch">` +
+    `<button type="button" class="project-list__btn project-list__btn--branch${active ? " is-active" : ""}"` +
+    ` data-branch-id="${escapeHtml(member.id)}"` +
+    ` title="Выбрать ветку для Related Work (дерево остаётся общим)"` +
+    (active ? ' aria-current="true"' : "") +
+    `><span class="project-list__branch-mark" aria-hidden="true">↳</span> ${escapeHtml(member.title)}</button>` +
+    `</li>`
+  );
+}
+
+function renderCompositeListButton(c, currentId, selectedBranchId) {
   const virtualId = `composite:${c.id}`;
   const active = currentId === virtualId;
+  const members = compositeMemberMetas(c);
+  const branches =
+    members.length > 1
+      ? `<ul class="project-list project-list--branches" role="list">` +
+        members.map((m) => renderCompositeMemberBranch(m, currentId, selectedBranchId)).join("") +
+        `</ul>`
+      : "";
   return (
     `<li class="project-list__item project-list__item--composite">` +
     `<button type="button" class="project-list__btn project-list__btn--composite${active ? " is-active" : ""}"` +
     ` data-composite-id="${escapeHtml(c.id)}"` +
     (active ? ' aria-current="true"' : "") +
     `><span class="project-list__composite-mark" aria-hidden="true">⎇</span> ${escapeHtml(c.title)}</button>` +
+    branches +
     `</li>`
   );
 }
@@ -5526,7 +5666,7 @@ function renderProgramGroupHeader(group) {
   );
 }
 
-function renderProgramGroup(group, currentId) {
+function renderProgramGroup(group, currentId, selectedBranchId = state.literatureBranchId) {
   const hiddenMemberIds = state.lab?.hiddenMemberIds || hiddenCompositeMemberIds({ groups: [group] });
   const projects = visibleProjectsForGroup(group, hiddenMemberIds);
   const composites = group.composites || [];
@@ -5535,7 +5675,7 @@ function renderProgramGroup(group, currentId) {
     renderProgramGroupHeader(group) +
     `<ul class="project-list project-list--nested" role="list">` +
     (composites.length
-      ? composites.map((c) => renderCompositeListButton(c, currentId)).join("")
+      ? composites.map((c) => renderCompositeListButton(c, currentId, selectedBranchId)).join("")
       : "") +
     (projects.length
       ? projects.map((p) => renderProjectListButton(p, currentId)).join("")
@@ -5565,12 +5705,13 @@ function resolvePreferredProjectId(requestedId, grouped, projectsById) {
     }
   }
 
-  if (requestedId && projectsById[requestedId]) {
-    return memberToComposite.get(requestedId) || requestedId;
-  }
+  // Member branch → keep the single merged composite tree in Laboratory.
   if (requestedId && memberToComposite.has(requestedId)) {
     const compositeId = memberToComposite.get(requestedId);
     if (projectsById[compositeId]) return compositeId;
+  }
+  if (requestedId && projectsById[requestedId]) {
+    return requestedId;
   }
 
   for (const g of grouped?.groups || []) {
@@ -5587,6 +5728,17 @@ function resolvePreferredProjectId(requestedId, grouped, projectsById) {
     if (!hidden.has(id) && !isCompositeVirtualId(id)) return id;
   }
   return Object.keys(projectsById || {})[0] || null;
+}
+
+/** If URL/project id points at a composite member, return that member id. */
+function resolveRequestedBranchId(requestedId, grouped) {
+  if (!requestedId) return null;
+  for (const g of grouped?.groups || []) {
+    for (const c of g.composites || []) {
+      if ((c.member_ids || []).includes(requestedId)) return requestedId;
+    }
+  }
+  return null;
 }
 
 function isCompositeVirtualId(id) {
@@ -5644,6 +5796,7 @@ function boardWriteProjectId(board) {
 }
 
 function primaryMemberProjectId() {
+  if (state.literatureBranchId) return state.literatureBranchId;
   if (isCompositeView() && state.project?.members?.length) {
     return state.project.members[0].project_id;
   }
@@ -5728,10 +5881,15 @@ async function loadProjectList(activeId) {
 }
 
 function setActiveProjectInList(id) {
+  const selectedBranch = state.literatureBranchId;
   document.querySelectorAll(".project-list__btn").forEach((btn) => {
-    const active =
-      btn.dataset.projectId === id ||
-      (id?.startsWith("composite:") && btn.dataset.compositeId === id.slice("composite:".length));
+    const isComposite =
+      id?.startsWith("composite:") &&
+      btn.dataset.compositeId === id.slice("composite:".length);
+    const isProject = btn.dataset.projectId === id;
+    const isBranch =
+      Boolean(btn.dataset.branchId) && btn.dataset.branchId === selectedBranch;
+    const active = isComposite || isProject || isBranch;
     btn.classList.toggle("is-active", active);
     if (active) btn.setAttribute("aria-current", "true");
     else btn.removeAttribute("aria-current");
@@ -5922,6 +6080,27 @@ function initProjectsSidebar() {
   });
 
   document.getElementById("project-list")?.addEventListener("click", (e) => {
+    const branchBtn = e.target.closest("[data-branch-id]");
+    if (branchBtn) {
+      const branchId = branchBtn.dataset.branchId;
+      if (!branchId) return;
+      // Stay on the merged composite tree; only retarget Related Work navigation.
+      const parentComposite = branchBtn
+        .closest(".project-list__item--composite")
+        ?.querySelector("[data-composite-id]")?.dataset?.compositeId;
+      if (parentComposite) {
+        const virtualId = compositeVirtualId(parentComposite);
+        const afterSelect = () => selectLiteratureBranch(branchId);
+        if (virtualId !== state.project?.id) {
+          void switchComposite(parentComposite).then(afterSelect);
+        } else {
+          afterSelect();
+        }
+      } else {
+        selectLiteratureBranch(branchId);
+      }
+      return;
+    }
     const compositeBtn = e.target.closest("[data-composite-id]");
     if (compositeBtn) {
       const compositeId = compositeBtn.dataset.compositeId;
@@ -5937,6 +6116,12 @@ function initProjectsSidebar() {
     if (!id) return;
     if (id !== state.project?.id) void switchProject(id);
     else if (state.lab?.projectsById) void focusLabProject(id, { animate: true });
+  });
+
+  document.getElementById("lab-branch-picker")?.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-branch-id]");
+    if (!btn) return;
+    selectLiteratureBranch(btn.dataset.branchId);
   });
 }
 
@@ -9616,6 +9801,11 @@ async function init() {
       return;
     }
     setActiveProjectInList(preferred);
+    if (!isCompositeVirtualId(preferred)) {
+      setLiteratureBranchId(preferred);
+    } else {
+      setLiteratureBranchId(null);
+    }
     const mode = getViewMode();
     renderLabMindmap({
       fitLab: mode === "chief",

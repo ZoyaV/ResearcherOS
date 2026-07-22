@@ -1156,17 +1156,49 @@ function updateProjectBanner(title, projectId = selectedProjectId()) {
   if (leadEl) {
     leadEl.textContent = label
       ? "Задайте вопрос — по нему сгруппируем статьи слева."
-      : "Выберите проект в настройках, затем задайте вопрос.";
+      : "Выберите проект или ветку выше, затем задайте вопрос.";
+  }
+  // Keep the URL in sync so Laboratory back-links and refresh preserve the branch.
+  if (projectId && window.history?.replaceState) {
+    const url = new URL(window.location.href);
+    url.searchParams.set("project", projectId);
+    window.history.replaceState({}, "", url);
   }
 }
 
 async function loadProjectOptions() {
   const select = document.getElementById("literature-project-select");
   if (!select) return;
-  const list = await KoiApi.listProjects();
   const requested = new URLSearchParams(window.location.search).get("project");
+  let list = [];
+  let memberIds = new Set();
+  try {
+    const grouped = await KoiApi.listProjectsGrouped();
+    for (const g of grouped.groups || []) {
+      for (const c of g.composites || []) {
+        for (const mid of c.member_ids || []) memberIds.add(mid);
+      }
+      for (const p of g.projects || []) list.push(p);
+    }
+    for (const p of grouped.ungrouped || []) list.push(p);
+  } catch {
+    list = await KoiApi.listProjects();
+  }
+  if (!list.length) {
+    list = await KoiApi.listProjects();
+  }
+  // Deduplicate by id (composites may share titles across programs).
+  const seen = new Set();
+  list = list.filter((p) => {
+    if (!p?.id || seen.has(p.id)) return false;
+    seen.add(p.id);
+    return true;
+  });
   select.innerHTML = list
-    .map((p) => `<option value="${p.id}">${escapeHtml(p.title)}</option>`)
+    .map((p) => {
+      const branchMark = memberIds.has(p.id) ? "↳ " : "";
+      return `<option value="${escapeHtml(p.id)}">${branchMark}${escapeHtml(p.title)}</option>`;
+    })
     .join("");
   const preferred =
     (requested && list.find((p) => p.id === requested)?.id) || list[0]?.id || "";

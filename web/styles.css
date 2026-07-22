@@ -762,6 +762,76 @@ a.btn {
   font-size: 0.92em;
 }
 
+.project-list__item--composite {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.project-list--branches {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0.15rem 0.55rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.project-list__btn--branch {
+  font-size: 0.82rem;
+  font-weight: 500;
+  padding: 0.35rem 0.55rem;
+  opacity: 0.92;
+}
+
+.project-list__branch-mark {
+  opacity: 0.55;
+  margin-right: 0.2rem;
+}
+
+.lab-project-frame--branch {
+  box-shadow: inset 0 0 0 1.5px rgba(90, 160, 210, 0.45);
+  border-radius: 10px;
+}
+
+.lab-project-frame--composite {
+  box-shadow: inset 0 0 0 1.5px rgba(155, 92, 255, 0.28);
+  border-radius: 10px;
+}
+
+.lab-project-frame.is-active {
+  box-shadow: inset 0 0 0 2px rgba(90, 200, 170, 0.7);
+}
+
+.lab-project-frame__branch-label {
+  position: absolute;
+  left: 10px;
+  top: 8px;
+  z-index: 2;
+  max-width: calc(100% - 20px);
+  padding: 0.2rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  background: rgba(20, 28, 40, 0.72);
+  border: 1px solid rgba(90, 160, 210, 0.4);
+  pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+[data-theme="light"] .lab-project-frame__branch-label {
+  background: rgba(255, 255, 255, 0.88);
+  border-color: rgba(60, 120, 170, 0.35);
+}
+
+.workspace-dock__item.is-needs-branch {
+  opacity: 0.55;
+}
+
 .projects-sidebar__add {
   width: 100%;
 }
@@ -9697,6 +9767,38 @@ textarea.inline-edit-field {
 
 .rw-project-back.hidden {
   display: none;
+}
+
+.rw-project-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  width: min(100%, 28rem);
+  margin: 0.15rem 0 0.35rem;
+}
+
+.rw-project-picker-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.rw-project-picker select {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.92rem;
+}
+
+.rw-project-picker select:focus {
+  outline: 2px solid rgba(90, 160, 210, 0.45);
+  outline-offset: 1px;
 }
 
 .rw-search-stage-title {

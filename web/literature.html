@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20260722y" />
+  <link rel="stylesheet" href="styles.css?v=20260722z" />
   <script>
     (function () {
       var t = localStorage.getItem("koi-theme");
@@ -111,6 +111,10 @@
         <div class="rw-browser" id="rw-browser">
           <div class="rw-search-stage" id="rw-search-stage">
             <a href="index.html" id="rw-project-back" class="rw-project-back">← К проекту</a>
+            <label class="rw-project-picker" for="literature-project-select">
+              <span class="rw-project-picker-label">Проект / ветка</span>
+              <select id="literature-project-select" aria-label="Проект для Related Work"></select>
+            </label>
             <h1 class="rw-search-stage-title" id="rw-project-title">Обзор литературы</h1>
             <p class="rw-search-stage-lead" id="rw-search-stage-lead">Задайте вопрос — скопируйте промпт в чат агента; он вызовет скилл и подтянет выбранные статьи.</p>
             <a href="#history" id="rw-open-history" class="rw-history-link">Посмотреть прошлые вопросы →</a>
@@ -407,14 +411,13 @@
       <details class="rw-settings-disclosure" id="rw-settings-advanced">
         <summary>
           <span class="rw-settings-disclosure-title">Параметры</span>
-          <span class="rw-settings-disclosure-meta">проект, лимит, перевод</span>
+          <span class="rw-settings-disclosure-meta">лимит, перевод, контекст</span>
         </summary>
         <div class="rw-settings-disclosure-body">
           <div class="rw-settings-row">
-            <label class="rw-settings-field" for="literature-project-select">
-              <span>Проект</span>
-              <select id="literature-project-select"></select>
-            </label>
+            <p class="rw-settings-hint">
+              Проект для Related Work выбирается на главном экране поиска или в Laboratory (ветки composite).
+            </p>
             <label class="rw-settings-field rw-settings-field--narrow" for="literature-limit">
               <span>Макс. статей</span>
               <input type="number" id="literature-limit" min="1" max="50" value="10" />
@@ -506,6 +509,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@upsetjs/venn.js@2.0.0/build/venn.min.js"></script>
-  <script type="module" src="literature.js?v=20260722y"></script>
+  <script type="module" src="literature.js?v=20260722z"></script>
 </body>
 </html>
