@@ -28,6 +28,12 @@
         "command": ".cursor/hooks/koi-project-sync-stop.sh",
         "loop_limit": 10
       }
+    ],
+    "postToolUse": [
+      {
+        "command": ".cursor/hooks/researchos-channel-news-post.sh",
+        "matcher": "Write|StrReplace|EditNotebook"
+      }
     ]
   }
 }
