@@ -3,7 +3,7 @@
  * Tools: move, directed arrow linking, auto-layout, Q/A reveal.
  */
 
-import { KoiApi } from "./api.js?v=20260715a";
+import { KoiApi } from "./api.js?v=20260721a";
 
 const CARD_W = 184;
 const CARD_MIN_H = 40;

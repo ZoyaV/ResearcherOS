@@ -1,10 +1,11 @@
-import { KoiApi } from "./api.js";
+import { KoiApi } from "./api.js?v=20260722v";
 import {
   showKoiLoader,
   hideKoiLoader,
   attachRotatingHint,
   detachRotatingHint,
 } from "./koi-loader.js";
+import { renderMarkdown } from "./markdown.js";
 
 const THEME_STORAGE_KEY = "koi-theme";
 const RW_SETTINGS_KEY = "koi-rw-settings";
@@ -25,6 +26,9 @@ let literatureResults = [];
 let selectedPaperUrls = new Set();
 let latestPaperAnswerRun = null;
 let selectedClusterKeys = new Set();
+let activeClusterKey = null;
+let activeReadingView = "resume"; // "resume" | cluster key
+const READING_VIEW_RESUME = "resume";
 let activeClusterModal = null;
 let activeSettingsModal = null;
 let activeContextModal = null;
@@ -42,8 +46,16 @@ let appSettings = {
 };
 let literatureInboxStatusPollTimer = null;
 let literatureInboxBootstrapCopied = false;
+let literatureClusterPrompt = "";
+let literatureClusterPendingHash = "";
+let literatureClusterPollTimer = null;
+let activeClusterPromptModal = null;
+let collectionPapersCache = null;
+let collectionSelectionCache = null;
+let workspaceGenerating = false;
 
 const LITERATURE_INBOX_CONFIGURED_KEY = "koi_literature_inbox_configured";
+const LITERATURE_CLUSTER_POLL_MS = 4000;
 
 function isLiteratureInboxConfigured() {
   return Boolean(appSettings.literature_inbox_configured);
@@ -96,6 +108,8 @@ function updateLiteratureInboxSetupNotice() {
   const insights = document.getElementById("rw-insights-column");
   const insightsVisible = insights && !insights.classList.contains("hidden");
 
+  // Keep the reading canvas quiet: never auto-open the setup panel.
+  // Users open it via the inbox indicator / explicit setup action.
   if (!isInboxAgentMode() || isLiteratureInboxConfigured() || !split || !insightsVisible) {
     box.classList.add("hidden");
     stopLiteratureInboxStatusPoll();
@@ -134,7 +148,7 @@ function updateLiteratureInboxSetupNotice() {
   }
 
   ensureLiteratureInboxBootstrapCached();
-  box.classList.remove("hidden");
+  // Do not remove `hidden` here — open only via showLiteratureInboxSetup().
   startLiteratureInboxStatusPoll();
 }
 
@@ -266,6 +280,8 @@ function defaultSettings() {
     overwriteAnswers: false,
     zoteroUserId: "",
     zoteroApiKey: "",
+    zoteroUsername: "",
+    zoteroCollectionKey: "",
   };
 }
 
@@ -293,6 +309,8 @@ function readSettingsFromDom() {
     overwriteAnswers: Boolean(document.getElementById("literature-overwrite-answers")?.checked),
     zoteroUserId: document.getElementById("rw-zotero-user-id")?.value?.trim() || "",
     zoteroApiKey: document.getElementById("rw-zotero-api-key")?.value?.trim() || "",
+    zoteroUsername: loadSettings().zoteroUsername || "",
+    zoteroCollectionKey: document.getElementById("rw-zotero-collection")?.value || "",
   };
 }
 
@@ -315,6 +333,39 @@ function applySettingsToDom(settings = loadSettings()) {
   if (zoteroUser) zoteroUser.value = settings.zoteroUserId || "";
   const zoteroKey = document.getElementById("rw-zotero-api-key");
   if (zoteroKey) zoteroKey.value = settings.zoteroApiKey || "";
+  restoreZoteroConnectionUi(settings);
+  updateSettingsSourceUi();
+}
+
+function currentSearchModeFromDom() {
+  return (
+    document.querySelector('input[name="rw-search-mode"]:checked')?.value ||
+    loadSettings().searchMode ||
+    "internet"
+  );
+}
+
+const SEARCH_MODE_HINTS = {
+  local: "Только CSV-библиотека",
+  internet: "Прямой поиск на arXiv",
+  both: "Сначала CSV, потом дополнение с arXiv",
+};
+
+function updateSettingsSourceUi() {
+  const mode = currentSearchModeFromDom();
+  const hint = document.getElementById("rw-settings-mode-hint");
+  if (hint) hint.textContent = SEARCH_MODE_HINTS[mode] || "";
+
+  const library = document.getElementById("rw-settings-library");
+  const meta = document.getElementById("rw-settings-library-meta");
+  const needsLibrary = mode === "local" || mode === "both";
+  if (library) library.open = needsLibrary && !libraryExists;
+  if (meta) {
+    if (libraryExists) meta.textContent = "готова";
+    else if (needsLibrary) meta.textContent = "нужна для режима";
+    else meta.textContent = "опционально";
+  }
+  updateLibraryStatusHint();
 }
 
 function getSearchMode() {
@@ -354,6 +405,7 @@ function setTheme(theme) {
   else document.documentElement.removeAttribute("data-theme");
   localStorage.setItem(THEME_STORAGE_KEY, next);
   updateThemeButton(next);
+  window.dispatchEvent(new CustomEvent("koi-theme-change", { detail: { theme: next } }));
 }
 
 function initTheme() {
@@ -368,14 +420,16 @@ function initTheme() {
 
 function setLiteratureStatus(msg, isError = false) {
   const el = document.getElementById("literature-search-status");
-  if (!el) return;
-  if (!isError || !msg) {
-    el.textContent = "";
-    el.className = "rw-search-status hidden";
-    return;
+  if (el) {
+    el.textContent = msg || "";
+    el.className = "rw-library-status" + (isError ? " error" : msg ? " ok" : "");
+    el.setAttribute("role", isError ? "alert" : "status");
   }
-  el.textContent = msg;
-  el.className = "rw-search-status error";
+  const clustersStatus = document.getElementById("rw-clusters-status");
+  if (clustersStatus) {
+    clustersStatus.textContent = msg || "";
+    clustersStatus.className = "rw-clusters-status" + (isError ? " error" : msg ? " ok" : "");
+  }
 }
 
 function setProjectContextStatus(msg, isError = false) {
@@ -393,12 +447,25 @@ function setRelatedWorksStatus(msg, isError = false) {
   el.classList.toggle("hidden", !msg);
 }
 
+function isWorkspaceSplit() {
+  return Boolean(document.getElementById("rw-workspace")?.classList.contains("is-split"));
+}
+
 function showLoader(step = "Подготовка…") {
-  showKoiLoader("rw-loader", { step, pool: "literature" });
+  if (isWorkspaceSplit() || workspaceGenerating) {
+    setGeneratingMode(true, step);
+    return;
+  }
+  hideKoiLoader("rw-loader");
+  showKoiLoader("rw-search-loader", { step, pool: "literature" });
 }
 
 function hideLoader() {
-  hideKoiLoader("rw-loader");
+  hideKoiLoader("rw-search-loader");
+  if (!workspaceGenerating) {
+    hideKoiLoader("rw-loader");
+    document.getElementById("rw-generation-stage")?.classList.add("hidden");
+  }
 }
 
 function showRelatedLoader(step = "Генерация Related Work…") {
@@ -409,21 +476,365 @@ function hideRelatedLoader() {
   hideKoiLoader("rw-related-loader");
 }
 
+function setGeneratingMode(enabled, step = "Исследуем литературу…") {
+  workspaceGenerating = Boolean(enabled);
+  const workspace = document.getElementById("rw-workspace");
+  const stage = document.getElementById("rw-generation-stage");
+  workspace?.classList.toggle("is-generating", workspaceGenerating);
+  if (workspaceGenerating) {
+    stage?.classList.remove("hidden");
+    showKoiLoader("rw-loader", { step, pool: "literature" });
+    syncPromptDock();
+  } else {
+    hideKoiLoader("rw-loader");
+    stage?.classList.add("hidden");
+    hidePromptDock();
+  }
+}
+
+function syncPromptDock() {
+  const dock = document.getElementById("rw-prompt-dock");
+  const textEl = document.getElementById("rw-prompt-dock-text");
+  const prompt = String(literatureClusterPrompt || "").trim();
+  if (!dock) return;
+  if (!prompt || !workspaceGenerating) {
+    dock.classList.add("hidden");
+    return;
+  }
+  if (textEl) textEl.textContent = prompt;
+  dock.classList.remove("hidden");
+}
+
+function showPromptDock(promptText = literatureClusterPrompt) {
+  literatureClusterPrompt = String(promptText || "").trim();
+  syncPromptDock();
+}
+
+function hidePromptDock() {
+  document.getElementById("rw-prompt-dock")?.classList.add("hidden");
+}
+
+function cacheCollectionSidebar() {
+  collectionPapersCache = literatureResults.map((p) => ({ ...p }));
+  collectionSelectionCache = new Set(selectedPaperUrls);
+}
+
+function restoreCollectionSidebar() {
+  if (collectionPapersCache) {
+    literatureResults = collectionPapersCache.map((p) => ({ ...p }));
+    selectedPaperUrls = new Set(collectionSelectionCache || []);
+    collectionPapersCache = null;
+    collectionSelectionCache = null;
+  }
+  const nav = document.getElementById("rw-cluster-nav");
+  nav?.classList.add("hidden");
+  nav && (nav.innerHTML = "");
+  document.getElementById("literature-results")?.classList.remove("hidden");
+  renderLiteratureResults(literatureResults);
+  updateLibrarySplitChrome(false);
+}
+
+function updateLibrarySplitChrome(enabled) {
+  const backBtn = document.getElementById("rw-back-to-collection");
+  const title = document.getElementById("rw-library-title");
+  const empty = document.getElementById("rw-library-empty");
+  const toolbar = document.getElementById("rw-library-toolbar");
+  const addMenu = document.getElementById("rw-library-add-menu");
+  const switchSource = document.getElementById("rw-library-switch-source");
+  const results = document.getElementById("literature-results");
+  const nav = document.getElementById("rw-cluster-nav");
+  const countEl = document.getElementById("rw-library-count");
+  backBtn?.classList.toggle("hidden", !enabled);
+  if (title) title.textContent = enabled ? "Кластеры" : "Коллекция";
+  if (enabled) {
+    empty?.classList.add("hidden");
+    toolbar?.classList.add("hidden");
+    switchSource?.classList.add("hidden");
+    addMenu?.classList.add("hidden");
+    if (addMenu) addMenu.hidden = true;
+    results?.classList.add("hidden");
+    nav?.classList.remove("hidden");
+    const n = latestPaperAnswerRun?.clusters?.length || 0;
+    if (countEl) {
+      countEl.hidden = !n;
+      countEl.textContent = n ? String(n) : "";
+      countEl.title = n ? `${n} кластеров` : "";
+    }
+  } else {
+    results?.classList.remove("hidden");
+    nav?.classList.add("hidden");
+    updateLibraryPanelChrome();
+  }
+}
+
+function renderRunPapersSidebar(_papers = []) {
+  // Split mode uses the clusters nav in the left column; articles stay in cluster detail.
+  updateLibrarySplitChrome(true);
+}
+
+function setRelatedPaneCollapsed(collapsed) {
+  const pane = document.getElementById("rw-related-pane");
+  const toggle = document.getElementById("rw-related-toggle");
+  const body = document.getElementById("rw-related-body");
+  const hint = document.getElementById("rw-related-toggle-hint");
+  if (!pane) return;
+  pane.classList.toggle("is-collapsed", Boolean(collapsed));
+  if (body) body.hidden = Boolean(collapsed);
+  toggle?.setAttribute("aria-expanded", collapsed ? "false" : "true");
+  if (hint) hint.textContent = collapsed ? "Развернуть" : "Свернуть";
+}
+
+function toggleRelatedPaneCollapsed() {
+  const pane = document.getElementById("rw-related-pane");
+  if (!pane || pane.classList.contains("hidden")) return;
+  setRelatedPaneCollapsed(!pane.classList.contains("is-collapsed"));
+}
+
+function scrollReadingToContent() {
+  const page = document.getElementById("rw-reading-page");
+  const anchor = document.getElementById("rw-clusters-top") || document.getElementById("rw-reading-content");
+  if (!page || !anchor) return;
+  const top = Math.max(0, anchor.offsetTop - 8);
+  page.scrollTo({ top, behavior: "smooth" });
+}
+
+function syncReadingNavActive(view = activeReadingView) {
+  const nav = document.getElementById("rw-cluster-nav");
+  if (!nav) return;
+  nav.querySelectorAll(".rw-cluster-nav-row").forEach((row) => {
+    const btn = row.querySelector(".rw-cluster-nav-item");
+    const key = btn?.getAttribute("data-reading-view") || "";
+    const active = key === view;
+    row.classList.toggle("is-active", active);
+    btn?.classList.toggle("is-active", active);
+    btn?.setAttribute("aria-current", active ? "true" : "false");
+  });
+}
+
+function showReadingView(view, { scrollPage = true, scrollNav = false } = {}) {
+  const run = latestPaperAnswerRun;
+  const reportEl = document.getElementById("rw-report-markdown");
+  const detail = document.getElementById("rw-cluster-detail");
+  const hasReport = Boolean(String(run?.report_markdown || "").trim());
+  const clusters = run?.clusters || [];
+
+  let next = view;
+  if (next === READING_VIEW_RESUME && !hasReport && clusters.length) {
+    next = clusters[0].key;
+  } else if (next !== READING_VIEW_RESUME && !clusters.some((c) => c.key === next)) {
+    next = hasReport ? READING_VIEW_RESUME : clusters[0]?.key || READING_VIEW_RESUME;
+  }
+  activeReadingView = next;
+  if (next !== READING_VIEW_RESUME) activeClusterKey = next;
+
+  syncReadingNavActive(next);
+
+  if (next === READING_VIEW_RESUME) {
+    if (detail) {
+      detail.classList.add("hidden");
+      detail.innerHTML = "";
+    }
+    renderReportMarkdown(run);
+    reportEl?.classList.remove("hidden");
+  } else {
+    reportEl?.classList.add("hidden");
+    if (detail) detail.classList.remove("hidden");
+    const cluster = clusters.find((item) => item.key === next);
+    if (cluster) {
+      renderClusterDetail(cluster, papersForCluster(run, cluster), run);
+    } else if (detail) {
+      detail.innerHTML = `<p class="literature-empty">Выберите раздел слева.</p>`;
+    }
+  }
+
+  if (scrollNav) {
+    document
+      .getElementById("rw-cluster-nav")
+      ?.querySelector(".rw-cluster-nav-row.is-active")
+      ?.scrollIntoView({ block: "nearest" });
+  }
+  if (scrollPage) {
+    requestAnimationFrame(() => scrollReadingToContent());
+  }
+}
+
+function selectCluster(key, opts = {}) {
+  showReadingView(key, opts);
+}
+
 function setWorkspaceSplit(enabled) {
   const workspace = document.getElementById("rw-workspace");
   const page = document.getElementById("rw-page");
-  const divider = document.getElementById("rw-split-divider");
   const insights = document.getElementById("rw-insights-column");
-  const resultsWrap = document.getElementById("literature-results-wrap");
+  const clustersBlock = document.getElementById("rw-clusters-block");
+  const history = document.getElementById("rw-history-column");
+  const search = document.getElementById("rw-search-column");
+  const historyBack = document.getElementById("rw-history-back");
+  const wasSplit = isWorkspaceSplit();
+
+  if (enabled) {
+    workspace?.classList.remove("is-history");
+    page?.classList.remove("is-history");
+    historyBack?.classList.add("hidden");
+  }
+
+  if (enabled && !wasSplit) {
+    cacheCollectionSidebar();
+  }
+
   workspace?.classList.toggle("is-split", enabled);
   page?.classList.toggle("is-split", enabled);
-  divider?.classList.toggle("hidden", !enabled);
   insights?.classList.toggle("hidden", !enabled);
-  resultsWrap?.classList.toggle("hidden", !enabled);
+  clustersBlock?.classList.toggle("hidden", !enabled);
+  history?.classList.toggle("hidden", !enabled && !workspace?.classList.contains("is-history"));
+  search?.classList.toggle("rw-column-dormant", enabled);
+
   if (enabled) {
-    updateInboxIndicator();
-    updateLiteratureInboxSetupNotice();
+    hideKoiLoader("rw-search-loader");
+    updateLibrarySplitChrome(true);
+    void refreshLiteratureHistory();
+  } else {
+    setGeneratingMode(false);
+    restoreCollectionSidebar();
   }
+}
+
+function isHistoryView() {
+  return Boolean(document.getElementById("rw-workspace")?.classList.contains("is-history"));
+}
+
+function setHistoryView(enabled) {
+  const workspace = document.getElementById("rw-workspace");
+  const page = document.getElementById("rw-page");
+  const history = document.getElementById("rw-history-column");
+  const historyBack = document.getElementById("rw-history-back");
+  const insights = document.getElementById("rw-insights-column");
+
+  if (enabled) {
+    if (isWorkspaceSplit()) {
+      setWorkspaceSplit(false);
+    }
+    workspace?.classList.add("is-history");
+    page?.classList.add("is-history");
+    history?.classList.remove("hidden");
+    historyBack?.classList.remove("hidden");
+    insights?.classList.add("hidden");
+    void refreshLiteratureHistory();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  } else {
+    workspace?.classList.remove("is-history");
+    page?.classList.remove("is-history");
+    historyBack?.classList.add("hidden");
+    if (!isWorkspaceSplit()) {
+      history?.classList.add("hidden");
+    }
+  }
+}
+
+function updateClustersQuestion(run = latestPaperAnswerRun) {
+  const el = document.getElementById("rw-clusters-question");
+  if (!el) return;
+  const question = String(run?.question || "").trim();
+  el.textContent = question || "Кластеры по исследовательскому вопросу";
+}
+
+function inferYearFromArxivUrl(url) {
+  const match = String(url || "").match(/(?:arxiv\.org\/(?:abs|pdf|html)\/)?(\d{2})(\d{2})\.\d{4,5}/i);
+  if (!match) return null;
+  const yy = Number(match[1]);
+  const mm = Number(match[2]);
+  if (!Number.isFinite(yy) || !Number.isFinite(mm) || mm < 1 || mm > 12) return null;
+  return 2000 + yy;
+}
+
+function normalizePaperRecord(paper) {
+  const arxivUrl = String(paper?.arxiv_url || "").trim();
+  const year =
+    paper?.year != null && paper.year !== ""
+      ? Number(paper.year)
+      : inferYearFromArxivUrl(arxivUrl);
+  return {
+    ...paper,
+    title: String(paper?.title || "").trim(),
+    arxiv_url: arxivUrl,
+    authors: String(paper?.authors || "").trim(),
+    year: Number.isFinite(year) ? year : null,
+    abstract_preview: paper?.abstract_preview || shortText(paper?.abstract || "", 280),
+  };
+}
+
+function formatAuthorsLine(authors, max = 72) {
+  const text = String(authors || "").replace(/\s+/g, " ").trim();
+  if (!text) return "авторы не указаны";
+  if (text.length <= max) return text;
+  return `${text.slice(0, max - 1).trimEnd()}…`;
+}
+
+function paperMetaLine(paper) {
+  const year = paper.year ? String(paper.year) : "—";
+  return `${year} · ${formatAuthorsLine(paper.authors)}`;
+}
+
+function updateLibraryPanelChrome() {
+  const empty = document.getElementById("rw-library-empty");
+  const toolbar = document.getElementById("rw-library-toolbar");
+  const countEl = document.getElementById("rw-library-count");
+  const switchSource = document.getElementById("rw-library-switch-source");
+  const hasPapers = literatureResults.length > 0;
+  empty?.classList.toggle("hidden", hasPapers);
+  toolbar?.classList.toggle("hidden", !hasPapers);
+  switchSource?.classList.toggle("hidden", !hasPapers);
+  updateZoteroEmptyHint();
+  if (countEl) {
+    if (hasPapers) {
+      countEl.hidden = false;
+      countEl.textContent = `${literatureResults.length}`;
+      countEl.title = `${literatureResults.length} статей`;
+    } else {
+      countEl.hidden = true;
+      countEl.textContent = "";
+    }
+  }
+  if (!hasPapers) hideLibraryAddMenu();
+}
+
+function updateZoteroEmptyHint() {
+  const hint = document.querySelector("#rw-library-zotero .rw-library-source-hint");
+  if (!hint) return;
+  const connected = Boolean(loadSettings().zoteroApiKey?.trim());
+  hint.textContent = connected ? "загрузить библиотеку" : "подключить";
+}
+
+function hideLibraryAddMenu() {
+  const menu = document.getElementById("rw-library-add-menu");
+  const addBtn = document.getElementById("rw-library-add");
+  if (menu) {
+    menu.classList.add("hidden");
+    menu.hidden = true;
+  }
+  addBtn?.setAttribute("aria-expanded", "false");
+}
+
+function toggleLibraryAddMenu() {
+  const menu = document.getElementById("rw-library-add-menu");
+  const addBtn = document.getElementById("rw-library-add");
+  if (!menu) return;
+  const open = menu.classList.contains("hidden");
+  menu.classList.toggle("hidden", !open);
+  menu.hidden = !open;
+  addBtn?.setAttribute("aria-expanded", open ? "true" : "false");
+}
+
+function setLibraryPapers(papers, { selectAll = true } = {}) {
+  literatureResults = (papers || []).map(normalizePaperRecord).filter((p) => p.title && p.arxiv_url);
+  if (selectAll) {
+    selectedPaperUrls = new Set(literatureResults.map((p) => p.arxiv_url));
+  } else {
+    selectedPaperUrls = new Set(
+      [...selectedPaperUrls].filter((url) => literatureResults.some((p) => p.arxiv_url === url))
+    );
+  }
+  renderLiteratureResults(literatureResults);
 }
 
 function shortText(text, max = 180) {
@@ -625,9 +1036,24 @@ function updateClusterStats(run = latestPaperAnswerRun) {
 
 function updateRelatedWorksSummary() {
   const button = document.getElementById("related-works-generate");
+  const badge = document.getElementById("rw-related-badge");
   const chosen = selectedClustersFromRun();
   updateClusterStats();
   if (button) button.disabled = chosen.length === 0 || !selectedProjectId();
+  if (badge) {
+    const output = document.getElementById("related-works-output");
+    const hasContent = Boolean(output?.classList.contains("has-content"));
+    if (hasContent) {
+      badge.hidden = false;
+      badge.textContent = "готово";
+    } else if (chosen.length) {
+      badge.hidden = false;
+      badge.textContent = `${chosen.length} кл`;
+    } else {
+      badge.hidden = true;
+      badge.textContent = "";
+    }
+  }
   updateInboxIndicator();
   updateLiteratureInboxSetupNotice();
 }
@@ -714,19 +1140,24 @@ async function searchPapers(query, limit) {
 }
 
 function updateProjectBanner(title, projectId = selectedProjectId()) {
-  const banner = document.getElementById("rw-project-banner");
-  const titleEl = document.getElementById("rw-project-banner-title");
-  const backEl = document.getElementById("rw-project-banner-back");
-  if (!banner || !titleEl) return;
+  const titleEl = document.getElementById("rw-project-title");
+  const backEl = document.getElementById("rw-project-back");
+  const leadEl = document.getElementById("rw-search-stage-lead");
   const label = String(title || "").trim();
-  if (!projectId || !label) {
-    banner.classList.add("hidden");
-    titleEl.textContent = "";
-    return;
+  if (titleEl) {
+    titleEl.textContent = label || "Обзор литературы";
   }
-  titleEl.textContent = label;
-  if (backEl) backEl.href = `index.html?project=${encodeURIComponent(projectId)}`;
-  banner.classList.remove("hidden");
+  if (backEl) {
+    backEl.href = projectId
+      ? `index.html?project=${encodeURIComponent(projectId)}`
+      : "index.html";
+    backEl.classList.toggle("hidden", !projectId);
+  }
+  if (leadEl) {
+    leadEl.textContent = label
+      ? "Задайте вопрос — по нему сгруппируем статьи слева."
+      : "Выберите проект в настройках, затем задайте вопрос.";
+  }
 }
 
 async function loadProjectOptions() {
@@ -748,13 +1179,12 @@ function updateProjectKeywordsHint() {
   const el = document.getElementById("rw-project-keywords-hint");
   if (!el) return;
   if (!projectLiteratureKeywords.length) {
-    el.textContent =
-      "В project.md нет literature_keywords — добавьте ключевые слова для поиска статей.";
-    el.className = "rw-settings-hint error";
+    el.textContent = "Нет literature_keywords в project.md";
+    el.className = "rw-settings-hint rw-settings-hint--quiet error";
     return;
   }
-  el.textContent = `Поиск статей: ${projectLiteratureKeywords.join(", ")}`;
-  el.className = "rw-settings-hint ok";
+  el.textContent = projectLiteratureKeywords.join(" · ");
+  el.className = "rw-settings-hint rw-settings-hint--quiet";
 }
 
 async function loadProjectContext(projectId) {
@@ -934,38 +1364,22 @@ function showClusterModal(cluster, members, run) {
   if (!modal || !title || !content) return;
 
   const papersHtml = members.length
-    ? members
-        .map((paper) => {
-          const year = paper.year ? ` (${paper.year})` : "";
-          const queryAnswer = paper.query_answer || paper.short_answer || "";
-          const fit = paper.assignment_rationale || paper.cluster_rationale || "";
-          return `
-            <article class="cluster-modal-paper">
-              <h3>${escapeHtml(`${paper.title}${year}`)}</h3>
-              ${queryAnswer ? `<p><strong>Paper answer:</strong> ${escapeHtml(queryAnswer)}</p>` : ""}
-              ${fit ? `<p><strong>Why in this cluster:</strong> ${escapeHtml(fit)}</p>` : ""}
-            </article>`;
-        })
-        .join("")
+    ? members.map((paper) => renderClusterPaperCard(paper)).join("")
     : "<p>No papers found for this cluster.</p>";
 
   title.textContent = cluster.label || "Cluster details";
   content.innerHTML = `
     <div class="cluster-modal-meta">
       <p><strong>Question:</strong> ${escapeHtml(run.question || "n/a")}</p>
-      <p><strong>Shared answer:</strong> ${escapeHtml(cluster.answer || "n/a")}</p>
+      <p><strong>Описание:</strong> ${escapeHtml(cluster.answer || cluster.description || "n/a")}</p>
     </div>
+    ${
+      cluster.rationale
+        ? `<section class="cluster-modal-section"><h3>Почему вместе</h3><p>${escapeHtml(cluster.rationale)}</p></section>`
+        : ""
+    }
     <section class="cluster-modal-section">
-      <h3>Why this cluster</h3>
-      <p>${escapeHtml(cluster.rationale || "n/a")}</p>
-    </section>
-    ${cluster.distinguishing_features ? `<section class="cluster-modal-section"><h3>How it differs</h3><p>${escapeHtml(cluster.distinguishing_features)}</p></section>` : ""}
-    <section class="cluster-modal-section">
-      <h3>Signature terms</h3>
-      <p>${escapeHtml((cluster.signature_terms || []).join(", ") || "n/a")}</p>
-    </section>
-    <section class="cluster-modal-section">
-      <h3>Papers in this cluster</h3>
+      <h3>Статьи</h3>
       <div class="cluster-modal-paper-grid">${papersHtml}</div>
     </section>`;
 
@@ -1002,20 +1416,25 @@ function updateLibraryUploadFilename() {
   const label = document.getElementById("library-upload-filename");
   if (!label) return;
   const file = input?.files?.[0];
-  label.textContent = file ? file.name : "Выберите CSV с компьютера";
+  label.textContent = file ? file.name : "Выберите CSV";
 }
 
 function updateLibraryStatusHint() {
   const el = document.getElementById("rw-library-status");
   if (!el) return;
+  const mode = currentSearchModeFromDom();
   if (libraryExists) {
-    el.textContent = "Локальная база найдена — можно искать по своей библиотеке.";
+    el.textContent = mode === "internet" ? "" : "База найдена";
     el.className = "rw-settings-hint ok";
-  } else {
-    el.textContent =
-      "Локальная база не найдена. Загрузите CSV или используйте поиск в интернете.";
-    el.className = "rw-settings-hint";
+    return;
   }
+  if (mode === "local" || mode === "both") {
+    el.textContent = "База ещё не загружена";
+    el.className = "rw-settings-hint";
+    return;
+  }
+  el.textContent = "";
+  el.className = "rw-settings-hint";
 }
 
 async function refreshLibraryStatus() {
@@ -1043,7 +1462,7 @@ function showSettingsModal() {
   modal.classList.remove("hidden");
   modal.setAttribute("aria-hidden", "false");
   document.body.classList.add("modal-open");
-  void refreshLibraryStatus();
+  void refreshLibraryStatus().then(() => updateSettingsSourceUi());
 }
 
 function hideSettingsModal() {
@@ -1090,7 +1509,8 @@ async function uploadLibraryFile() {
     libraryExists = true;
     updateLibraryStatusHint();
     setLibraryUploadStatus(`Загружено ${data.count} статей в ${data.csv_path}.`);
-    setLiteratureStatus(`База обновлена: ${data.filename}.`);
+    await loadLibraryIntoSidebar({ silent: true });
+    setLiteratureStatus(`База обновлена: ${data.count} статей.`);
   } catch (err) {
     setLibraryUploadStatus(err.message, true);
   } finally {
@@ -1124,6 +1544,8 @@ async function bootstrapLibraryFromAgent() {
     libraryExists = true;
     updateLibraryStatusHint();
     setLibraryBootstrapStatus(`База обновлена: ${data.count} статей.`);
+    await loadLibraryIntoSidebar({ silent: true });
+    setLiteratureStatus(`База обновлена: ${data.count} статей.`);
   } catch (err) {
     setLibraryBootstrapStatus(err.message, true);
   } finally {
@@ -1311,6 +1733,7 @@ function setRelatedWorkWaiting(isWaiting, phase = "pending") {
 
   if (isWaiting) {
     relatedPane?.classList.remove("hidden");
+    setRelatedPaneCollapsed(false);
     waiting.classList.remove("hidden");
     timerRow?.classList.remove("hidden");
     activeRelatedWorkPhase = phase;
@@ -1464,7 +1887,12 @@ function hideRelatedInboxModal() {
   modal.classList.add("hidden");
   modal.setAttribute("aria-hidden", "true");
   if (activeRelatedInboxModal === modal) activeRelatedInboxModal = null;
-  if (!activeClusterModal && !activeSettingsModal && !activeContextModal) {
+  if (
+    !activeClusterModal &&
+    !activeSettingsModal &&
+    !activeContextModal &&
+    !activeClusterPromptModal
+  ) {
     document.body.classList.remove("modal-open");
   }
 }
@@ -1541,7 +1969,7 @@ async function restoreRelatedWorkOnLoad() {
 
   try {
     const item = await KoiApi.getRelatedWorkItem(savedId);
-    document.getElementById("rw-workspace")?.classList.add("is-split");
+    setWorkspaceSplit(true);
     document.getElementById("rw-related-pane")?.classList.remove("hidden");
 
     if (item.status === "answered" && item.markdown) {
@@ -1635,11 +2063,19 @@ function showRelatedWorkAnswer(markdown, data = {}) {
   setRelatedWorkWaiting(false);
   const text = String(markdown || "").trim();
   if (output) {
-    output.textContent = text;
-    output.classList.toggle("has-content", Boolean(text));
+    if (text) {
+      output.innerHTML = renderMarkdown(text, { collapsibleSections: false });
+      output.classList.add("has-content", "markdown-preview");
+    } else {
+      output.innerHTML = "";
+      output.classList.remove("has-content");
+    }
   }
   relatedPane?.classList.remove("hidden");
+  // Keep reading space for the cluster page; user can expand Related Work.
+  setRelatedPaneCollapsed(Boolean(text) && Boolean(latestPaperAnswerRun?.clusters?.length));
   setRelatedWorksStatus("");
+  updateRelatedWorksSummary();
 }
 
 function applyRelatedWorkResult(markdown, data = {}) {
@@ -1674,6 +2110,7 @@ async function generateRelatedWorks() {
 
   btn?.setAttribute("disabled", "disabled");
   relatedPane?.classList.remove("hidden");
+  setRelatedPaneCollapsed(false);
   showRelatedLoader();
   setRelatedWorksStatus("");
   stopRelatedWorkPolling();
@@ -1738,85 +2175,325 @@ async function generateRelatedWorks() {
   }
 }
 
-function renderClusterResults(run) {
-  const root = document.getElementById("literature-agent-results");
-  if (!root) return;
-  if (!run?.clusters?.length) {
-    selectedClusterKeys = new Set();
-    updateRelatedWorksSummary();
-    root.innerHTML = `<p class="literature-empty">Кластеры появятся после генерации.</p>`;
+function paperBelongsToCluster(paper, cluster) {
+  if (!paper || !cluster) return false;
+  const key = String(cluster.key || "");
+  const paperKey = String(paper.cluster_key || paper.primary_cluster_key || "");
+  if (key && paperKey && paperKey === key) return true;
+  const keys = paper.cluster_keys;
+  if (key && Array.isArray(keys) && keys.map(String).includes(key)) return true;
+  const titles = cluster.paper_titles;
+  const title = String(paper.title || "").trim();
+  if (title && Array.isArray(titles) && titles.some((t) => String(t).trim() === title)) {
+    return true;
+  }
+  return false;
+}
+
+function normalizeClusterPaper(paper, clusterKey = "") {
+  if (!paper || typeof paper !== "object") return null;
+  const title = String(paper.title || "").trim();
+  if (!title) return null;
+  const quotes = Array.isArray(paper.quotes)
+    ? paper.quotes
+        .map((q) =>
+          typeof q === "string"
+            ? { text: q, why: "" }
+            : { text: String(q?.text || ""), why: String(q?.why || "") }
+        )
+        .filter((q) => q.text)
+    : (paper.evidence || [])
+        .map((text) => ({ text: String(text || ""), why: "" }))
+        .filter((q) => q.text);
+  const primary = String(
+    paper.cluster_key || paper.primary_cluster_key || clusterKey || ""
+  ).trim();
+  return {
+    ...paper,
+    title,
+    arxiv_url: paper.arxiv_url || paper.url || paper.link || "",
+    cluster_key: primary,
+    primary_cluster_key: paper.primary_cluster_key || primary,
+    cluster_keys: Array.isArray(paper.cluster_keys)
+      ? paper.cluster_keys.map(String)
+      : primary
+        ? [primary]
+        : [],
+    tldr: paper.tldr || paper.comprehensive_answer || paper.solution_summary || "",
+    query_answer: paper.query_answer || paper.short_answer || paper.answer || "",
+    short_answer: paper.short_answer || paper.query_answer || paper.answer || "",
+    comprehensive_answer:
+      paper.comprehensive_answer || paper.tldr || paper.solution_summary || "",
+    quotes,
+    evidence: quotes.map((q) => q.text),
+  };
+}
+
+function papersForCluster(run, cluster) {
+  if (!cluster) return [];
+  const nested = Array.isArray(cluster.papers)
+    ? cluster.papers.map((p) => normalizeClusterPaper(p, cluster.key)).filter(Boolean)
+    : [];
+  if (nested.length) return nested;
+
+  const fromRun = (run?.papers || [])
+    .map((p) => normalizeClusterPaper(p))
+    .filter((p) => paperBelongsToCluster(p, cluster));
+  if (fromRun.length) return fromRun;
+
+  const byTitle = new Map(
+    (run?.papers || [])
+      .map((p) => normalizeClusterPaper(p))
+      .filter(Boolean)
+      .map((p) => [p.title, p])
+  );
+  return (cluster.paper_titles || [])
+    .map((title) => {
+      const existing = byTitle.get(String(title).trim());
+      if (existing) {
+        return normalizeClusterPaper({ ...existing, cluster_key: cluster.key }, cluster.key);
+      }
+      return normalizeClusterPaper({ title, cluster_key: cluster.key }, cluster.key);
+    })
+    .filter(Boolean);
+}
+
+function normalizeLiteratureRun(run) {
+  if (!run || typeof run !== "object") return run;
+  const clusters = Array.isArray(run.clusters)
+    ? run.clusters.map((cluster) => {
+        const papers = papersForCluster(run, cluster);
+        return {
+          ...cluster,
+          answer: cluster.answer || cluster.description || "",
+          rationale: cluster.rationale || cluster.similarity_basis || "",
+          distinguishing_features:
+            cluster.distinguishing_features || cluster.similarity_basis || "",
+          paper_titles: cluster.paper_titles?.length
+            ? cluster.paper_titles
+            : papers.map((p) => p.title),
+          papers,
+        };
+      })
+    : [];
+
+  const paperMap = new Map();
+  for (const paper of run.papers || []) {
+    const normalized = normalizeClusterPaper(paper);
+    if (normalized) paperMap.set(normalized.title, normalized);
+  }
+  for (const cluster of clusters) {
+    for (const paper of cluster.papers || []) {
+      const prev = paperMap.get(paper.title) || {};
+      paperMap.set(paper.title, {
+        ...prev,
+        ...paper,
+        tldr: paper.tldr || prev.tldr || "",
+        query_answer: paper.query_answer || prev.query_answer || "",
+        quotes: paper.quotes?.length ? paper.quotes : prev.quotes || [],
+        evidence: paper.evidence?.length ? paper.evidence : prev.evidence || [],
+        cluster_key: paper.cluster_key || prev.cluster_key || cluster.key,
+      });
+    }
+  }
+
+  return {
+    ...run,
+    clusters,
+    papers: [...paperMap.values()],
+  };
+}
+
+function renderClusterPaperCard(paper) {
+  const year = paper.year ? String(paper.year) : "";
+  const href = paper.arxiv_url || paper.html_path || "#";
+  const tldr = paper.tldr || paper.comprehensive_answer || "";
+  const queryAnswer = paper.query_answer || paper.short_answer || "";
+  const quotes = Array.isArray(paper.quotes)
+    ? paper.quotes
+    : (paper.evidence || []).map((text) => ({ text, why: "" }));
+  const quotesHtml = quotes.length
+    ? `<ul class="rw-cluster-paper-quotes">${quotes
+        .filter((q) => q && (q.text || typeof q === "string"))
+        .map((q) => {
+          const text = typeof q === "string" ? q : q.text || "";
+          const why = typeof q === "string" ? "" : q.why || "";
+          return `<li><blockquote>${escapeHtml(text)}</blockquote>${
+            why ? `<p class="rw-cluster-paper-quote-why">${escapeHtml(why)}</p>` : ""
+          }</li>`;
+        })
+        .join("")}</ul>`
+    : `<p class="rw-cluster-paper-muted">Цитат нет</p>`;
+  return `
+    <article class="rw-cluster-paper">
+      <p class="rw-cluster-paper-meta">${escapeHtml([year, paper.authors].filter(Boolean).join(" · ") || "—")}</p>
+      <a class="rw-cluster-paper-title" href="${escapeHtml(href)}" target="_blank" rel="noreferrer">${escapeHtml(paper.title || "Untitled")}</a>
+      <p class="rw-cluster-paper-field"><span class="rw-cluster-paper-field-label">TLDR</span> ${escapeHtml(tldr || "—")}</p>
+      <p class="rw-cluster-paper-field"><span class="rw-cluster-paper-field-label">Ответ на вопрос</span> ${escapeHtml(queryAnswer || "—")}</p>
+      <div class="rw-cluster-paper-field">
+        <span class="rw-cluster-paper-field-label">Цитаты</span>
+        ${quotesHtml}
+      </div>
+    </article>`;
+}
+
+function renderClusterDetail(cluster, members, run) {
+  const detail = document.getElementById("rw-cluster-detail");
+  if (!detail) return;
+  if (!cluster) {
+    detail.innerHTML = `<p class="literature-empty">Выберите кластер слева.</p>`;
     return;
   }
 
-  root.innerHTML = `
-    <div class="cluster-grid cluster-grid--tiles">
-      ${run.clusters
-        .map((cluster, index) => {
-          const members = (run.papers || []).filter((p) => p.cluster_key === cluster.key);
-          const checked = selectedClusterKeys.has(cluster.key) ? "checked" : "";
-          const selectedClass = selectedClusterKeys.has(cluster.key) ? " is-selected" : "";
-          return `
-            <article class="cluster-card cluster-card--tile${selectedClass}">
-              <label class="cluster-tile-select" title="Выбрать кластер">
-                <input type="checkbox" class="cluster-select-checkbox" data-cluster-key="${escapeHtml(cluster.key)}" ${checked} />
-              </label>
-              <button type="button" class="cluster-tile-body cluster-tile-open" data-cluster-index="${index}">
-                <h3 class="cluster-tile-title">${escapeHtml(cluster.label)}</h3>
-                <p class="cluster-tile-meta">${members.length} статей</p>
-                <p class="cluster-tile-preview">${escapeHtml(shortText(cluster.answer || "—", 110))}</p>
-              </button>
-            </article>`;
-        })
-        .join("")}
-    </div>`;
+  const papersHtml = members.length
+    ? members.map((paper) => renderClusterPaperCard(paper)).join("")
+    : `<p class="literature-empty">В этом кластере нет статей.</p>`;
 
-  root.querySelectorAll(".cluster-tile-open").forEach((button) => {
-    button.addEventListener("click", () => {
-      const index = Number(button.getAttribute("data-cluster-index"));
-      const cluster = run.clusters?.[index];
-      if (!cluster) return;
-      const members = (run.papers || []).filter((p) => p.cluster_key === cluster.key);
-      showClusterModal(cluster, members, run);
+  const description = cluster.answer || cluster.description || "";
+  const together = cluster.rationale || cluster.distinguishing_features || "";
+  detail.innerHTML = `
+    <header class="rw-cluster-detail-header">
+      <p class="rw-cluster-detail-kicker">${members.length} ${members.length === 1 ? "статья" : "статей"}</p>
+      <h2 class="rw-cluster-detail-title">${escapeHtml(cluster.label || "Кластер")}</h2>
+    </header>
+    <section class="rw-cluster-section">
+      <h3>Описание кластера</h3>
+      <p>${escapeHtml(description || "—")}</p>
+    </section>
+    ${together ? `<section class="rw-cluster-section"><h3>Почему вместе</h3><p>${escapeHtml(together)}</p></section>` : ""}
+    <section class="rw-cluster-section">
+      <h3>Статьи</h3>
+      <div class="rw-cluster-papers">${papersHtml}</div>
+    </section>`;
+}
+
+function renderClusterResults(run) {
+  const nav = document.getElementById("rw-cluster-nav");
+  const detail = document.getElementById("rw-cluster-detail");
+  const legacy = document.getElementById("literature-agent-results");
+  if (legacy) legacy.innerHTML = "";
+  updateClustersQuestion(run);
+  updateLibrarySplitChrome(isWorkspaceSplit());
+
+  const clusters = run?.clusters || [];
+  const hasReport = Boolean(String(run?.report_markdown || "").trim());
+
+  if (!clusters.length && !hasReport) {
+    selectedClusterKeys = new Set();
+    activeClusterKey = null;
+    activeReadingView = READING_VIEW_RESUME;
+    updateRelatedWorksSummary();
+    if (nav) {
+      nav.innerHTML = "";
+      nav.classList.toggle("hidden", !isWorkspaceSplit());
+    }
+    const reportEl = document.getElementById("rw-report-markdown");
+    reportEl?.classList.add("hidden");
+    syncResumeClusterVenn(null);
+    if (detail) {
+      detail.classList.remove("hidden");
+      detail.innerHTML = `<p class="literature-empty">Отчёт появится после генерации.</p>`;
+    }
+    return;
+  }
+
+  if (!activeClusterKey || !clusters.some((c) => c.key === activeClusterKey)) {
+    activeClusterKey = clusters[0]?.key || null;
+  }
+  if (
+    activeReadingView !== READING_VIEW_RESUME &&
+    !clusters.some((c) => c.key === activeReadingView)
+  ) {
+    activeReadingView = hasReport ? READING_VIEW_RESUME : activeClusterKey || READING_VIEW_RESUME;
+  } else if (activeReadingView === READING_VIEW_RESUME && !hasReport && activeClusterKey) {
+    activeReadingView = activeClusterKey;
+  } else if (!activeReadingView) {
+    activeReadingView = hasReport ? READING_VIEW_RESUME : activeClusterKey || READING_VIEW_RESUME;
+  }
+
+  if (nav) {
+    nav.classList.remove("hidden");
+    const resumeActive = activeReadingView === READING_VIEW_RESUME ? " is-active" : "";
+    const resumeRow = hasReport
+      ? `
+        <div class="rw-cluster-nav-row rw-cluster-nav-row--resume${resumeActive}">
+          <button type="button" class="rw-cluster-nav-item rw-cluster-nav-item--resume${resumeActive}" data-reading-view="${READING_VIEW_RESUME}" aria-current="${activeReadingView === READING_VIEW_RESUME ? "true" : "false"}">
+            <span class="rw-cluster-nav-copy">
+              <span class="rw-cluster-nav-kicker">Общий отчёт</span>
+              <span class="rw-cluster-nav-label">Total Resume</span>
+            </span>
+          </button>
+        </div>`
+      : "";
+
+    const clusterRows = clusters
+      .map((cluster, index) => {
+        const members = papersForCluster(run, cluster);
+        const checked = selectedClusterKeys.has(cluster.key) ? "checked" : "";
+        const active = cluster.key === activeReadingView ? " is-active" : "";
+        return `
+          <div class="rw-cluster-nav-row${active}">
+            <label class="rw-cluster-nav-check" title="Выбрать для Related Work">
+              <input type="checkbox" class="cluster-select-checkbox" data-cluster-key="${escapeHtml(cluster.key)}" ${checked} />
+            </label>
+            <button type="button" class="rw-cluster-nav-item${active}" data-reading-view="${escapeHtml(cluster.key)}" data-cluster-key="${escapeHtml(cluster.key)}" aria-current="${cluster.key === activeReadingView ? "true" : "false"}">
+              <span class="rw-cluster-nav-copy">
+                <span class="rw-cluster-nav-kicker">Cluster ${index + 1}</span>
+                <span class="rw-cluster-nav-label">${escapeHtml(cluster.label || "Кластер")}</span>
+              </span>
+              <span class="rw-cluster-nav-count">${members.length}</span>
+            </button>
+          </div>`;
+      })
+      .join("");
+
+    nav.innerHTML = resumeRow + clusterRows;
+
+    nav.querySelectorAll(".rw-cluster-nav-item").forEach((button) => {
+      button.addEventListener("click", () => {
+        showReadingView(button.getAttribute("data-reading-view") || READING_VIEW_RESUME);
+      });
     });
-  });
-  root.querySelectorAll(".cluster-select-checkbox").forEach((input) => {
-    input.addEventListener("change", () => {
-      toggleClusterSelection(input.getAttribute("data-cluster-key"));
+    nav.querySelectorAll(".cluster-select-checkbox").forEach((input) => {
+      input.addEventListener("change", () => {
+        toggleClusterSelection(input.getAttribute("data-cluster-key"));
+      });
     });
-  });
+  }
+
+  showReadingView(activeReadingView, { scrollPage: false });
+  // Total Resume mounts the map via renderReportMarkdown; cluster-only views still need the card.
+  if (activeReadingView !== READING_VIEW_RESUME) syncResumeClusterVenn(run);
   updateRelatedWorksSummary();
 }
 
-function renderLiteratureResults(results = [], query = "") {
+function renderLiteratureResults(results = [], _query = "") {
   const root = document.getElementById("literature-results");
   if (!root) return;
 
-  if (!results.length) {
-    const text = query
-      ? `Ничего не найдено по запросу «${query}». Попробуйте другие ключевые слова или режим «Интернет».`
-      : "Введите вопрос и нажмите «Сгенерировать».";
-    root.innerHTML = `<p class="literature-empty">${escapeHtml(text)}</p>`;
+  literatureResults = (results || []).map(normalizePaperRecord).filter((p) => p.title && p.arxiv_url);
+  updateLibraryPanelChrome();
+
+  if (!literatureResults.length) {
+    root.innerHTML = "";
     updateActionButtons();
     return;
   }
 
-  root.innerHTML = results
-    .map((paper, index) => {
-      const checked = selectedPaperUrls.has(paper.arxiv_url) ? "checked" : "";
+  root.innerHTML = literatureResults
+    .map((paper) => {
+      const checked = selectedPaperUrls.has(paper.arxiv_url);
+      const checkedAttr = checked ? "checked" : "";
+      const selectedClass = checked ? " is-selected" : "";
+      const href = paper.arxiv_url || "#";
       return `
-        <article class="literature-result-card">
-          <label class="literature-select-toggle">
-            <input type="checkbox" class="literature-result-checkbox" data-paper-url="${escapeHtml(paper.arxiv_url)}" ${checked} />
-            <span>Выбрать</span>
+        <article class="rw-library-item${selectedClass}">
+          <label class="rw-library-item-check" title="Выбрать">
+            <input type="checkbox" class="literature-result-checkbox" data-paper-url="${escapeHtml(paper.arxiv_url)}" ${checkedAttr} />
           </label>
-          <div class="literature-result-rank">${index + 1}</div>
-          <div class="literature-result-body">
-            <a class="literature-result-title" href="${escapeHtml(paper.arxiv_url)}" target="_blank" rel="noreferrer">${escapeHtml(paper.title)}</a>
-            <p class="literature-result-meta">
-              <span>score ${(paper.score ?? 0).toFixed(3)}</span>
-              ${paper.matched_terms?.length ? `<span>matched: ${escapeHtml(paper.matched_terms.join(", "))}</span>` : ""}
-            </p>
-            ${paper.abstract_preview ? `<p class="literature-result-abstract">${escapeHtml(paper.abstract_preview)}</p>` : ""}
+          <div class="rw-library-item-body">
+            <p class="rw-library-item-meta">${escapeHtml(paperMetaLine(paper))}</p>
+            <a class="rw-library-item-title" href="${escapeHtml(href)}" target="_blank" rel="noreferrer">${escapeHtml(paper.title)}</a>
           </div>
         </article>`;
     })
@@ -1828,10 +2505,1057 @@ function renderLiteratureResults(results = [], query = "") {
       if (!url) return;
       if (event.currentTarget.checked) selectedPaperUrls.add(url);
       else selectedPaperUrls.delete(url);
+      const item = event.currentTarget.closest(".rw-library-item");
+      item?.classList.toggle("is-selected", event.currentTarget.checked);
       updateActionButtons();
     });
   });
   updateActionButtons();
+}
+
+async function loadLibraryIntoSidebar({ silent = false } = {}) {
+  if (!libraryExists) {
+    if (!literatureResults.length) setLibraryPapers([]);
+    return;
+  }
+  try {
+    const data = await KoiApi.listLibraryPapers();
+    const papers = data.papers || [];
+    if (papers.length) {
+      setLibraryPapers(papers);
+      if (!silent) setLiteratureStatus(`Загружено ${papers.length} статей из базы.`);
+    } else if (!literatureResults.length) {
+      setLibraryPapers([]);
+    }
+  } catch (err) {
+    if (!silent) setLiteratureStatus(err.message, true);
+  }
+}
+
+async function findLiteraturePapers() {
+  hideLibraryAddMenu();
+  const limit = selectedLiteratureLimit();
+  let searchQuery = composeProjectSearchQuery();
+  if (!searchQuery) {
+    setLiteratureStatus(
+      "В project.md нет literature_keywords — добавьте ключевые слова для поиска.",
+      true
+    );
+    showSettingsModal();
+    return;
+  }
+  if (!selectedProjectId()) {
+    setLiteratureStatus("Выберите проект в настройках.", true);
+    showSettingsModal();
+    return;
+  }
+
+  const findBtn = document.getElementById("rw-library-find");
+  findBtn?.setAttribute("disabled", "disabled");
+  showLoader("Поиск статей…");
+  setLiteratureStatus("");
+  try {
+    if (shouldAutoTranslateQuestion()) {
+      try {
+        searchQuery = await translateQueryToEnglish(searchQuery, { silent: true });
+      } catch {
+        /* keep original keywords */
+      }
+    }
+    const papers = await searchPapers(searchQuery, limit);
+    setLibraryPapers(papers);
+    if (!papers.length) {
+      setLiteratureStatus("Ничего не найдено по ключевым словам проекта.", true);
+    } else {
+      setLiteratureStatus(`Найдено ${papers.length} статей.`);
+    }
+  } catch (err) {
+    setLiteratureStatus(err.message, true);
+  } finally {
+    hideLoader();
+    findBtn?.removeAttribute("disabled");
+  }
+}
+
+function openLibrarySourceSettings() {
+  hideLibraryAddMenu();
+  showSettingsModal();
+  requestAnimationFrame(() => {
+    const zotero = document.getElementById("rw-settings-zotero");
+    if (zotero) zotero.open = true;
+    zotero?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  restoreZoteroConnectionUi(loadSettings(), { loadCollections: true });
+}
+
+function openZoteroImport() {
+  hideLibraryAddMenu();
+  const settings = loadSettings();
+  if (settings.zoteroApiKey?.trim()) {
+    openLibrarySourceSettings();
+    setZoteroStatus(
+      `Подключено: ${zoteroWhoLabel(settings)}. Выберите папку и нажмите «Импортировать».`
+    );
+    void refreshZoteroCollections({ quiet: true });
+    requestAnimationFrame(() => {
+      document.getElementById("rw-zotero-collection")?.focus();
+    });
+    return;
+  }
+  openLibrarySourceSettings();
+  setZoteroStatus("Вставьте API Key и нажмите «Подключить».");
+  requestAnimationFrame(() => {
+    document.getElementById("rw-zotero-api-key")?.focus();
+  });
+}
+
+function setZoteroStatus(msg, isError = false) {
+  const el = document.getElementById("rw-zotero-status");
+  if (!el) return;
+  el.textContent = msg || "";
+  el.className = "rw-settings-hint" + (isError ? " error" : msg ? " ok" : "");
+}
+
+function resetZoteroStatusDefault() {
+  const el = document.getElementById("rw-zotero-status");
+  if (!el) return;
+  el.className = "rw-settings-hint";
+  el.innerHTML =
+    'Ключ: <a href="https://www.zotero.org/settings/keys" target="_blank" rel="noreferrer">zotero.org/settings/keys</a>';
+}
+
+function readZoteroCredentials() {
+  const settings = loadSettings();
+  return {
+    user_id:
+      document.getElementById("rw-zotero-user-id")?.value?.trim() ||
+      settings.zoteroUserId ||
+      "",
+    api_key:
+      document.getElementById("rw-zotero-api-key")?.value?.trim() ||
+      settings.zoteroApiKey ||
+      "",
+  };
+}
+
+function readZoteroCollectionKey() {
+  const select = document.getElementById("rw-zotero-collection");
+  if (select && !select.disabled) return select.value || "";
+  return loadSettings().zoteroCollectionKey || "";
+}
+
+function setZoteroImportEnabled(enabled) {
+  const button = document.getElementById("rw-zotero-import");
+  if (button) button.disabled = !enabled;
+}
+
+function setZoteroDisconnectVisible(visible) {
+  const button = document.getElementById("rw-zotero-disconnect");
+  if (button) button.hidden = !visible;
+}
+
+function setZoteroCollectionVisible(visible) {
+  const field = document.getElementById("rw-zotero-collection-field");
+  if (field) field.hidden = !visible;
+}
+
+function resetZoteroCollectionSelect() {
+  const select = document.getElementById("rw-zotero-collection");
+  if (!select) return;
+  select.innerHTML = '<option value="">Вся библиотека</option>';
+  select.value = "";
+  select.disabled = true;
+  setZoteroCollectionVisible(false);
+}
+
+function populateZoteroCollectionSelect(collections, selectedKey = "") {
+  const select = document.getElementById("rw-zotero-collection");
+  if (!select) return;
+  const preferred = selectedKey || loadSettings().zoteroCollectionKey || "";
+  select.innerHTML = "";
+  const allOption = document.createElement("option");
+  allOption.value = "";
+  allOption.textContent = "Вся библиотека";
+  select.appendChild(allOption);
+  for (const collection of collections || []) {
+    const option = document.createElement("option");
+    option.value = String(collection.key || "");
+    option.textContent = String(collection.label || collection.name || collection.key || "");
+    select.appendChild(option);
+  }
+  const hasPreferred = [...select.options].some((opt) => opt.value === preferred);
+  select.value = hasPreferred ? preferred : "";
+  select.disabled = false;
+  setZoteroCollectionVisible(true);
+}
+
+function persistZoteroCollectionKey() {
+  const settings = loadSettings();
+  settings.zoteroCollectionKey = readZoteroCollectionKey();
+  saveSettingsToStorage(settings);
+}
+
+function zoteroWhoLabel(settings = loadSettings()) {
+  if (settings.zoteroUsername) return `@${settings.zoteroUsername}`;
+  if (settings.zoteroUserId) return `user ${settings.zoteroUserId}`;
+  return "сохранено";
+}
+
+function zoteroCollectionLabel() {
+  const select = document.getElementById("rw-zotero-collection");
+  if (!select || select.disabled) return "";
+  const key = select.value || "";
+  if (!key) return "вся библиотека";
+  const option = select.selectedOptions?.[0];
+  return (option?.textContent || key).trim();
+}
+
+function restoreZoteroConnectionUi(settings = loadSettings(), { loadCollections = false } = {}) {
+  const hasKey = Boolean(settings.zoteroApiKey?.trim());
+  setZoteroImportEnabled(hasKey);
+  setZoteroDisconnectVisible(hasKey);
+  updateZoteroEmptyHint();
+  if (hasKey) {
+    setZoteroCollectionVisible(true);
+    setZoteroStatus(
+      `Подключено: ${zoteroWhoLabel(settings)}. Выберите папку и нажмите «Импортировать».`
+    );
+    if (loadCollections) void refreshZoteroCollections({ quiet: true });
+  } else {
+    setZoteroDisconnectVisible(false);
+    resetZoteroCollectionSelect();
+  }
+}
+
+function disconnectZoteroAccount() {
+  const userInput = document.getElementById("rw-zotero-user-id");
+  const keyInput = document.getElementById("rw-zotero-api-key");
+  if (userInput) userInput.value = "";
+  if (keyInput) keyInput.value = "";
+  const settings = readSettingsFromDom();
+  settings.zoteroUserId = "";
+  settings.zoteroApiKey = "";
+  settings.zoteroUsername = "";
+  settings.zoteroCollectionKey = "";
+  saveSettingsToStorage(settings);
+  setZoteroImportEnabled(false);
+  setZoteroDisconnectVisible(false);
+  resetZoteroCollectionSelect();
+  updateZoteroEmptyHint();
+  resetZoteroStatusDefault();
+  setLiteratureStatus("Zotero отключён.");
+}
+
+async function refreshZoteroCollections({ quiet = false } = {}) {
+  const { user_id, api_key } = readZoteroCredentials();
+  if (!api_key) {
+    resetZoteroCollectionSelect();
+    return;
+  }
+  const select = document.getElementById("rw-zotero-collection");
+  if (select) select.disabled = true;
+  setZoteroCollectionVisible(true);
+  try {
+    const data = await KoiApi.listZoteroCollections({ api_key, user_id });
+    const collections = data.collections || [];
+    populateZoteroCollectionSelect(collections, loadSettings().zoteroCollectionKey || "");
+    persistZoteroCollectionKey();
+    if (!quiet) {
+      const count = collections.length;
+      setZoteroStatus(
+        count
+          ? `Найдено папок: ${count}. Выберите папку и нажмите «Импортировать».`
+          : "Папок нет — можно импортировать всю библиотеку."
+      );
+    }
+  } catch (err) {
+    resetZoteroCollectionSelect();
+    setZoteroCollectionVisible(Boolean(api_key));
+    if (!quiet) setZoteroStatus(err.message, true);
+  }
+}
+
+async function connectZoteroAccount() {
+  const { user_id, api_key } = readZoteroCredentials();
+  if (!api_key) {
+    setZoteroStatus("Сначала вставьте API Key.", true);
+    document.getElementById("rw-zotero-api-key")?.focus();
+    return;
+  }
+  const connectBtn = document.getElementById("rw-zotero-connect");
+  connectBtn?.setAttribute("disabled", "disabled");
+  setZoteroStatus("Проверяем ключ в Zotero…");
+  setZoteroImportEnabled(false);
+  setZoteroDisconnectVisible(false);
+  try {
+    const data = await KoiApi.connectZotero({ api_key, user_id });
+    const resolvedId = String(data.user_id || "").trim();
+    const username = String(data.username || "").trim();
+    const userInput = document.getElementById("rw-zotero-user-id");
+    if (resolvedId && userInput) userInput.value = resolvedId;
+    const settings = readSettingsFromDom();
+    settings.zoteroUserId = resolvedId || user_id;
+    settings.zoteroApiKey = api_key;
+    settings.zoteroUsername = username;
+    saveSettingsToStorage(settings);
+    setZoteroImportEnabled(true);
+    setZoteroDisconnectVisible(true);
+    updateZoteroEmptyHint();
+    const who = username ? `@${username}` : `user ${resolvedId}`;
+    setZoteroStatus(`Подключено: ${who}. Загружаем список папок…`);
+    setLiteratureStatus(`Zotero подключён (${who}).`);
+    await refreshZoteroCollections({ quiet: false });
+    document.getElementById("rw-zotero-collection")?.focus();
+  } catch (err) {
+    setZoteroImportEnabled(false);
+    setZoteroDisconnectVisible(false);
+    resetZoteroCollectionSelect();
+    setZoteroStatus(err.message, true);
+    setLiteratureStatus(err.message, true);
+  } finally {
+    connectBtn?.removeAttribute("disabled");
+  }
+}
+
+async function importZoteroLibrary({ quiet = false } = {}) {
+  const { user_id, api_key } = readZoteroCredentials();
+  if (!api_key) {
+    setZoteroStatus("Сначала подключите Zotero API Key.", true);
+    if (!quiet) openLibrarySourceSettings();
+    return;
+  }
+  const collection_key = readZoteroCollectionKey();
+  persistZoteroCollectionKey();
+  const folderLabel = zoteroCollectionLabel() || (collection_key ? collection_key : "вся библиотека");
+  const importBtn = document.getElementById("rw-zotero-import");
+  importBtn?.setAttribute("disabled", "disabled");
+  if (!quiet) {
+    setZoteroStatus(`Импорт из Zotero (${folderLabel})…`);
+    showLoader(`Импорт из Zotero: ${folderLabel}`);
+  } else {
+    setLiteratureStatus(`Загружаем Zotero (${folderLabel})…`);
+  }
+  try {
+    const data = await KoiApi.importZotero({
+      api_key,
+      user_id,
+      limit: Math.max(selectedLiteratureLimit(), 50),
+      collection_key,
+    });
+    const papers = data.papers || [];
+    if (!papers.length) {
+      setZoteroStatus(`В «${folderLabel}» не найдено подходящих записей.`, true);
+      setLiteratureStatus("Zotero: статей не найдено.", true);
+      return;
+    }
+    setLibraryPapers(papers);
+    hideSettingsModal();
+    const total = data.total_available != null ? ` (из ${data.total_available})` : "";
+    setZoteroStatus(`Импортировано ${papers.length}${total} из «${folderLabel}».`);
+    setLiteratureStatus(`Импортировано из Zotero (${folderLabel}): ${papers.length} статей.`);
+  } catch (err) {
+    setZoteroStatus(err.message, true);
+    setLiteratureStatus(err.message, true);
+  } finally {
+    if (!quiet) hideLoader();
+    setZoteroImportEnabled(Boolean(api_key));
+    importBtn?.removeAttribute("disabled");
+  }
+}
+
+async function maybeAutoLoadZoteroLibrary() {
+  if (literatureResults.length) return;
+  const settings = loadSettings();
+  if (!settings.zoteroApiKey?.trim()) return;
+  await importZoteroLibrary({ quiet: true });
+}
+
+function triggerCsvUpload() {
+  hideLibraryAddMenu();
+  const input = document.getElementById("rw-library-csv-input");
+  if (!input) {
+    showSettingsModal();
+    return;
+  }
+  input.value = "";
+  input.click();
+}
+
+async function handleLibraryCsvSelected(file) {
+  if (!file) return;
+  const settingsInput = document.getElementById("library-upload-input");
+  if (settingsInput) {
+    try {
+      const transfer = new DataTransfer();
+      transfer.items.add(file);
+      settingsInput.files = transfer.files;
+      updateLibraryUploadFilename();
+    } catch {
+      /* DataTransfer may be unavailable */
+    }
+  }
+  showLoader("Загрузка CSV…");
+  setLiteratureStatus("Загрузка CSV…");
+  try {
+    const data = await KoiApi.uploadLibrary(file);
+    libraryExists = true;
+    updateLibraryStatusHint();
+    setLibraryUploadStatus(`Загружено ${data.count} статей в ${data.csv_path}.`);
+    await loadLibraryIntoSidebar({ silent: true });
+    setLiteratureStatus(`CSV загружен: ${data.count} статей.`);
+  } catch (err) {
+    setLiteratureStatus(err.message, true);
+    setLibraryUploadStatus(err.message, true);
+  } finally {
+    hideLoader();
+  }
+}
+
+let clusterVennCleanup = null;
+const CLUSTER_VENN_COLLAPSE_KEY = "koi-rw-cluster-venn-collapsed";
+
+function teardownClusterVennDiagram() {
+  if (typeof clusterVennCleanup === "function") {
+    try {
+      clusterVennCleanup();
+    } catch {
+      /* ignore */
+    }
+  }
+  clusterVennCleanup = null;
+}
+
+function isClusterVennCollapsedPreferred() {
+  try {
+    return sessionStorage.getItem(CLUSTER_VENN_COLLAPSE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function setClusterVennCollapsed(host, collapsed) {
+  if (!host) return;
+  const body = host.querySelector(".rw-cluster-venn-body");
+  const toggle = host.querySelector(".rw-cluster-venn-toggle");
+  const hint = host.querySelector(".rw-cluster-venn-toggle-hint");
+  host.classList.toggle("is-collapsed", Boolean(collapsed));
+  if (body) body.hidden = Boolean(collapsed);
+  toggle?.setAttribute("aria-expanded", collapsed ? "false" : "true");
+  if (hint) hint.textContent = collapsed ? "Развернуть" : "Свернуть";
+  try {
+    sessionStorage.setItem(CLUSTER_VENN_COLLAPSE_KEY, collapsed ? "1" : "0");
+  } catch {
+    /* ignore */
+  }
+  if (!collapsed) {
+    host.querySelector("#rw-cluster-venn-chart")?.dispatchEvent(new Event("rw-venn-reveal"));
+  }
+}
+
+function bindClusterVennCollapse(host) {
+  const toggle = host?.querySelector?.(".rw-cluster-venn-toggle");
+  if (!toggle || toggle.dataset.bound === "1") return;
+  toggle.dataset.bound = "1";
+  toggle.addEventListener("click", () => {
+    setClusterVennCollapsed(host, !host.classList.contains("is-collapsed"));
+  });
+}
+
+function vennColorPalette() {
+  const root = getComputedStyle(document.documentElement);
+  const fromTheme = ["--pink", "--purple", "--cyan", "--orange", "--lime", "--peach"]
+    .map((name) => root.getPropertyValue(name).trim())
+    .filter(Boolean);
+  return fromTheme.length
+    ? fromTheme
+    : ["#ff6bcb", "#9b5cff", "#3de8ff", "#ff9a5c", "#b8ff5c", "#ffb8a0"];
+}
+
+/** title → Set(clusterKey) using nested cluster papers + soft multi-membership. */
+function buildPaperClusterMembership(run) {
+  const membership = new Map();
+  const add = (title, key) => {
+    const t = String(title || "").trim();
+    const k = String(key || "").trim();
+    if (!t || !k) return;
+    if (!membership.has(t)) membership.set(t, new Set());
+    membership.get(t).add(k);
+  };
+
+  for (const cluster of run?.clusters || []) {
+    const key = String(cluster?.key || "").trim();
+    if (!key) continue;
+    for (const paper of papersForCluster(run, cluster)) {
+      add(paper.title, key);
+      for (const extra of paper.cluster_keys || []) add(paper.title, extra);
+    }
+  }
+
+  for (const raw of run?.papers || []) {
+    const paper = normalizeClusterPaper(raw);
+    if (!paper) continue;
+    if (paper.primary_cluster_key) add(paper.title, paper.primary_cluster_key);
+    for (const key of paper.cluster_keys || []) add(paper.title, key);
+  }
+
+  return membership;
+}
+
+function buildVennSetOverlaps(run) {
+  const clusters = (run?.clusters || []).filter((c) => String(c?.key || "").trim());
+  if (!clusters.length) return { areas: [], metaByKey: new Map(), membership: new Map() };
+
+  const membership = buildPaperClusterMembership(run);
+  const metaByKey = new Map();
+  clusters.forEach((cluster, index) => {
+    const key = String(cluster.key);
+    const members = [...membership.entries()]
+      .filter(([, keys]) => keys.has(key))
+      .map(([title]) => title);
+    metaByKey.set(key, {
+      key,
+      index,
+      label: cluster.label || `Cluster ${index + 1}`,
+      description: String(cluster.answer || cluster.description || "").trim(),
+      together: String(
+        cluster.rationale || cluster.distinguishing_features || cluster.similarity_basis || ""
+      ).trim(),
+      paperTitles: members,
+      size: members.length,
+    });
+  });
+
+  const keys = clusters.map((c) => String(c.key));
+  const areas = [];
+
+  for (const key of keys) {
+    const meta = metaByKey.get(key);
+    if (!meta?.size) continue;
+    areas.push({ sets: [key], size: meta.size });
+  }
+
+  const n = keys.length;
+  for (let mask = 1; mask < 1 << n; mask += 1) {
+    const combo = [];
+    for (let i = 0; i < n; i += 1) {
+      if (mask & (1 << i)) combo.push(keys[i]);
+    }
+    if (combo.length < 2) continue;
+    let size = 0;
+    for (const [, paperKeys] of membership) {
+      if (combo.every((key) => paperKeys.has(key))) size += 1;
+    }
+    if (size > 0) areas.push({ sets: combo, size });
+  }
+
+  return { areas, metaByKey, membership };
+}
+
+function formatVennTooltipHtml(datum, metaByKey) {
+  const keys = (datum?.sets || []).map(String);
+  if (!keys.length) return "";
+
+  if (keys.length === 1) {
+    const meta = metaByKey.get(keys[0]);
+    if (!meta) return "";
+    const desc = shortText(meta.description || meta.together, 220) || "Нет описания";
+    const peers = [...metaByKey.values()]
+      .filter((other) => other.key !== meta.key)
+      .filter((other) =>
+        meta.paperTitles.some((title) => other.paperTitles.includes(title))
+      )
+      .map((other) => other.label);
+    const peerLine = peers.length
+      ? `<p class="rw-cluster-venn-tip-meta">Пересекается с: ${escapeHtml(peers.join(", "))}</p>`
+      : `<p class="rw-cluster-venn-tip-meta">Без пересечений по статьям</p>`;
+    return `
+      <p class="rw-cluster-venn-tip-kicker">Cluster ${meta.index + 1} · ${meta.size} ${
+        meta.size === 1 ? "статья" : "статей"
+      }</p>
+      <p class="rw-cluster-venn-tip-title">${escapeHtml(meta.label)}</p>
+      <p class="rw-cluster-venn-tip-body">${escapeHtml(desc)}</p>
+      ${peerLine}`;
+  }
+
+  const labels = keys.map((key) => metaByKey.get(key)?.label || key);
+  const titleSets = keys.map((key) => new Set(metaByKey.get(key)?.paperTitles || []));
+  const titles = titleSets.length
+    ? [...titleSets[0]].filter((title) => titleSets.every((set) => set.has(title)))
+    : [];
+  const list = titles
+    .slice(0, 4)
+    .map((t) => `<li>${escapeHtml(shortText(t, 72))}</li>`)
+    .join("");
+  const more =
+    titles.length > 4
+      ? `<p class="rw-cluster-venn-tip-meta">и ещё ${titles.length - 4}</p>`
+      : "";
+  return `
+    <p class="rw-cluster-venn-tip-kicker">Пересечение · ${datum.size} ${
+      datum.size === 1 ? "статья" : "статей"
+    }</p>
+    <p class="rw-cluster-venn-tip-title">${escapeHtml(labels.join(" ∩ "))}</p>
+    ${list ? `<ul class="rw-cluster-venn-tip-list">${list}</ul>${more}` : ""}`;
+}
+
+function renderClusterVennLegend(metaByKey, colorByKey) {
+  const items = [...metaByKey.values()];
+  if (!items.length) return "";
+  return `
+    <ul class="rw-cluster-venn-legend" aria-label="Легенда кластеров">
+      ${items
+        .map((meta) => {
+          const color = colorByKey.get(meta.key) || "var(--cyan)";
+          return `
+            <li>
+              <button type="button" class="rw-cluster-venn-legend-item" data-cluster-key="${escapeHtml(
+                meta.key
+              )}" title="Открыть кластер">
+                <span class="rw-cluster-venn-legend-swatch" style="--swatch:${escapeHtml(color)}"></span>
+                <span class="rw-cluster-venn-legend-copy">
+                  <span class="rw-cluster-venn-legend-label">${escapeHtml(meta.label)}</span>
+                  <span class="rw-cluster-venn-legend-count">${meta.size}</span>
+                </span>
+              </button>
+            </li>`;
+        })
+        .join("")}
+    </ul>`;
+}
+
+function mountClusterVennDiagram(run, rootEl) {
+  teardownClusterVennDiagram();
+  const chartEl = rootEl?.querySelector?.("#rw-cluster-venn-chart") || rootEl;
+  const tipEl = rootEl?.querySelector?.("#rw-cluster-venn-tooltip");
+  const legendEl = rootEl?.querySelector?.("#rw-cluster-venn-legend");
+  if (!chartEl) return;
+
+  const d3 = globalThis.d3;
+  const vennApi = globalThis.venn;
+  if (!d3?.select || !vennApi?.VennDiagram) {
+    chartEl.innerHTML = `<p class="literature-empty">Не удалось загрузить venn.js</p>`;
+    return;
+  }
+
+  const { areas, metaByKey } = buildVennSetOverlaps(run);
+  if (!areas.length) {
+    chartEl.innerHTML = `<p class="literature-empty">Нет данных для диаграммы пересечений.</p>`;
+    return;
+  }
+
+  const palette = vennColorPalette();
+  const colorByKey = new Map(
+    [...metaByKey.keys()].map((key, i) => [key, palette[i % palette.length]])
+  );
+
+  if (legendEl) {
+    legendEl.innerHTML = renderClusterVennLegend(metaByKey, colorByKey);
+    legendEl.querySelectorAll(".rw-cluster-venn-legend-item").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const key = btn.getAttribute("data-cluster-key") || "";
+        if (key) showReadingView(key, { scrollPage: true, scrollNav: true });
+      });
+    });
+  }
+
+  let drawQueued = false;
+  const draw = () => {
+    drawQueued = false;
+    if (rootEl?.classList.contains("is-collapsed")) return;
+    const width = Math.max(280, Math.floor(chartEl.clientWidth || 420));
+    const height = Math.min(380, Math.max(240, Math.round(width * 0.62)));
+    chartEl.innerHTML = "";
+
+    const textFill =
+      getComputedStyle(document.documentElement).getPropertyValue("--text").trim() || "#f4f4ff";
+    const chart = vennApi
+      .VennDiagram({
+        symmetricalTextCentre: true,
+        colourScheme: palette,
+        textFill,
+      })
+      .width(width)
+      .height(height);
+    const selection = d3.select(chartEl).datum(areas).call(chart);
+
+    selection
+      .selectAll("path")
+      .style("fill-opacity", 0.34)
+      .style("stroke-width", 1.75)
+      .style("stroke-opacity", 0.9)
+      .style("transition", "fill-opacity 160ms ease, stroke-width 160ms ease");
+
+    selection.selectAll("g.venn-circle path").style("fill", (d) => {
+      const key = d?.sets?.[0];
+      return colorByKey.get(String(key)) || palette[0];
+    }).style("stroke", (d) => {
+      const key = d?.sets?.[0];
+      return colorByKey.get(String(key)) || palette[0];
+    });
+
+    selection.selectAll("g.venn-intersection path").style("fill", "var(--text)").style("fill-opacity", 0.08);
+
+    selection
+      .selectAll("g.venn-circle text")
+      .text((d) => {
+        const key = String(d?.sets?.[0] || "");
+        const meta = metaByKey.get(key);
+        return shortText(meta?.label || key, 22);
+      })
+      .style("fill", "var(--text)")
+      .style("font-size", "11px")
+      .style("font-family", "Outfit, sans-serif")
+      .style("font-weight", "600")
+      .style("pointer-events", "none");
+
+    const hideTip = () => {
+      tipEl?.classList.add("hidden");
+      tipEl && (tipEl.innerHTML = "");
+      rootEl?.querySelectorAll(".rw-cluster-venn-legend-item.is-hot").forEach((el) => {
+        el.classList.remove("is-hot");
+      });
+    };
+
+    const showTip = (event, datum) => {
+      if (!tipEl) return;
+      const accent =
+        datum?.sets?.length === 1
+          ? colorByKey.get(String(datum.sets[0])) || palette[0]
+          : "var(--cyan)";
+      tipEl.style.setProperty("--tip-accent", accent);
+      tipEl.innerHTML = formatVennTooltipHtml(datum, metaByKey);
+      tipEl.classList.remove("hidden");
+      const host = tipEl.parentElement || chartEl;
+      const hostRect = host.getBoundingClientRect();
+      const tipRect = tipEl.getBoundingClientRect();
+      let left = event.clientX - hostRect.left + 14;
+      let top = event.clientY - hostRect.top + 14;
+      if (left + tipRect.width > hostRect.width - 8) {
+        left = Math.max(8, hostRect.width - tipRect.width - 8);
+      }
+      if (top + tipRect.height > hostRect.height - 8) {
+        top = Math.max(8, event.clientY - hostRect.top - tipRect.height - 12);
+      }
+      tipEl.style.left = `${left}px`;
+      tipEl.style.top = `${top}px`;
+
+      rootEl?.querySelectorAll(".rw-cluster-venn-legend-item").forEach((el) => {
+        const key = el.getAttribute("data-cluster-key") || "";
+        el.classList.toggle("is-hot", (datum?.sets || []).map(String).includes(key));
+      });
+    };
+
+    selection
+      .selectAll("g")
+      .style("cursor", (d) => (d?.sets?.length === 1 ? "pointer" : "default"))
+      .on("mouseover", function (event, datum) {
+        vennApi.sortAreas?.(selection, datum);
+        d3.select(this).select("path").style("fill-opacity", 0.62).style("stroke-width", 2.6);
+        showTip(event, datum);
+      })
+      .on("mousemove", (event, datum) => showTip(event, datum))
+      .on("mouseleave", function () {
+        d3.select(this)
+          .select("path")
+          .style("fill-opacity", (d) => (d?.sets?.length > 1 ? 0.08 : 0.34))
+          .style("stroke-width", 1.75);
+        hideTip();
+      })
+      .on("click", (_event, datum) => {
+        if (datum?.sets?.length !== 1) return;
+        const key = String(datum.sets[0] || "");
+        if (!key) return;
+        showReadingView(key, { scrollPage: true, scrollNav: true });
+      });
+  };
+
+  const queueDraw = () => {
+    if (drawQueued) return;
+    drawQueued = true;
+    window.requestAnimationFrame(draw);
+  };
+
+  queueDraw();
+  const onReveal = () => queueDraw();
+  chartEl.addEventListener("rw-venn-reveal", onReveal);
+  const ro =
+    typeof ResizeObserver !== "undefined"
+      ? new ResizeObserver(() => queueDraw())
+      : null;
+  ro?.observe(chartEl);
+  const onTheme = () => queueDraw();
+  window.addEventListener("koi-theme-change", onTheme);
+
+  clusterVennCleanup = () => {
+    ro?.disconnect();
+    chartEl.removeEventListener("rw-venn-reveal", onReveal);
+    window.removeEventListener("koi-theme-change", onTheme);
+    tipEl?.classList.add("hidden");
+    chartEl.innerHTML = "";
+    if (legendEl) legendEl.innerHTML = "";
+  };
+}
+
+function syncResumeClusterVenn(run = latestPaperAnswerRun) {
+  const slot = document.getElementById("rw-cluster-venn-slot");
+  if (!slot) return;
+
+  const clusters = run?.clusters || [];
+  if (!clusters.length) {
+    teardownClusterVennDiagram();
+    slot.innerHTML = "";
+    slot.classList.add("hidden");
+    return;
+  }
+
+  const { areas, metaByKey } = buildVennSetOverlaps(run);
+  const overlapCount = areas.filter((a) => (a.sets || []).length >= 2).length;
+  const paperCount = new Set(
+    [...metaByKey.values()].flatMap((meta) => meta.paperTitles || [])
+  ).size;
+  const collapsed = isClusterVennCollapsedPreferred();
+
+  slot.classList.remove("hidden");
+  slot.innerHTML = `
+    <section class="rw-cluster-venn rw-resume-card${collapsed ? " is-collapsed" : ""}" aria-label="Пересечения кластеров по статьям">
+      <button type="button" class="rw-cluster-venn-toggle" aria-expanded="${
+        collapsed ? "false" : "true"
+      }" aria-controls="rw-cluster-venn-body">
+        <span class="rw-cluster-venn-toggle-main">
+          <span class="rw-cluster-venn-toggle-chevron" aria-hidden="true">
+            <svg viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M6 3.2 10.8 8 6 12.8l-.9-.9L9 8 5.1 4.1z"/></svg>
+          </span>
+          <span class="rw-cluster-venn-toggle-copy">
+            <span class="rw-cluster-venn-kicker">Карта кластеров</span>
+            <span class="rw-cluster-venn-title">Пересечения по статьям</span>
+          </span>
+          <span class="rw-cluster-venn-badge" title="Кластеры · статьи · пересечения">
+            <span>${clusters.length} кл</span>
+            <span class="rw-cluster-venn-badge-sep">·</span>
+            <span>${paperCount} ст</span>
+            <span class="rw-cluster-venn-badge-sep">·</span>
+            <span>${overlapCount} ∩</span>
+          </span>
+        </span>
+        <span class="rw-cluster-venn-toggle-hint">${collapsed ? "Развернуть" : "Свернуть"}</span>
+      </button>
+      <div class="rw-cluster-venn-body" id="rw-cluster-venn-body"${collapsed ? " hidden" : ""}>
+        <p class="rw-cluster-venn-hint">Наведите на круг — краткое описание. Клик по кругу или легенде открывает кластер.</p>
+        <div class="rw-cluster-venn-stage">
+          <div class="rw-cluster-venn-glow" aria-hidden="true"></div>
+          <div class="rw-cluster-venn-chart" id="rw-cluster-venn-chart"></div>
+          <div class="rw-cluster-venn-tooltip hidden" id="rw-cluster-venn-tooltip" role="tooltip"></div>
+        </div>
+        <div id="rw-cluster-venn-legend"></div>
+      </div>
+    </section>`;
+
+  const host = slot.querySelector(".rw-cluster-venn");
+  bindClusterVennCollapse(host);
+  requestAnimationFrame(() => mountClusterVennDiagram(run, host));
+}
+
+function renderReportMarkdown(run = latestPaperAnswerRun) {
+  const el = document.getElementById("rw-report-markdown");
+  if (!el) return;
+  const md = String(run?.report_markdown || "").trim();
+  if (!md) {
+    el.innerHTML = "";
+    el.classList.remove("markdown-preview");
+    el.classList.add("hidden");
+    syncResumeClusterVenn(run);
+    return;
+  }
+
+  el.classList.add("markdown-preview");
+  el.innerHTML = `
+    <header class="rw-cluster-detail-header">
+      <p class="rw-cluster-detail-kicker">Общий отчёт</p>
+      <h2 class="rw-cluster-detail-title">Total Resume</h2>
+    </header>
+    ${renderMarkdown(md, { collapsibleSections: false })}`;
+  // Visibility is owned by showReadingView — only reveal when that view is active.
+  if (activeReadingView === READING_VIEW_RESUME) el.classList.remove("hidden");
+  else el.classList.add("hidden");
+
+  syncResumeClusterVenn(run);
+}
+
+function literatureRunId(run) {
+  return String(run?.run_id || run?.query_hash || "").trim();
+}
+
+function isLiteratureRunStaged(run) {
+  const status = String(run?.status || "").trim().toLowerCase();
+  if (status === "ready") return false;
+  if (Number(run?.n_clusters) > 0) return false;
+  if (Array.isArray(run?.clusters) && run.clusters.length > 0) return false;
+  // History rows always store a report path placeholder — only real markdown counts.
+  const report = String(run?.report_markdown || "").trim();
+  if (report && !/^literature\/[^/\s]+\/report\.md$/i.test(report)) return false;
+  return status === "staged";
+}
+
+function resetCancelledLiteratureRunUi() {
+  stopLiteratureClusterPoll();
+  hideClusterPromptModal();
+  literatureClusterPendingHash = "";
+  literatureClusterPrompt = "";
+  latestPaperAnswerRun = null;
+  selectedClusterKeys = new Set();
+  activeClusterKey = null;
+  activeReadingView = READING_VIEW_RESUME;
+  teardownClusterVennDiagram();
+  const clusterRoot = document.getElementById("literature-agent-results");
+  if (clusterRoot) clusterRoot.innerHTML = "";
+  const reportEl = document.getElementById("rw-report-markdown");
+  if (reportEl) {
+    reportEl.innerHTML = "";
+    reportEl.classList.add("hidden");
+  }
+  const vennSlot = document.getElementById("rw-cluster-venn-slot");
+  if (vennSlot) {
+    vennSlot.innerHTML = "";
+    vennSlot.classList.add("hidden");
+  }
+  const detail = document.getElementById("rw-cluster-detail");
+  if (detail) {
+    detail.innerHTML = "";
+    detail.classList.add("hidden");
+  }
+  document.getElementById("rw-related-pane")?.classList.add("hidden");
+  updateClustersQuestion(null);
+  setWorkspaceSplit(false);
+}
+
+async function cancelLiteratureClusterRun(runId = "") {
+  const projectId = selectedProjectId();
+  const targetId =
+    String(runId || "").trim() ||
+    literatureRunId(latestPaperAnswerRun) ||
+    String(literatureClusterPendingHash || "").trim();
+  if (!projectId || !targetId) {
+    setLiteratureStatus("Нет обзора для отмены.", true);
+    return;
+  }
+  if (!confirm("Отменить обзор и удалить подготовленный промпт?")) return;
+  try {
+    await KoiApi.deleteLiteratureRun(projectId, targetId);
+    const wasActive =
+      literatureRunId(latestPaperAnswerRun) === targetId ||
+      String(literatureClusterPendingHash || "").trim() === targetId;
+    if (wasActive) resetCancelledLiteratureRunUi();
+    await refreshLiteratureHistory();
+    setLiteratureStatus("Обзор отменён.");
+  } catch (err) {
+    setLiteratureStatus(err.message || "Не удалось отменить обзор.", true);
+  }
+}
+
+function renderLiteratureHistory(runs = []) {
+  const root = document.getElementById("rw-history-list");
+  if (!root) return;
+  if (!runs.length) {
+    root.innerHTML = `<p class="literature-empty">Пока нет сохранённых анализов.</p>`;
+    return;
+  }
+  const activeId = literatureRunId(latestPaperAnswerRun);
+  root.innerHTML = runs
+    .map((run) => {
+      const runId = escapeHtml(literatureRunId(run));
+      const question = escapeHtml(shortText(run.question || "Без вопроса", 90));
+      const staged = isLiteratureRunStaged(run);
+      const metaParts = [
+        `${run.count || 0} статей`,
+        String(run.created_at || "").replace("T", " ").replace("Z", ""),
+      ];
+      if (staged) metaParts.unshift("ожидает агента");
+      const meta = escapeHtml(metaParts.filter(Boolean).join(" · "));
+      const active = literatureRunId(run) === activeId ? " is-active" : "";
+      const cancelBtn = staged
+        ? `<button type="button" class="btn btn-small btn-danger rw-history-cancel" data-cancel-run-id="${runId}" title="Отменить обзор">✕</button>`
+        : "";
+      return `
+        <div class="rw-history-row">
+          <button type="button" class="rw-history-item${active}" data-run-id="${runId}">
+            <span class="rw-history-item-title">${question}</span>
+            <span class="rw-history-item-meta">${meta}</span>
+          </button>
+          ${cancelBtn}
+        </div>`;
+    })
+    .join("");
+  root.querySelectorAll("[data-run-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      void openLiteratureHistoryRun(button.getAttribute("data-run-id"));
+    });
+  });
+  root.querySelectorAll("[data-cancel-run-id]").forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      void cancelLiteratureClusterRun(button.getAttribute("data-cancel-run-id"));
+    });
+  });
+}
+
+async function refreshLiteratureHistory() {
+  const projectId = selectedProjectId();
+  if (!projectId) {
+    renderLiteratureHistory([]);
+    return;
+  }
+  try {
+    const data = await KoiApi.listLiteratureRuns(projectId);
+    renderLiteratureHistory(data.runs || []);
+  } catch {
+    renderLiteratureHistory([]);
+  }
+}
+
+async function openLiteratureHistoryRun(runId) {
+  const projectId = selectedProjectId();
+  if (!projectId || !runId) return;
+  if (isHistoryView()) setHistoryView(false);
+  showLoader("Открываем анализ…");
+  try {
+    const run = normalizeLiteratureRun(await KoiApi.getLiteratureRun(projectId, runId));
+    latestPaperAnswerRun = run;
+    selectedClusterKeys = new Set((run.clusters || []).map((c) => c.key));
+    activeReadingView = String(run.report_markdown || "").trim() ? READING_VIEW_RESUME : (run.clusters?.[0]?.key || READING_VIEW_RESUME);
+    activeClusterKey = run.clusters?.[0]?.key || null;
+    setWorkspaceSplit(true);
+    renderRunPapersSidebar(run.papers || []);
+    if (run.report_markdown || (run.clusters || []).length) {
+      setGeneratingMode(false);
+      renderClusterResults(run);
+      renderReportMarkdown(run);
+      if (run.related_work_markdown) {
+        document.getElementById("rw-related-pane")?.classList.remove("hidden");
+        applyRelatedWorkResult(String(run.related_work_markdown), {
+          status: "answered",
+          source: "orchestrator",
+        });
+      }
+      setLiteratureStatus(
+        run.clusters?.length ? `Готово (${run.clusters.length} кластеров).` : "Готово."
+      );
+    } else {
+      literatureClusterPendingHash = literatureRunId(run) || runId;
+      literatureClusterPrompt = String(run.prompt || run.cursor_message || literatureClusterPrompt || "").trim();
+      updateClustersQuestion(run);
+      setGeneratingMode(true, "Агент работает — ждём report.md…");
+      startLiteratureClusterPoll(projectId, literatureClusterPendingHash);
+      setLiteratureStatus("Ожидаем отчёт агента…");
+    }
+    renderLiteratureHistory(
+      (await KoiApi.listLiteratureRuns(projectId).catch(() => ({ runs: [] }))).runs || []
+    );
+  } catch (err) {
+    setLiteratureStatus(err.message, true);
+  } finally {
+    if (!workspaceGenerating) hideLoader();
+  }
 }
 
 async function onLiteratureSearchSubmit(e) {
@@ -1841,20 +3565,10 @@ async function onLiteratureSearchSubmit(e) {
   const projectId = selectedProjectId();
   let searchQuery = composeProjectSearchQuery();
   let clusterQuestion = composeClusterQuestion();
-  let questionLabel = displayQueryLabel();
-  let resultsHeader = displayResultsHeader(searchQuery, questionLabel);
   let searchCompleted = false;
 
   if (!clusterQuestion) {
     setLiteratureStatus("Введите исследовательный вопрос — по нему сгруппируем статьи.", true);
-    return;
-  }
-  if (!searchQuery) {
-    setLiteratureStatus(
-      "В project.md нет literature_keywords — добавьте ключевые слова для поиска статей.",
-      true
-    );
-    showSettingsModal();
     return;
   }
   if (!projectId) {
@@ -1868,81 +3582,203 @@ async function onLiteratureSearchSubmit(e) {
   setLiteratureStatus("");
 
   try {
-    if (shouldAutoTranslateQuestion()) {
+    let papersForAgent = [];
+    let searchQueryTranslated = false;
+    const selected = getSelectedResults();
+    if (literatureResults.length) {
+      papersForAgent = (selected.length ? selected : literatureResults).map(normalizePaperRecord);
+      searchCompleted = true;
+    } else {
+      if (!searchQuery) {
+        setLiteratureStatus(
+          "Нет статей слева и нет literature_keywords. Добавьте литературу или ключевые слова.",
+          true
+        );
+        showSettingsModal();
+        return;
+      }
+      if (shouldAutoTranslateQuestion()) {
+        showLoader("Перевод на английский…");
+        try {
+          searchQuery = await translateQueryToEnglish(searchQuery, { silent: true });
+        } catch {
+          /* keep original */
+        }
+        try {
+          clusterQuestion = await translateQueryToEnglish(clusterQuestion, { silent: true });
+          searchQueryTranslated = true;
+        } catch {
+          /* keep original */
+        }
+      }
+      showLoader("Поиск релевантных статей по ключевым словам проекта…");
+      const papers = await searchPapers(searchQuery, limit);
+      searchCompleted = true;
+      if (!papers.length) {
+        setWorkspaceSplit(false);
+        setLibraryPapers([]);
+        const mode = getSearchMode();
+        setLiteratureStatus(
+          mode === "internet" || mode === "both"
+            ? "По ключевым словам проекта ничего не найдено на arXiv. Проверьте literature_keywords в project.md."
+            : "Статьи не найдены. В настройках выберите режим «Интернет (arXiv)» или загрузите CSV.",
+          true
+        );
+        return;
+      }
+      setLibraryPapers(papers);
+      papersForAgent = literatureResults.slice();
+    }
+
+    if (shouldAutoTranslateQuestion() && !searchQueryTranslated) {
       showLoader("Перевод на английский…");
-      clusterQuestion = await translateQueryToEnglish(clusterQuestion, { silent: true });
-      searchQuery = await translateQueryToEnglish(searchQuery, { silent: true });
-      questionLabel = shortText(clusterQuestion.split("\n")[0], 140);
-      resultsHeader = displayResultsHeader(searchQuery, questionLabel);
+      try {
+        clusterQuestion = await translateQueryToEnglish(clusterQuestion, { silent: true });
+      } catch {
+        /* keep original */
+      }
     }
 
-    showLoader("Поиск релевантных статей по ключевым словам проекта…");
-    literatureResults = await searchPapers(searchQuery, limit);
-    searchCompleted = true;
-
-    if (!literatureResults.length) {
-      setWorkspaceSplit(false);
-      renderLiteratureResults([], resultsHeader);
-      const mode = getSearchMode();
-      setLiteratureStatus(
-        mode === "internet" || mode === "both"
-          ? `По ключевым словам проекта ничего не найдено на arXiv. Проверьте literature_keywords в project.md.`
-          : "Статьи не найдены. В настройках выберите режим «Интернет (arXiv)» или загрузите CSV.",
-        true
-      );
-      return;
-    }
-
-    selectedPaperUrls = new Set(literatureResults.map((p) => p.arxiv_url));
-    setWorkspaceSplit(true);
-    renderLiteratureResults(literatureResults, resultsHeader);
-    setLiteratureStatus(`Найдено ${literatureResults.length} статей по ключевым словам проекта.`);
-
-    showLoader("Анализ статей и группировка по вашему вопросу…");
-    latestPaperAnswerRun = await KoiApi.runPaperQuestionAgent(projectId, {
+    setLiteratureStatus(`Готовим промпт для ${papersForAgent.length} статей…`);
+    showLoader("Ставим выбранные статьи и собираем промпт…");
+    const staged = await KoiApi.stageLiteratureCluster(projectId, {
       question: clusterQuestion,
-      limit,
-      refresh: shouldOverwritePaperAnswers(),
-      download_pdfs: true,
-      papers: literatureResults,
+      papers: papersForAgent,
     });
-    selectedClusterKeys = new Set((latestPaperAnswerRun.clusters || []).map((c) => c.key));
-    renderClusterResults(latestPaperAnswerRun);
-
-    const clusterCount = latestPaperAnswerRun.clusters?.length || 0;
-    const clusterBackend = latestPaperAnswerRun.cluster_backend || "";
-    const heuristicNote =
-      clusterBackend === "abstract_heuristic"
-        ? " (эвристика по абстрактам, без агента)"
-        : "";
+    latestPaperAnswerRun = {
+      run_id: staged.run_id || staged.query_hash,
+      query_hash: staged.query_hash,
+      question: clusterQuestion,
+      papers: papersForAgent,
+      clusters: [],
+      count: staged.count || papersForAgent.length,
+      status: "staged",
+    };
+    hideKoiLoader("rw-search-loader");
+    setWorkspaceSplit(true);
+    renderRunPapersSidebar(papersForAgent);
+    updateClustersQuestion(latestPaperAnswerRun);
+    showClusterPromptModal(staged.prompt || staged.cursor_message || "");
+    setGeneratingMode(true, "Ждём агента в Cursor…");
     setLiteratureStatus(
-      clusterCount
-        ? `Готово${heuristicNote}.`
-        : "Готово."
+      `Промпт готов (${staged.count || papersForAgent.length} статей). Вставьте в чат Cursor — страница дождётся report.md.`
     );
+    await refreshLiteratureHistory();
+    startLiteratureClusterPoll(projectId, staged.run_id || staged.query_hash);
   } catch (err) {
     if (searchCompleted && literatureResults.length) {
       setWorkspaceSplit(true);
-      renderLiteratureResults(literatureResults, resultsHeader);
+      renderLiteratureResults(literatureResults);
       const clusterRoot = document.getElementById("literature-agent-results");
       if (clusterRoot) {
-        clusterRoot.innerHTML = `<p class="literature-empty">Группировка не выполнена: ${escapeHtml(err.message)}</p>`;
+        clusterRoot.innerHTML = `<p class="literature-empty">Промпт не собран: ${escapeHtml(err.message)}</p>`;
       }
       setLiteratureStatus(
-        `Найдено ${literatureResults.length} статей. Группировка не удалась: ${err.message}`,
+        `Найдено ${literatureResults.length} статей. Не удалось собрать промпт: ${err.message}`,
         true
       );
     } else {
-      literatureResults = [];
-      selectedPaperUrls = new Set();
       setWorkspaceSplit(false);
-      renderLiteratureResults([], resultsHeader);
       setLiteratureStatus(err.message, true);
     }
   } finally {
-    hideLoader();
+    if (!workspaceGenerating) hideLoader();
     button?.removeAttribute("disabled");
   }
+}
+
+function stopLiteratureClusterPoll() {
+  if (literatureClusterPollTimer) {
+    clearInterval(literatureClusterPollTimer);
+    literatureClusterPollTimer = null;
+  }
+}
+
+function applyLiteratureClusterRun(run) {
+  if (!run?.report_markdown && !(run?.clusters || []).length) return false;
+  latestPaperAnswerRun = normalizeLiteratureRun(run);
+  selectedClusterKeys = new Set((latestPaperAnswerRun.clusters || []).map((c) => c.key));
+  activeReadingView = String(latestPaperAnswerRun.report_markdown || "").trim()
+    ? READING_VIEW_RESUME
+    : latestPaperAnswerRun.clusters?.[0]?.key || READING_VIEW_RESUME;
+  activeClusterKey = latestPaperAnswerRun.clusters?.[0]?.key || null;
+  setWorkspaceSplit(true);
+  setGeneratingMode(false);
+  renderRunPapersSidebar(latestPaperAnswerRun.papers || []);
+  renderClusterResults(latestPaperAnswerRun);
+  renderReportMarkdown(latestPaperAnswerRun);
+  if (latestPaperAnswerRun.related_work_markdown) {
+    const relatedPane = document.getElementById("rw-related-pane");
+    relatedPane?.classList.remove("hidden");
+    applyRelatedWorkResult(String(latestPaperAnswerRun.related_work_markdown), {
+      status: "answered",
+      source: "orchestrator",
+    });
+  }
+  return true;
+}
+
+async function pollLiteratureClusterOnce(projectId, runId) {
+  if (!projectId || !runId) return;
+  try {
+    const run = await KoiApi.getLiteratureRun(projectId, runId);
+    if (!run?.report_markdown) {
+      setGeneratingMode(true, "Агент работает — ждём report.md…");
+      return;
+    }
+    stopLiteratureClusterPoll();
+    applyLiteratureClusterRun(run);
+    await refreshLiteratureHistory();
+    const clusterCount = run.clusters?.length || 0;
+    setLiteratureStatus(clusterCount ? `Готово (${clusterCount} кластеров).` : "Готово.");
+  } catch {
+    /* still staged / not ready */
+  }
+}
+
+function startLiteratureClusterPoll(projectId, runId) {
+  stopLiteratureClusterPoll();
+  literatureClusterPendingHash = String(runId || "");
+  if (!projectId || !literatureClusterPendingHash) return;
+  setWorkspaceSplit(true);
+  setGeneratingMode(true, "Ждём агента в Cursor…");
+  void pollLiteratureClusterOnce(projectId, literatureClusterPendingHash);
+  literatureClusterPollTimer = setInterval(() => {
+    void pollLiteratureClusterOnce(projectId, literatureClusterPendingHash);
+  }, LITERATURE_CLUSTER_POLL_MS);
+}
+
+function showClusterPromptModal(promptText) {
+  const message = String(promptText || "").trim();
+  literatureClusterPrompt = message;
+  showPromptDock(message);
+  const modal = document.getElementById("literature-cluster-prompt-modal");
+  const pre = document.getElementById("literature-cluster-prompt-text");
+  if (pre) pre.textContent = message;
+  if (!modal) {
+    void copyRelatedWorkCursorMessage(message, null);
+    return;
+  }
+  activeClusterPromptModal = modal;
+  modal.classList.remove("hidden");
+  modal.setAttribute("aria-hidden", "false");
+  document.body.classList.add("modal-open");
+  void copyRelatedWorkCursorMessage(
+    message,
+    document.getElementById("literature-cluster-prompt-copy-status")
+  );
+}
+
+function hideClusterPromptModal() {
+  const modal = activeClusterPromptModal || document.getElementById("literature-cluster-prompt-modal");
+  if (!modal) return;
+  modal.classList.add("hidden");
+  modal.setAttribute("aria-hidden", "true");
+  if (activeClusterPromptModal === modal) activeClusterPromptModal = null;
+  if (!activeClusterModal && !activeSettingsModal && !activeContextModal && !activeRelatedInboxModal) {
+    document.body.classList.remove("modal-open");
+  }
+  if (workspaceGenerating) syncPromptDock();
 }
 
 function saveSettingsFromModal() {
@@ -1952,29 +3788,71 @@ function saveSettingsFromModal() {
   setLiteratureStatus("Настройки сохранены.");
 }
 
-async function init() {
-  initTheme();
-  initTaglineRotation();
-  applySettingsToDom();
-
-  try {
-    await loadProjectOptions();
-    await refreshLibraryStatus();
-    await refreshAppSettings();
-    await loadProjectContext(selectedProjectId());
-    await restoreRelatedWorkOnLoad();
-  } catch (err) {
-    setLiteratureStatus(`Ошибка загрузки: ${err.message}`, true);
-  }
-
+function bindLiteratureUiEvents() {
   document.getElementById("btn-rw-settings")?.addEventListener("click", showSettingsModal);
   document.getElementById("rw-settings-save")?.addEventListener("click", saveSettingsFromModal);
+  document.querySelectorAll('input[name="rw-search-mode"]').forEach((input) => {
+    input.addEventListener("change", () => updateSettingsSourceUi());
+  });
   document.getElementById("literature-search-form")?.addEventListener("submit", onLiteratureSearchSubmit);
+  document.getElementById("rw-open-history")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    setHistoryView(true);
+  });
+  document.getElementById("rw-history-back")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    setHistoryView(false);
+  });
+  document.getElementById("rw-back-to-collection")?.addEventListener("click", () => {
+    stopLiteratureClusterPoll();
+    setWorkspaceSplit(false);
+  });
+  document.getElementById("rw-prompt-dock-copy")?.addEventListener("click", () => {
+    void copyRelatedWorkCursorMessage(
+      literatureClusterPrompt || document.getElementById("rw-prompt-dock-text")?.textContent || "",
+      document.getElementById("rw-prompt-dock-status")
+    );
+  });
+  document.getElementById("rw-prompt-dock-cancel")?.addEventListener("click", () => {
+    void cancelLiteratureClusterRun();
+  });
+  document.getElementById("literature-cluster-prompt-cancel")?.addEventListener("click", () => {
+    void cancelLiteratureClusterRun();
+  });
+  document.getElementById("rw-library-find")?.addEventListener("click", () => void findLiteraturePapers());
+  document.getElementById("rw-library-zotero")?.addEventListener("click", openZoteroImport);
+  document.getElementById("rw-library-switch-source")?.addEventListener("click", openLibrarySourceSettings);
+  document.getElementById("rw-zotero-connect")?.addEventListener("click", () => void connectZoteroAccount());
+  document.getElementById("rw-zotero-import")?.addEventListener("click", () => void importZoteroLibrary());
+  document.getElementById("rw-zotero-disconnect")?.addEventListener("click", disconnectZoteroAccount);
+  document.getElementById("rw-zotero-collection")?.addEventListener("change", () => {
+    persistZoteroCollectionKey();
+  });
+  document.getElementById("rw-zotero-api-key")?.addEventListener("input", () => {
+    const hasKey = Boolean(document.getElementById("rw-zotero-api-key")?.value?.trim());
+    setZoteroImportEnabled(false);
+    setZoteroDisconnectVisible(hasKey);
+    resetZoteroCollectionSelect();
+  });
+  document.getElementById("rw-library-csv")?.addEventListener("click", triggerCsvUpload);
+  document.getElementById("rw-library-csv-input")?.addEventListener("change", (event) => {
+    const file = event.target?.files?.[0];
+    void handleLibraryCsvSelected(file);
+  });
+  document.getElementById("rw-library-add")?.addEventListener("click", toggleLibraryAddMenu);
+  document.getElementById("rw-library-add-menu")?.addEventListener("click", (event) => {
+    const source = event.target?.closest("[data-library-source]")?.getAttribute("data-library-source");
+    if (source === "find") void findLiteraturePapers();
+    else if (source === "zotero") openZoteroImport();
+    else if (source === "csv") triggerCsvUpload();
+  });
   document.getElementById("literature-project-select")?.addEventListener("change", (event) => {
     const select = event.target;
     const title = select.selectedOptions?.[0]?.textContent?.trim() || "";
     updateProjectBanner(title, select.value);
     void loadProjectContext(select.value);
+    void loadLibraryIntoSidebar({ silent: true }).then(() => maybeAutoLoadZoteroLibrary());
+    void refreshLiteratureHistory();
     void restoreRelatedWorkOnLoad();
   });
   document.getElementById("literature-open-context-modal")?.addEventListener("click", showContextModal);
@@ -1985,7 +3863,7 @@ async function init() {
   document.getElementById("library-upload-input")?.addEventListener("change", () => {
     updateLibraryUploadFilename();
     const file = document.getElementById("library-upload-input")?.files?.[0];
-    setLibraryUploadStatus(file ? "Готово к загрузке." : "Файл не выбран.");
+    setLibraryUploadStatus(file ? "Готово к загрузке." : "");
   });
   document.getElementById("library-upload-submit")?.addEventListener("click", () => void uploadLibraryFile());
   document.getElementById("library-agent-bootstrap-submit")?.addEventListener("click", () => void bootstrapLibraryFromAgent());
@@ -1999,6 +3877,7 @@ async function init() {
     }
   });
   document.getElementById("related-works-generate")?.addEventListener("click", () => void generateRelatedWorks());
+  document.getElementById("rw-related-toggle")?.addEventListener("click", () => toggleRelatedPaneCollapsed());
   document.getElementById("rw-related-show-message")?.addEventListener("click", () => {
     const message = lastRelatedWorkInboxMessage || lastRelatedWorkCursorMessage;
     if (message) {
@@ -2054,6 +3933,15 @@ async function init() {
   document.querySelectorAll("[data-close='rw-related-inbox-modal']").forEach((el) => {
     el.addEventListener("click", hideRelatedInboxModal);
   });
+  document.getElementById("literature-cluster-prompt-copy")?.addEventListener("click", () => {
+    void copyRelatedWorkCursorMessage(
+      literatureClusterPrompt,
+      document.getElementById("literature-cluster-prompt-copy-status")
+    );
+  });
+  document.querySelectorAll("[data-close='literature-cluster-prompt-modal']").forEach((el) => {
+    el.addEventListener("click", hideClusterPromptModal);
+  });
 
   document.querySelectorAll("[data-close='cluster-modal']").forEach((el) => {
     el.addEventListener("click", hideClusterModal);
@@ -2071,11 +3959,32 @@ async function init() {
     hideSettingsModal();
     hideContextModal();
     hideRelatedInboxModal();
+    hideClusterPromptModal();
   });
+}
 
+async function init() {
+  initTheme();
+  initTaglineRotation();
+  applySettingsToDom();
+  setWorkspaceSplit(false);
+  bindLiteratureUiEvents();
   updateLibraryUploadFilename();
   renderProjectContextSummary();
   updateRelatedWorksSummary();
+
+  try {
+    await loadProjectOptions();
+    await refreshLibraryStatus();
+    await refreshAppSettings();
+    await loadProjectContext(selectedProjectId());
+    await loadLibraryIntoSidebar({ silent: true });
+    void maybeAutoLoadZoteroLibrary();
+    await refreshLiteratureHistory();
+    await restoreRelatedWorkOnLoad();
+  } catch (err) {
+    setLiteratureStatus(`Ошибка загрузки: ${err.message}`, true);
+  }
 }
 
 init().catch((err) => {

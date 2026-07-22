@@ -6,7 +6,7 @@ import {
   runningCardContextsFromProjects,
   setRunningSeedProvider,
 } from "./card-live.js";
-import { KoiApi } from "./api.js?v=20260715a";
+import { KoiApi } from "./api.js?v=20260721a";
 import { destroyKanbanDagView, fitKanbanDagView, refreshKanbanDagView } from "./kanban-dag.js?v=20260715a";
 import {
   koiLoaderTypingHtml,
