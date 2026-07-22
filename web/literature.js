@@ -1139,26 +1139,41 @@ async function searchPapers(query, limit) {
   return localResults.slice(0, limit);
 }
 
+function shortProjectLabel(title, id = "") {
+  const raw = String(title || id || "").trim();
+  if (!raw) return "Проект";
+  const head = raw.split(/[—\-·|]/)[0]?.trim() || raw;
+  return head.length > 48 ? `${head.slice(0, 46)}…` : head;
+}
+
 function updateProjectBanner(title, projectId = selectedProjectId()) {
   const titleEl = document.getElementById("rw-project-title");
   const backEl = document.getElementById("rw-project-back");
   const leadEl = document.getElementById("rw-search-stage-lead");
-  const label = String(title || "").trim();
+  const picker = document.querySelector(".rw-project-picker");
+  const select = document.getElementById("literature-project-select");
+  const hasProject = Boolean(projectId);
   if (titleEl) {
-    titleEl.textContent = label || "Обзор литературы";
+    titleEl.textContent = "Обзор литературы";
   }
   if (backEl) {
-    backEl.href = projectId
+    backEl.href = hasProject
       ? `index.html?project=${encodeURIComponent(projectId)}`
       : "index.html";
-    backEl.classList.toggle("hidden", !projectId);
+    backEl.classList.toggle("hidden", !hasProject);
+    const label = shortProjectLabel(title, projectId);
+    backEl.title = hasProject ? `К проекту: ${label}` : "К проекту";
+  }
+  if (picker) {
+    const multi = (select?.options?.length || 0) > 1;
+    picker.classList.toggle("is-solo", !multi);
+    picker.hidden = !hasProject;
   }
   if (leadEl) {
-    leadEl.textContent = label
+    leadEl.textContent = hasProject
       ? "Задайте вопрос — по нему сгруппируем статьи слева."
-      : "Выберите проект или ветку выше, затем задайте вопрос.";
+      : "Выберите проект, затем задайте вопрос.";
   }
-  // Keep the URL in sync so Laboratory back-links and refresh preserve the branch.
   if (projectId && window.history?.replaceState) {
     const url = new URL(window.location.href);
     url.searchParams.set("project", projectId);
@@ -1171,13 +1186,9 @@ async function loadProjectOptions() {
   if (!select) return;
   const requested = new URLSearchParams(window.location.search).get("project");
   let list = [];
-  let memberIds = new Set();
   try {
     const grouped = await KoiApi.listProjectsGrouped();
     for (const g of grouped.groups || []) {
-      for (const c of g.composites || []) {
-        for (const mid of c.member_ids || []) memberIds.add(mid);
-      }
       for (const p of g.projects || []) list.push(p);
     }
     for (const p of grouped.ungrouped || []) list.push(p);
@@ -1187,7 +1198,6 @@ async function loadProjectOptions() {
   if (!list.length) {
     list = await KoiApi.listProjects();
   }
-  // Deduplicate by id (composites may share titles across programs).
   const seen = new Set();
   list = list.filter((p) => {
     if (!p?.id || seen.has(p.id)) return false;
@@ -1196,8 +1206,8 @@ async function loadProjectOptions() {
   });
   select.innerHTML = list
     .map((p) => {
-      const branchMark = memberIds.has(p.id) ? "↳ " : "";
-      return `<option value="${escapeHtml(p.id)}">${branchMark}${escapeHtml(p.title)}</option>`;
+      const label = shortProjectLabel(p.title, p.id);
+      return `<option value="${escapeHtml(p.id)}">${escapeHtml(label)}</option>`;
     })
     .join("");
   const preferred =

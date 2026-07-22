@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20260722z" />
+  <link rel="stylesheet" href="styles.css?v=20260722ah" />
   <script>
     (function () {
       var t = localStorage.getItem("koi-theme");
@@ -110,14 +110,15 @@
       <section class="rw-search-column" id="rw-search-column" aria-label="Исследовательский вопрос">
         <div class="rw-browser" id="rw-browser">
           <div class="rw-search-stage" id="rw-search-stage">
-            <a href="index.html" id="rw-project-back" class="rw-project-back">← К проекту</a>
-            <label class="rw-project-picker" for="literature-project-select">
-              <span class="rw-project-picker-label">Проект / ветка</span>
-              <select id="literature-project-select" aria-label="Проект для Related Work"></select>
-            </label>
+            <div class="rw-search-context">
+              <a href="index.html" id="rw-project-back" class="rw-project-back" title="К проекту" aria-label="К проекту">←</a>
+              <label class="rw-project-picker" for="literature-project-select">
+                <span class="sr-only">Проект для Related Work</span>
+                <select id="literature-project-select" aria-label="Проект для Related Work"></select>
+              </label>
+            </div>
             <h1 class="rw-search-stage-title" id="rw-project-title">Обзор литературы</h1>
-            <p class="rw-search-stage-lead" id="rw-search-stage-lead">Задайте вопрос — скопируйте промпт в чат агента; он вызовет скилл и подтянет выбранные статьи.</p>
-            <a href="#history" id="rw-open-history" class="rw-history-link">Посмотреть прошлые вопросы →</a>
+            <p class="rw-search-stage-lead" id="rw-search-stage-lead">Задайте вопрос — по нему сгруппируем статьи слева.</p>
           </div>
           <form id="literature-search-form" class="rw-search-form">
             <div class="rw-search-bar">
@@ -135,6 +136,7 @@
               </button>
             </div>
           </form>
+          <a href="#history" id="rw-open-history" class="rw-history-link">Прошлые вопросы →</a>
           <div id="rw-search-loader" class="koi-loader rw-loader rw-loader--compact hidden" aria-live="polite" aria-busy="false">
             <div class="koi-loader__viz" aria-hidden="true">
               <div class="koi-loader__ring"></div>
@@ -509,6 +511,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@upsetjs/venn.js@2.0.0/build/venn.min.js"></script>
-  <script type="module" src="literature.js?v=20260722z"></script>
+  <script type="module" src="literature.js?v=20260722ae"></script>
 </body>
 </html>

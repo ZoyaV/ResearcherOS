@@ -1417,39 +1417,9 @@ function shortBranchLabel(title, id) {
 function setLiteratureBranchId(projectId, { refreshList = true } = {}) {
   state.literatureBranchId = projectId || null;
   updatePaperReviewLink();
-  renderLabBranchPicker();
   if (refreshList) {
     setActiveProjectInList(state.project?.id);
   }
-}
-
-function renderLabBranchPicker() {
-  const root = document.getElementById("lab-branch-picker");
-  if (!root) return;
-  const members = compositeMembersForCurrent();
-  if (!isCompositeView() || members.length < 2) {
-    root.classList.add("hidden");
-    root.innerHTML = "";
-    root.hidden = true;
-    return;
-  }
-  const active = state.literatureBranchId || "";
-  root.hidden = false;
-  root.classList.remove("hidden");
-  root.innerHTML =
-    `<span class="lab-branch-picker__label">Ветка</span>` +
-    members
-      .map((m) => {
-        const selected = m.id === active;
-        return (
-          `<button type="button" class="lab-branch-picker__btn${selected ? " is-active" : ""}"` +
-          ` data-branch-id="${escapeHtml(m.id)}"` +
-          ` title="${escapeHtml(m.title)}"` +
-          (selected ? ' aria-pressed="true"' : ' aria-pressed="false"') +
-          `>${escapeHtml(shortBranchLabel(m.title, m.id))}</button>`
-        );
-      })
-      .join("");
 }
 
 function selectLiteratureBranch(branchId) {
@@ -1459,6 +1429,98 @@ function selectLiteratureBranch(branchId) {
     compositeMembersForCurrent().find((m) => m.id === branchId)?.title,
     branchId
   )}`);
+  flyToLiteratureBranch(branchId);
+}
+
+function nodeBelongsToBranch(node, branchId) {
+  if (!node || !branchId) return false;
+  return (
+    node.source_project_id === branchId ||
+    node.project_id === branchId
+  );
+}
+
+function branchNodeIds(project, branchId) {
+  const ids = new Set();
+  if (!project || !branchId) return ids;
+  for (const node of project.nodes || []) {
+    if (nodeBelongsToBranch(node, branchId)) ids.add(node.id);
+  }
+  const boards = project.boards;
+  const boardList = Array.isArray(boards)
+    ? boards
+    : boards && typeof boards === "object"
+      ? Object.values(boards)
+      : [];
+  for (const board of boardList) {
+    if (board?.source_project_id === branchId && board.owner_node_id) {
+      ids.add(board.owner_node_id);
+    }
+  }
+  for (const conflict of project.conflicts || []) {
+    if (conflict?.projects && Object.prototype.hasOwnProperty.call(conflict.projects, branchId)) {
+      ids.add(conflict.node_id);
+    }
+  }
+  return ids;
+}
+
+function regionForBranchNodes(placement, branchId) {
+  if (!placement) return null;
+  const { project, positions, nodeSizes, region } = placement;
+  const ids = branchNodeIds(project, branchId);
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  let found = false;
+
+  for (const id of ids) {
+    const node = (project.nodes || []).find((n) => n.id === id);
+    if (!node || !isVisualNode(node)) continue;
+    const pos = positions?.[id];
+    if (!pos) continue;
+    const size = nodeSizes?.[id] || computeNodeSize(node);
+    const left = pos.x - size.w / 2;
+    const top = pos.y - size.h / 2;
+    const right = pos.x + size.w / 2;
+    const bottom = pos.y + size.h / 2;
+    minX = Math.min(minX, left);
+    minY = Math.min(minY, top);
+    maxX = Math.max(maxX, right);
+    maxY = Math.max(maxY, bottom);
+    found = true;
+  }
+
+  if (!found) {
+    return region
+      ? { x: region.x, y: region.y, width: region.width, height: region.height }
+      : null;
+  }
+
+  const pad = 48;
+  return {
+    x: minX - pad,
+    y: minY - pad,
+    width: Math.max(maxX - minX + pad * 2, 160),
+    height: Math.max(maxY - minY + pad * 2, 120),
+  };
+}
+
+function findCompositePlacement() {
+  const layout = labCameraLayout() || labWorldLayout || labWorldLayoutFull;
+  if (!layout?.placements?.length) return null;
+  const pid = state.project?.id;
+  if (!pid) return null;
+  return layout.placements.find((p) => p.project?.id === pid) || null;
+}
+
+function flyToLiteratureBranch(branchId) {
+  if (!branchId || !labCamera) return;
+  const placement = findCompositePlacement();
+  const region = regionForBranchNodes(placement, branchId);
+  if (!region) return;
+  labCamera.flyToRegion(region, 420, 36);
 }
 
 function setLiteratureStatus(msg, isError = false) {
@@ -2484,9 +2546,6 @@ function renderLabMindmap(options = {}) {
     frame.style.height = `${region.height}px`;
     frame.title = region.title;
     frame.setAttribute("aria-label", `Проект: ${region.title}`);
-    if (state.project?.id === placement.project.id) {
-      frame.classList.add("is-active");
-    }
     frame.addEventListener("click", (e) => {
       e.stopPropagation();
       void focusLabProject(placement.project.id, { animate: true });
@@ -2521,7 +2580,6 @@ function renderLabMindmap(options = {}) {
   }
 
   renderLabEdges(svg, visiblePlacements, worldW, worldH);
-  renderLabBranchPicker();
 
   ensureLabCamera();
   if (labCamera) {
@@ -2670,14 +2728,12 @@ async function focusLabProject(projectId, { animate = false, reload = false } = 
       setLiteratureBranchId(null, { refreshList: false });
     } else {
       updatePaperReviewLink();
-      renderLabBranchPicker();
     }
   } else {
     setLiteratureBranchId(projectId, { refreshList: false });
   }
   setActiveProjectInList(projectId);
   updatePaperReviewLink();
-  renderLabBranchPicker();
   updateAgentChatScope();
   void refreshAgentChat();
   const mode = getViewMode();
@@ -6116,12 +6172,6 @@ function initProjectsSidebar() {
     if (!id) return;
     if (id !== state.project?.id) void switchProject(id);
     else if (state.lab?.projectsById) void focusLabProject(id, { animate: true });
-  });
-
-  document.getElementById("lab-branch-picker")?.addEventListener("click", (e) => {
-    const btn = e.target.closest("[data-branch-id]");
-    if (!btn) return;
-    selectLiteratureBranch(btn.dataset.branchId);
   });
 }
 
@@ -9801,7 +9851,13 @@ async function init() {
       return;
     }
     setActiveProjectInList(preferred);
-    if (!isCompositeVirtualId(preferred)) {
+    const requestedBranch = resolveRequestedBranchId(
+      requestedProjectId,
+      state.lab.grouped
+    );
+    if (requestedBranch) {
+      setLiteratureBranchId(requestedBranch);
+    } else if (!isCompositeVirtualId(preferred)) {
       setLiteratureBranchId(preferred);
     } else {
       setLiteratureBranchId(null);
