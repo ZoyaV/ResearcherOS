@@ -24,6 +24,7 @@ All research data lives in Markdown files — no database required. The engine i
 
 | Date | What shipped |
 |------|----------------|
+| 2026-07-22 | **Literature review** — on the Literature page, pick papers from a local library, arXiv, or Zotero, ask a research question, and get groups of similar papers from several AI assistants plus a final report with a map of those groups and a draft Related Work (prior-work) section. |
 | 2026-07-22 | **Hub Skills catalog** — public projects can publish agent skill packages into a shared Hub pool; after sync, open packages appear on the Skills tab for others to browse and download. |
 | 2026-07-22 | **Telegram channel for product news** — public channel [@researcher_os](https://t.me/researcher_os) for ResearchOS development updates (new features, the web interface, and Hub — a catalog of shared tools); not experiment metrics. |
 | 2026-07-17 | **`tree/` layout + install CLI** — research data under `tree/<repo>/koi-structure/` (branch `koi/research`); code in sibling `<repo>/`. One command: `python -m koi.projects.install_cli install <repo>`. |
