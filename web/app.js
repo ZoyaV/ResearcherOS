@@ -11,7 +11,7 @@ import {
   computeCostChipHtml,
   mergeComputeCost,
 } from "./compute-cost.js";
-import { KoiApi } from "./api.js?v=20260721a";
+import { KoiApi } from "./api.js?v=20260723b";
 import { destroyKanbanDagView, fitKanbanDagView, refreshKanbanDagView } from "./kanban-dag.js?v=20260715a";
 import {
   koiLoaderTypingHtml,
@@ -23,7 +23,7 @@ import {
 import { MindmapCamera } from "./lab-canvas.js";
 import { renderMarkdown } from "./markdown.js";
 import { initImageLightbox } from "./image-lightbox.js?v=20260703b";
-import { initCursorUsageWidget } from "./cursor-usage-widget.js?v=20260710f";
+import { initWidgets } from "./widgets-loader.js?v=20260723a";
 import {
   METHOD_ACTIVITY_H,
   bindMethodActivityZoomPreview,
@@ -141,7 +141,7 @@ function applyHubReadonlyChrome() {
     "btn-knowledge",
     "btn-related-work",
     "btn-paper",
-    "cursor-usage-widget",
+    "koi-widgets-root",
     "btn-rq-bell",
     "card-live-modal",
   ]) {
@@ -9759,7 +9759,7 @@ function initKnowledge() {
 async function init() {
   const hubMode = isHubMode();
   initImageLightbox();
-  if (!hubMode) initCursorUsageWidget();
+  if (!hubMode) void initWidgets({ api: KoiApi, skip: false });
   if (!hubMode) {
     initKnowledge();
     initPaper();

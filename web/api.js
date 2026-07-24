@@ -397,6 +397,14 @@ export const KoiApi = {
       body: JSON.stringify(body),
     }),
   getCursorUsage: () => api("/cursor/usage"),
+  listWidgets: () => api("/widgets"),
+  getWidgetData: (projectId, widgetId) =>
+    api(`/widgets/${encodeURIComponent(projectId)}/${encodeURIComponent(widgetId)}/data`),
+  setWidgetEnabled: (projectId, widgetId, enabled) =>
+    api(`/widgets/${encodeURIComponent(projectId)}/${encodeURIComponent(widgetId)}`, {
+      method: "PUT",
+      body: JSON.stringify({ enabled: Boolean(enabled) }),
+    }),
   baseUrl: apiBase,
   meta: () => api("/meta/node-types"),
 };

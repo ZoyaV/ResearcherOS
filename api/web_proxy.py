@@ -1,17 +1,26 @@
 #!/usr/bin/env python3
-"""Serve ``web/`` and proxy ``/api/*`` to the KOI FastAPI server."""
+"""Serve ``web/`` and proxy ``/api/*`` to the KOI FastAPI server.
+
+Also serves ResearchOS widgets:
+  /widgets/_base/...                      → widgets/base/web/...
+  /widgets/<project_id>/<id>/...          → tree/.../koi-structure/widgets/<id>/...
+"""
 
 from __future__ import annotations
 
 import argparse
 import http.client
-import os
+import mimetypes
 import sys
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlparse
+from pathlib import Path
+from urllib.parse import unquote, urlparse
 
-WEB_ROOT = os.path.join(os.path.dirname(__file__), "..", "web")
+ENGINE_ROOT = Path(__file__).resolve().parent.parent
+WEB_ROOT = ENGINE_ROOT / "web"
+WIDGETS_ROOT = ENGINE_ROOT / "widgets"
 API_PREFIX = "/api"
+WIDGETS_PREFIX = "/widgets/"
 
 
 class KoiWebHandler(SimpleHTTPRequestHandler):
@@ -19,7 +28,7 @@ class KoiWebHandler(SimpleHTTPRequestHandler):
     api_port = 8010
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, directory=os.path.abspath(WEB_ROOT), **kwargs)
+        super().__init__(*args, directory=str(WEB_ROOT.resolve()), **kwargs)
 
     def log_message(self, fmt, *args):
         sys.stderr.write("%s - %s\n" % (self.address_string(), fmt % args))
@@ -68,15 +77,78 @@ class KoiWebHandler(SimpleHTTPRequestHandler):
         finally:
             conn.close()
 
+    def _widget_file(self) -> Path | None:
+        url = urlparse(self.path)
+        raw = unquote(url.path or "")
+        if not raw.startswith(WIDGETS_PREFIX):
+            return None
+        rel = raw[len(WIDGETS_PREFIX) :]
+        if not rel or ".." in rel.split("/"):
+            return None
+
+        # Shared base assets: /widgets/_base/floating.js → widgets/base/web/floating.js
+        if rel.startswith("_base/"):
+            candidate = (WIDGETS_ROOT / "base" / "web" / rel[len("_base/") :]).resolve()
+            base_web = (WIDGETS_ROOT / "base" / "web").resolve()
+            try:
+                candidate.relative_to(base_web)
+            except ValueError:
+                return None
+            return candidate if candidate.is_file() else None
+
+        parts = [p for p in rel.split("/") if p]
+        if len(parts) < 2:
+            return None
+        project_or_installed, widget_id, *rest = parts
+        if not widget_id or widget_id.startswith("."):
+            return None
+
+        # Lazy import so static server starts even if mounts are cold
+        from widgets.base.registry import resolve_widget_asset
+
+        return resolve_widget_asset(project_or_installed, widget_id, "/".join(rest))
+
+    def _serve_widget(self) -> bool:
+        path = self._widget_file()
+        if path is None:
+            if urlparse(self.path).path.startswith(WIDGETS_PREFIX):
+                self.send_error(404, "Widget asset not found")
+                return True
+            return False
+        try:
+            data = path.read_bytes()
+        except OSError:
+            self.send_error(404, "Widget asset not found")
+            return True
+        ctype, _ = mimetypes.guess_type(str(path))
+        if path.suffix == ".js":
+            ctype = "text/javascript; charset=utf-8"
+        elif path.suffix == ".css":
+            ctype = "text/css; charset=utf-8"
+        elif not ctype:
+            ctype = "application/octet-stream"
+        self.send_response(200)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "no-cache")
+        self.end_headers()
+        if self.command != "HEAD":
+            self.wfile.write(data)
+        return True
+
     def do_GET(self) -> None:
         if self.path == API_PREFIX or self.path.startswith(f"{API_PREFIX}/"):
             self._proxy_api()
+            return
+        if self._serve_widget():
             return
         super().do_GET()
 
     def do_HEAD(self) -> None:
         if self.path == API_PREFIX or self.path.startswith(f"{API_PREFIX}/"):
             self._proxy_api()
+            return
+        if self._serve_widget():
             return
         super().do_HEAD()
 
