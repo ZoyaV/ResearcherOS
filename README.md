@@ -24,9 +24,9 @@ All research data lives in Markdown files — no database required. The engine i
 
 | Date | What shipped |
 |------|----------------|
+| 2026-07-24 | **Widgets API** — build your own floating panels on the project workspace (Cursor quota, free GPUs, budget, and similar). Widget files live with the project; ResearcherOS finds the enabled ones and shows them. |
 | 2026-07-22 | **Literature review** — on the Literature page, pick papers from a local library, arXiv, or Zotero, ask a research question, and get groups of similar papers from several AI assistants plus a final report with a map of those groups and a draft Related Work (prior-work) section. |
 | 2026-07-22 | **Hub Skills catalog** — public projects can publish agent skill packages into a shared Hub pool; after sync, open packages appear on the Skills tab for others to browse and download. |
-| 2026-07-23 | **Optional widgets** — packages in `koi-structure/widgets/`; ResearchOS provides base + API (`python -m widgets.base.cli`). |
 | 2026-07-22 | **Telegram channel for product news** — public channel [@researcher_os](https://t.me/researcher_os) for ResearcherOS development updates (new features, the web interface, and Hub — a catalog of shared tools); not experiment metrics. |
 | 2026-07-17 | **`tree/` layout + install CLI** — research data under `tree/<repo>/koi-structure/` (branch `koi/research`); code in sibling `<repo>/`. One command: `python -m koi.projects.install_cli install <repo>`. |
 | 2026-07-16 | **Composite merge by title** — shared ancestors match on `(type, normalized title, parent)`, not only id; remaps child/board links. Fixes duplicate problem/cause branches in ResearcherOS and Hub. ADR: [docs/adr-002-composite-view.md](docs/adr-002-composite-view.md). |

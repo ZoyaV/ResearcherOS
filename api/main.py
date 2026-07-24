@@ -10,7 +10,7 @@ from api.routers import agents, composites, cursor, knowledge, library, meta, pa
 app = FastAPI(
     title="KOI API",
     description="Agile for Science — hypothesis tree + kanban, persisted as Markdown",
-    version="0.2.0",
+    version="0.3.0",
 )
 
 app.add_middleware(
