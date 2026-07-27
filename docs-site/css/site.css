@@ -645,6 +645,10 @@ body.page-home::after {
 }
 
 .chapter--skills {
+  padding-bottom: clamp(3.5rem, 10vh, 6rem);
+}
+
+.chapter--lessons {
   padding-bottom: clamp(4rem, 12vh, 7rem);
 }
 

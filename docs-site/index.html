@@ -15,7 +15,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/site.css?v=12" />
+  <link rel="stylesheet" href="css/site.css?v=14" />
 </head>
 <body class="page-home">
   <nav class="hero__strip hero__strip--sticky" id="chapter-nav" aria-label="Разделы">
@@ -24,6 +24,8 @@
     <a class="hero__strip-link" href="#start" data-nav="start">How to start</a>
     <span class="hero__strip-sep" aria-hidden="true">/</span>
     <a class="hero__strip-link" href="#skills" data-nav="skills">Skills</a>
+    <span class="hero__strip-sep" aria-hidden="true">/</span>
+    <a class="hero__strip-link" href="#lessons" data-nav="lessons">Lessons</a>
     <span class="hero__strip-spacer" aria-hidden="true"></span>
     <a class="hero__strip-link hero__strip-link--quiet" href="https://github.com/ZoyaV/ResearcherOS">GitHub</a>
     <button type="button" id="btn-theme" class="btn-theme" title="Тёмная тема" aria-label="Тёмная тема">
@@ -123,6 +125,41 @@
         <h2 class="chapter__title">Skills</h2>
         <p class="chapter__lead">Готовые сценарии для AI-помощника в редакторе. Нажмите карточку — внутри описание, схема шагов и пример, как позвать.</p>
         <div class="skill-grid" id="skill-grid" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="chapter chapter--lessons" id="lessons" data-chapter="lessons">
+      <div class="chapter__inner reveal">
+        <h2 class="chapter__title">Lessons</h2>
+        <p class="chapter__lead">
+          Короткие уроки по устройству ResearcherOS — на живых примерах из реальных деревьев исследования.
+        </p>
+        <div class="path-list">
+          <a class="path-link" href="lessons/hypothesis-tree.html">
+            <span class="path-link__num">01</span>
+            <span>
+              <p class="path-link__title">Дерево гипотез: от проблемы к проверке</p>
+              <p class="path-link__desc">Узлы дерева, как формулировать каждый и как собрать цепочку с помощником.</p>
+            </span>
+            <span class="path-link__arrow" aria-hidden="true">→</span>
+          </a>
+          <a class="path-link" href="lessons/experiment-setup.html">
+            <span class="path-link__num">02</span>
+            <span>
+              <p class="path-link__title">Постановка эксперимента</p>
+              <p class="path-link__desc">Цикл опроса и критиков; стиль прозы без AI-штампов; эксперимент vs задача и SMART для одной карточки.</p>
+            </span>
+            <span class="path-link__arrow" aria-hidden="true">→</span>
+          </a>
+          <a class="path-link" href="lessons/experiment-run.html">
+            <span class="path-link__num">03</span>
+            <span>
+              <p class="path-link__title">Запуск эксперимента</p>
+              <p class="path-link__desc">Выполнение карточки и автоисследование: три роли, расписание наблюдения, живое окно и что делать после «готово».</p>
+            </span>
+            <span class="path-link__arrow" aria-hidden="true">→</span>
+          </a>
+        </div>
       </div>
     </section>
   </main>
