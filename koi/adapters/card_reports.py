@@ -390,11 +390,25 @@ def rename_report_for_card(
 def delete_report(project_id: str, card_id: str) -> None:
     index = load_index(project_id)
     rel = index.pop(card_id, None)
-    if rel:
-        path = report_path_for_relative(project_id, rel)
-        if path.exists():
-            path.unlink()
-        save_index(project_id, index)
+    if not rel:
+        return
+    path = report_path_for_relative(project_id, rel)
+    if path.exists():
+        path.unlink()
+    run_path = path.with_name(path.stem + RUN_EXT)
+    if run_path.exists():
+        run_path.unlink()
+    save_index(project_id, index)
+    parent = path.parent
+    root = reports_dir(project_id)
+    if parent != root and parent.is_dir():
+        prefix = f"{parent.name}/"
+        still_used = any(
+            value == parent.name or value.startswith(prefix)
+            for value in index.values()
+        )
+        if not still_used:
+            shutil.rmtree(parent, ignore_errors=True)
 
 
 def _report_dir_for_card(
@@ -412,10 +426,14 @@ def _report_dir_for_card(
 
 
 def _safe_asset_name(name: str) -> str:
-    name = Path(name).name
-    if not name or name in (".", "..") or ".." in name:
+    """Allow nested paths under ``assets/`` (e.g. ``reports/real_arc_ar25/index.html``)."""
+    raw = str(name or "").strip().lstrip("/")
+    if not raw:
         raise ValueError("Invalid asset name")
-    return name
+    parts = Path(raw).parts
+    if ".." in parts or any(p in ("", ".") for p in parts):
+        raise ValueError("Invalid asset name")
+    return Path(*parts).as_posix()
 
 
 def save_report_asset(

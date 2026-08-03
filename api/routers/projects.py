@@ -325,7 +325,9 @@ def get_live_file(project_id: str, path: str) -> FileResponse:
     return FileResponse(resolved)
 
 
-@router.get("/projects/{project_id}/boards/{board_id}/cards/{card_id}/report/assets/{asset_name}")
+@router.get(
+    "/projects/{project_id}/boards/{board_id}/cards/{card_id}/report/assets/{asset_name:path}"
+)
 def get_report_asset(
     project_id: str,
     board_id: str,
