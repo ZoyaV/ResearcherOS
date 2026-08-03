@@ -12,7 +12,9 @@ def build_summary(
     report_index: dict,
     documents: list,
     recent_log: list[dict],
+    pages: list | None = None,
 ) -> dict:
+    page_docs = pages or []
     causes, supported, refuted, insights_total = statistics(project)
     problem = next(
         (node for node in project.nodes if node.node_type == NodeType.PROBLEM), None
@@ -64,6 +66,7 @@ def build_summary(
             "insights": insights_total,
             "docs": len(documents),
             "reports": len(report_index),
+            "pages": len(page_docs),
         },
         "docs": [
             {
@@ -74,6 +77,15 @@ def build_summary(
                 "generated": document.name == "hypotheses.md",
             }
             for document in documents
+        ],
+        "pages": [
+            {
+                "id": page.get("id"),
+                "title": page.get("title") or page.get("slug") or page.get("id"),
+                "slug": page.get("slug") or "",
+                "path": page.get("path") or "",
+            }
+            for page in page_docs
         ],
         "hypotheses": hypotheses,
         "log_recent": recent_log,

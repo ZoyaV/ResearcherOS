@@ -128,12 +128,22 @@ def _recent_log_sections(project_id: str, limit: int = 10) -> list[dict]:
     )
 
 
+def _pages_for_docs(project_id: str) -> list:
+    try:
+        from koi.adapters.pages import list_pages_for_docs
+
+        return list_pages_for_docs(project_id)
+    except Exception:
+        return []
+
+
 def knowledge_summary(project: Project) -> dict:
     return build_summary(
         project,
         report_index=_report_index(project.id),
         documents=_documents(project.id),
         recent_log=_recent_log_sections(project.id),
+        pages=_pages_for_docs(project.id),
     )
 
 

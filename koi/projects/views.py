@@ -5,6 +5,48 @@ from __future__ import annotations
 from koi.core.models import ALLOWED_CHILDREN, KANBAN_OWNER_TYPES, NodeType, Project
 
 
+def _page_pins(project_id: str) -> dict:
+    try:
+        from koi.adapters.pages import visible_pins
+
+        return visible_pins(project_id)
+    except Exception:
+        return {}
+
+
+def merge_page_pins(project_ids: list[str]) -> dict[str, list[dict[str, str]]]:
+    """Union visible page pins across member repos (composite view).
+
+    Each pin keeps ``project_id`` so the UI can open the HTML from the owning
+    repo — composite ids are not writable storage roots.
+    """
+    out: dict[str, list[dict[str, str]]] = {}
+    seen: dict[str, set[str]] = {}
+    for project_id in project_ids:
+        if not project_id:
+            continue
+        for node_id, pins in _page_pins(project_id).items():
+            if not isinstance(pins, list):
+                continue
+            bucket = out.setdefault(str(node_id), [])
+            seen_ids = seen.setdefault(str(node_id), set())
+            for pin in pins:
+                if not isinstance(pin, dict):
+                    continue
+                page_id = str(pin.get("id") or pin.get("page_id") or "").strip()
+                if not page_id or page_id in seen_ids:
+                    continue
+                seen_ids.add(page_id)
+                bucket.append(
+                    {
+                        "id": page_id,
+                        "title": str(pin.get("title") or ""),
+                        "project_id": project_id,
+                    }
+                )
+    return out
+
+
 def project_to_client(project: Project) -> dict:
     boards_by_owner = {board.owner_node_id: board for board in project.boards}
     nodes_out = []
@@ -68,6 +110,7 @@ def project_to_client(project: Project) -> dict:
         "card_tags": list(project.card_tags),
         "nodes": nodes_out,
         "boards": boards_out,
+        "page_pins": _page_pins(project.id),
     }
 
 

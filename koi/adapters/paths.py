@@ -34,6 +34,10 @@ def reports_dir(project_id: str) -> Path:
     return koi_root(project_id) / "reports"
 
 
+def pages_dir(project_id: str) -> Path:
+    return koi_root(project_id) / "pages"
+
+
 def knowledge_path(project_id: str) -> Path:
     return koi_root(project_id) / "KNOWLEDGE.md"
 

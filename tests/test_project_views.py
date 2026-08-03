@@ -54,6 +54,7 @@ def test_project_to_client_builds_frontend_read_model() -> None:
     assert node["research_question_counts"] == {"definite": 0, "tentative": 1}
     assert node["research_questions"][0]["card_title"] == "Experiment"
     assert payload["boards"]["board-method"]["source_project_id"] == "demo"
+    assert payload["page_pins"] == {}
 
 
 def test_allowed_children_exposes_domain_rules_as_values() -> None:

@@ -324,6 +324,8 @@ def build_composite(
 
 
 def composite_to_client(composite: CompositeProject) -> dict[str, Any]:
+    from koi.projects.views import merge_page_pins
+
     payload = project_to_client(composite.project)
     payload["is_composite"] = True
     payload["composite_id"] = composite.composite_id
@@ -332,6 +334,13 @@ def composite_to_client(composite: CompositeProject) -> dict[str, Any]:
         {"node_id": c.node_id, "field": c.field, "projects": c.projects}
         for c in composite.conflicts
     ]
+    member_ids = [
+        str(m.get("project_id") or "")
+        for m in composite.members
+        if isinstance(m, dict) and m.get("project_id")
+    ]
+    # Composite id is virtual — page HTML lives in member koi-structure/pages/.
+    payload["page_pins"] = merge_page_pins(member_ids)
     for node in payload["nodes"]:
         node["source_project_id"] = node.get("project_id")
     for board in payload["boards"].values():
