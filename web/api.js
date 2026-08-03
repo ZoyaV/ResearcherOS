@@ -305,10 +305,14 @@ export const KoiApi = {
     return res.json();
   },
   reportAssetUrl: (projectId, boardId, cardId, markdownPath) => {
+    // Keep path separators: nested HTML lives at assets/reports/<scene>/index.html
     const name = String(markdownPath || "")
       .replace(/^assets\//, "")
-      .replace(/^\/+/, "");
-    return `${apiBase()}/projects/${projectId}/boards/${boardId}/cards/${cardId}/report/assets/${encodeURIComponent(name)}`;
+      .replace(/^\/+/, "")
+      .split("/")
+      .map((seg) => encodeURIComponent(seg))
+      .join("/");
+    return `${apiBase()}/projects/${projectId}/boards/${boardId}/cards/${cardId}/report/assets/${name}`;
   },
   listProjectPapers: (projectId) => api(`/projects/${projectId}/papers`),
   generatePaper: (projectId, slug = "default") =>
@@ -365,6 +369,44 @@ export const KoiApi = {
     apiText(`/projects/${projectId}/knowledge/file?path=${encodeURIComponent(path)}`),
   knowledgeAssetUrl: (projectId, path) =>
     `${apiBase()}/projects/${projectId}/knowledge/asset?path=${encodeURIComponent(path)}`,
+  listPages: (projectId) => api(`/projects/${projectId}/pages`),
+  createPage: (projectId, title) =>
+    api(`/projects/${projectId}/pages`, {
+      method: "POST",
+      body: JSON.stringify({ title }),
+    }),
+  deletePage: (projectId, pageId) =>
+    api(`/projects/${projectId}/pages/${encodeURIComponent(pageId)}`, {
+      method: "DELETE",
+    }),
+  pageFileUrl: (projectId, pageId, filePath = "index.html") => {
+    const parts = String(filePath || "index.html")
+      .replace(/^\/+/, "")
+      .split("/")
+      .map((seg) => encodeURIComponent(seg))
+      .join("/");
+    return `${apiBase()}/projects/${projectId}/pages/${encodeURIComponent(pageId)}/file/${parts}`;
+  },
+  listNodePages: (projectId, nodeId) =>
+    api(`/projects/${projectId}/nodes/${encodeURIComponent(nodeId)}/pages`),
+  attachNodePage: (projectId, nodeId, body) =>
+    api(`/projects/${projectId}/nodes/${encodeURIComponent(nodeId)}/pages`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  setNodePageVisible: (projectId, nodeId, pageId, visible) =>
+    api(
+      `/projects/${projectId}/nodes/${encodeURIComponent(nodeId)}/pages/${encodeURIComponent(pageId)}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ visible }),
+      }
+    ),
+  detachNodePage: (projectId, nodeId, pageId) =>
+    api(
+      `/projects/${projectId}/nodes/${encodeURIComponent(nodeId)}/pages/${encodeURIComponent(pageId)}`,
+      { method: "DELETE" }
+    ),
   sendAgentQuestion: (body) =>
     api("/agent-chat", { method: "POST", body: JSON.stringify(body) }),
   listAgentChat: (projectId) =>

@@ -20,7 +20,7 @@ import {
   showKoiLoader,
   hideKoiLoader,
 } from "./koi-loader.js";
-import { MindmapCamera } from "./lab-canvas.js";
+import { MindmapCamera } from "./lab-canvas.js?v=20260803b";
 import { renderMarkdown } from "./markdown.js";
 import { initImageLightbox } from "./image-lightbox.js?v=20260703b";
 import { initWidgets } from "./widgets-loader.js?v=20260723a";
@@ -1071,7 +1071,10 @@ function rebuildLabWorldLayoutFull() {
     labWorldLayoutFull = null;
     return null;
   }
-  labWorldLayoutFull = layoutLaboratory(state.lab.grouped, state.lab.projectsById);
+  labWorldLayoutFull = layoutLaboratory(
+    filterGroupedHiddenTrees(state.lab.grouped),
+    state.lab.projectsById
+  );
   return labWorldLayoutFull;
 }
 
@@ -2312,6 +2315,7 @@ async function loadLab() {
     grouped,
     projectsById,
     hiddenMemberIds,
+    hiddenTreeIds: loadHiddenLabTrees(),
   };
   runningAuthorsByProject.clear();
   syncRunningSeedProvider();
@@ -2411,6 +2415,8 @@ function mountMapNode(pos, layer, project, node, nodeSizes) {
   if (hasKanban) {
     appendKanbanBelow(wrap, node, project);
   }
+  appendNodeDeleteButton(wrap, project, node);
+  mountNodePageIcons(wrap, project, node, activateProject);
   wireNodeWorkersHover(wrap, project, node);
   state.nodeSizes = savedSizes;
   return wrap;
@@ -2614,6 +2620,7 @@ function fitCameraToProgram(layout, projectId, { animate = false } = {}) {
 
 function applyViewCamera(layout, options = {}) {
   if (!labCamera) return;
+  if (options.preserveCamera) return;
   const mode = getViewMode();
   const projectId = options.flyToProjectId || state.project?.id;
 
@@ -2715,6 +2722,9 @@ function initViewControls() {
 
 async function focusLabProject(projectId, { animate = false, reload = false } = {}) {
   if (!state.lab?.projectsById) return;
+  if (ensureLabTreeVisible(projectId)) {
+    void loadProjectList(projectId);
+  }
   if (reload || !state.lab.projectsById[projectId]) {
     if (isCompositeVirtualId(projectId)) {
       const compositeId = projectId.slice("composite:".length);
@@ -2921,6 +2931,8 @@ function renderMindmap(options = {}) {
     }
     mountNodeTypeHelp(wrap, n.node_type);
     if (hasKanban) appendKanbanBelow(wrap, n);
+    appendNodeDeleteButton(wrap, state.project, n);
+    mountNodePageIcons(wrap, state.project, n);
     wireNodeWorkersHover(wrap, state.project, n);
   });
 
@@ -2947,6 +2959,14 @@ function showModal(id) {
 }
 
 function hideModal(id) {
+  if (id === "delete-node-confirm-modal" && _deleteNodeConfirm) {
+    closeDeleteNodeConfirm(false);
+    return;
+  }
+  if (id === "master-page-view-modal") {
+    const frame = document.getElementById("master-page-view-frame");
+    if (frame) frame.src = "about:blank";
+  }
   document.getElementById(id).classList.add("hidden");
   if (id === "node-modal") resetNodeModal();
   if (id === "method-questions-modal") resetMethodQuestionsEditMode();
@@ -3009,10 +3029,28 @@ function hookReportLinks(container) {
     const href = a.getAttribute("href") || "";
     if (/^(https?:)?\/\//i.test(href) || href.startsWith("#") || href.startsWith("mailto:")) {
       a.setAttribute("target", "_blank");
+      a.setAttribute("rel", "noopener");
+      return;
+    }
+    // Nested report HTML/assets rewritten by assetUrlFn, or left as API paths.
+    if (
+      href.includes("/knowledge/asset") ||
+      href.includes("/report/assets/") ||
+      /\.(html?|png|jpe?g|gif|webp|svg|mp4|webm|mov)(\?.*)?$/i.test(href)
+    ) {
+      a.setAttribute("target", "_blank");
+      a.setAttribute("rel", "noopener");
       return;
     }
     const resolved = resolveKbPath(docPath, href);
     if (!resolved.endsWith(".md")) {
+      // Keep downloadable / openable non-md assets instead of stripping the link.
+      if (resolved.startsWith("assets/") || resolved.includes("/assets/")) {
+        a.setAttribute("href", reportAssetUrlFn(resolved.replace(/^.*?(assets\/)/, "assets/")));
+        a.setAttribute("target", "_blank");
+        a.setAttribute("rel", "noopener");
+        return;
+      }
       a.removeAttribute("href");
       return;
     }
@@ -3596,6 +3634,341 @@ function fillNodeEdit(node) {
     node.description || "",
     descPlaceholder
   );
+  void refreshNodePagesPanel(node.id, {
+    tableId: "node-pages-table",
+    addBtnId: "btn-add-master-page",
+  });
+}
+
+const PAGE_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm1 7V3.5L18.5 9H15zM8 13h8v2H8v-2zm0 4h8v2H8v-2zm0-8h5v2H8V9z"/></svg>`;
+const EYE_ON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5zM12 17a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 .001 6.001A3 3 0 0 0 12 9z"/></svg>`;
+const EYE_OFF_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 6.5c2.76 0 5.26 1.18 7.02 3.08l1.45-1.45 1.41 1.41-18.4 18.4-1.41-1.41 3.1-3.1C3.43 15.35 1.9 13.8 1 12c1.73-4.39 6-7.5 11-7.5 1.1 0 2.16.17 3.16.48l-1.62 1.62A8.2 8.2 0 0 0 12 6.5zm0 11c-2.76 0-5.26-1.18-7.02-3.08l2.12-2.12A4.98 4.98 0 0 0 12 17c.9 0 1.74-.24 2.47-.66l1.55 1.55c-1.2.7-2.57 1.11-4.02 1.11zm3.54-2.12A5 5 0 0 0 9.12 9.46l1.5 1.5A3 3 0 0 1 14.04 14l1.5 1.38z"/></svg>`;
+const OPEN_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7zM5 5v14h14v-7h-2v5H7V7h5V5H5z"/></svg>`;
+const DETACH_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>`;
+
+let _masterPagePickNodeId = null;
+
+function nodePagePins(project, nodeId) {
+  const pins = project?.page_pins || {};
+  return Array.isArray(pins[nodeId]) ? pins[nodeId] : [];
+}
+
+function mountNodePageIcons(wrap, project, node, activateProject) {
+  const pins = nodePagePins(project, node.id);
+  if (!pins.length) return;
+  const row = document.createElement("div");
+  row.className = "node-pages-triggers";
+  for (const pin of pins) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "node-page-trigger";
+    btn.title = pin.title || "Мастер-отчёт";
+    btn.setAttribute("aria-label", `Открыть мастер-отчёт «${pin.title || ""}»`);
+    btn.innerHTML = PAGE_ICON_SVG;
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      if (typeof activateProject === "function") activateProject();
+      else if (state.project?.id !== project.id) {
+        state.project = project;
+        setActiveProjectInList(project.id);
+      }
+      const ownerId =
+        pin.project_id ||
+        (!isCompositeVirtualId(project.id) ? project.id : null);
+      if (!ownerId) {
+        setStatus("Не удалось открыть мастер-отчёт: нет project_id", true);
+        return;
+      }
+      openMasterPageView(ownerId, pin.id, pin.title);
+    });
+    btn.addEventListener("mousedown", (e) => e.stopPropagation());
+    btn.addEventListener("pointerdown", (e) => e.stopPropagation());
+    row.appendChild(btn);
+  }
+  wrap.appendChild(row);
+}
+
+function openMasterPageView(projectId, pageId, title) {
+  const url = KoiApi.pageFileUrl(projectId, pageId, "index.html");
+  document.getElementById("master-page-view-title").textContent =
+    title || "Мастер-отчёт";
+  const frame = document.getElementById("master-page-view-frame");
+  const link = document.getElementById("master-page-view-open");
+  if (frame) frame.src = url;
+  if (link) link.href = url;
+  showModal("master-page-view-modal");
+}
+
+function closeMasterPageView() {
+  const frame = document.getElementById("master-page-view-frame");
+  if (frame) frame.src = "about:blank";
+  hideModal("master-page-view-modal");
+}
+
+async function refreshNodePagesPanel(nodeId, { tableId, addBtnId }) {
+  const table = document.getElementById(tableId);
+  const addBtn = document.getElementById(addBtnId);
+  if (!table || !nodeId || !state.project) return;
+  if (addBtn) {
+    addBtn.classList.toggle("hidden", isHubMode());
+    addBtn.onclick = () => openMasterPagePickModal(nodeId);
+  }
+  table.innerHTML = `<p class="node-pages-empty">Загрузка…</p>`;
+  try {
+    const attachments = await listMergedNodePageAttachments(nodeId);
+    renderNodePagesTable(table, nodeId, attachments);
+  } catch (err) {
+    table.innerHTML = `<p class="node-pages-empty">${escapeHtml(err.message)}</p>`;
+  }
+}
+
+function renderNodePagesTable(table, nodeId, attachments) {
+  if (!attachments.length) {
+    table.innerHTML = `<p class="node-pages-empty">Нет прикреплённых мастер-отчётов.</p>`;
+    return;
+  }
+  table.innerHTML = "";
+  for (const item of attachments) {
+    const row = document.createElement("div");
+    row.className = "node-pages-row";
+    const main = document.createElement("div");
+    main.className = "node-pages-row-main";
+    const ownerLabel = item.project_id
+      ? `<span class="node-pages-row-slug">${escapeHtml(item.project_id)}</span>`
+      : "";
+    main.innerHTML = `
+      <span class="node-pages-row-title">${escapeHtml(item.title || item.page_id)}</span>
+      <span class="node-pages-row-slug">${escapeHtml(item.slug || "")}</span>
+      ${ownerLabel}`;
+    const actions = document.createElement("div");
+    actions.className = "node-pages-row-actions";
+
+    const openBtn = document.createElement("button");
+    openBtn.type = "button";
+    openBtn.className = "node-pages-icon-btn";
+    openBtn.title = "Открыть";
+    openBtn.innerHTML = OPEN_SVG;
+    openBtn.addEventListener("click", () => {
+      const ownerId =
+        item.project_id ||
+        pagesWriteProjectId(nodeId) ||
+        (!isCompositeVirtualId(state.project?.id) ? state.project.id : null);
+      if (!ownerId) {
+        setStatus("Не удалось открыть мастер-отчёт: нет project_id", true);
+        return;
+      }
+      openMasterPageView(ownerId, item.page_id, item.title);
+    });
+
+    const eyeBtn = document.createElement("button");
+    eyeBtn.type = "button";
+    eyeBtn.className = `node-pages-icon-btn${item.visible ? " is-on" : ""}`;
+    eyeBtn.title = item.visible ? "Скрыть с карты" : "Показать на карте";
+    eyeBtn.innerHTML = item.visible ? EYE_ON_SVG : EYE_OFF_SVG;
+    eyeBtn.disabled = isHubMode();
+    eyeBtn.addEventListener("click", () =>
+      void toggleNodePageVisible(
+        nodeId,
+        item.page_id,
+        !item.visible,
+        item.project_id
+      )
+    );
+
+    const detachBtn = document.createElement("button");
+    detachBtn.type = "button";
+    detachBtn.className = "node-pages-icon-btn";
+    detachBtn.title = "Открепить от узла";
+    detachBtn.innerHTML = DETACH_SVG;
+    detachBtn.disabled = isHubMode();
+    detachBtn.addEventListener("click", () =>
+      void detachNodePage(nodeId, item.page_id, item.project_id)
+    );
+
+    actions.append(openBtn, eyeBtn, detachBtn);
+    row.append(main, actions);
+    table.appendChild(row);
+  }
+}
+
+async function reloadProjectPagePins() {
+  if (!state.project) return;
+  try {
+    if (isCompositeView()) {
+      const memberIds = pagesMemberProjectIds();
+      const merged = {};
+      await Promise.all(
+        memberIds.map(async (pid) => {
+          try {
+            const data = await KoiApi.listPages(pid);
+            const pins = data.pins || {};
+            for (const [nodeId, items] of Object.entries(pins)) {
+              if (!Array.isArray(items)) continue;
+              const bucket = merged[nodeId] || (merged[nodeId] = []);
+              for (const pin of items) {
+                bucket.push({
+                  id: pin.id,
+                  title: pin.title || "",
+                  project_id: pid,
+                });
+              }
+            }
+          } catch {
+            /* ignore */
+          }
+        })
+      );
+      state.project.page_pins = merged;
+    } else {
+      const data = await KoiApi.listPages(state.project.id);
+      state.project.page_pins = data.pins || {};
+    }
+    if (state.lab?.projectsById?.[state.project.id]) {
+      state.lab.projectsById[state.project.id].page_pins = state.project.page_pins;
+    }
+  } catch {
+    /* keep previous pins */
+  }
+}
+
+async function toggleNodePageVisible(nodeId, pageId, visible, projectId) {
+  if (!state.project || isHubMode()) return;
+  const ownerId = projectId || pagesWriteProjectId(nodeId);
+  if (!ownerId) {
+    setStatus("Project not found", true);
+    return;
+  }
+  setStatus(visible ? "Показываем на карте…" : "Скрываем с карты…");
+  try {
+    await KoiApi.setNodePageVisible(ownerId, nodeId, pageId, visible);
+    await reloadProjectPagePins();
+    await refreshOpenNodePagesPanels(nodeId);
+    renderMindmap();
+    setStatus(visible ? "Мастер-отчёт виден на карте" : "Скрыт с карты");
+  } catch (err) {
+    setStatus(err.message, true);
+  }
+}
+
+async function detachNodePage(nodeId, pageId, projectId) {
+  if (!state.project || isHubMode()) return;
+  const ownerId = projectId || pagesWriteProjectId(nodeId);
+  if (!ownerId) {
+    setStatus("Project not found", true);
+    return;
+  }
+  setStatus("Открепление…");
+  try {
+    await KoiApi.detachNodePage(ownerId, nodeId, pageId);
+    await reloadProjectPagePins();
+    await refreshOpenNodePagesPanels(nodeId);
+    renderMindmap();
+    setStatus("Откреплено от узла");
+  } catch (err) {
+    setStatus(err.message, true);
+  }
+}
+
+async function refreshOpenNodePagesPanels(nodeId) {
+  if (state.activeNodeId === nodeId) {
+    await refreshNodePagesPanel(nodeId, {
+      tableId: "node-pages-table",
+      addBtnId: "btn-add-master-page",
+    });
+  }
+  if (state.kanbanNodeId === nodeId) {
+    await refreshNodePagesPanel(nodeId, {
+      tableId: "kanban-pages-table",
+      addBtnId: "btn-kanban-add-master-page",
+    });
+  }
+}
+
+async function openMasterPagePickModal(nodeId) {
+  if (!state.project || isHubMode()) return;
+  _masterPagePickNodeId = nodeId;
+  const list = document.getElementById("master-page-pick-list");
+  if (list) list.innerHTML = `<p class="node-pages-empty">Загрузка…</p>`;
+  showModal("master-page-pick-modal");
+  try {
+    const { available } = await listMergedPagesCatalog(nodeId);
+    if (!list) return;
+    if (!available.length) {
+      list.innerHTML = `<p class="node-pages-empty">В <code>pages/</code> нет свободных отчётов — создайте пустой HTML.</p>`;
+      return;
+    }
+    list.innerHTML = "";
+    for (const page of available) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "master-page-pick-item";
+      const owner = page.project_id
+        ? `<span class="master-page-pick-item-slug">${escapeHtml(page.project_id)}</span>`
+        : "";
+      btn.innerHTML = `
+        <span class="master-page-pick-item-title">${escapeHtml(page.title || page.slug)}</span>
+        <span class="master-page-pick-item-slug">${escapeHtml(page.slug || "")}</span>
+        ${owner}`;
+      btn.addEventListener("click", () =>
+        void attachExistingMasterPage(nodeId, page.id, page.project_id)
+      );
+      list.appendChild(btn);
+    }
+  } catch (err) {
+    if (list) list.innerHTML = `<p class="node-pages-empty">${escapeHtml(err.message)}</p>`;
+  }
+}
+
+async function attachExistingMasterPage(nodeId, pageId, projectId) {
+  if (!state.project) return;
+  const ownerId = projectId || pagesWriteProjectId(nodeId);
+  if (!ownerId) {
+    setStatus("Project not found", true);
+    return;
+  }
+  setStatus("Прикрепление…");
+  try {
+    await KoiApi.attachNodePage(ownerId, nodeId, { page_id: pageId });
+    hideModal("master-page-pick-modal");
+    await reloadProjectPagePins();
+    await refreshOpenNodePagesPanels(nodeId);
+    renderMindmap();
+    setStatus("Мастер-отчёт прикреплён");
+  } catch (err) {
+    setStatus(err.message, true);
+  }
+}
+
+async function createEmptyMasterPage(nodeId) {
+  if (!state.project || isHubMode()) return;
+  const ownerId = pagesWriteProjectId(nodeId);
+  if (!ownerId) {
+    setStatus(
+      isCompositeView()
+        ? "Выберите ветку проекта (Related Work) или откройте verl-agent-craftext"
+        : "Project not found",
+      true
+    );
+    return;
+  }
+  const title = window.prompt("Название мастер-отчёта", "Мастер-отчёт");
+  if (title == null) return;
+  const trimmed = title.trim() || "Мастер-отчёт";
+  setStatus("Создание…");
+  try {
+    await KoiApi.attachNodePage(ownerId, nodeId, {
+      create: true,
+      title: trimmed,
+    });
+    hideModal("master-page-pick-modal");
+    await reloadProjectPagePins();
+    await refreshOpenNodePagesPanels(nodeId);
+    renderMindmap();
+    setStatus(`Создан пустой HTML в ${ownerId}/pages/`);
+  } catch (err) {
+    setStatus(err.message, true);
+  }
 }
 
 function openAddChildModal(parent) {
@@ -3692,7 +4065,91 @@ async function onAddChildSubmit(e) {
 async function onDeleteNode() {
   const node = state.project.nodes.find((n) => n.id === state.activeNodeId);
   if (!node || node.node_type === "problem") return;
-  if (!confirm(`Удалить узел «${node.title}» и всех потомков?`)) return;
+  await requestDeleteNode(node);
+}
+
+function nodeDeleteConfirmPhrase(title) {
+  const words = String(title || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (words.length === 0) return "";
+  if (words.length === 1) return words[0];
+  return `${words[0]} ${words[1]}`;
+}
+
+let _deleteNodeConfirm = null;
+
+function closeDeleteNodeConfirm(confirmed) {
+  const pending = _deleteNodeConfirm;
+  _deleteNodeConfirm = null;
+  const modal = document.getElementById("delete-node-confirm-modal");
+  const input = document.getElementById("delete-node-confirm-input");
+  const err = document.getElementById("delete-node-confirm-error");
+  const submit = document.getElementById("btn-delete-node-confirm");
+  if (input) input.value = "";
+  if (err) err.textContent = "";
+  if (submit) submit.disabled = true;
+  if (modal && !modal.classList.contains("hidden")) {
+    modal.classList.add("hidden");
+    if (!document.querySelector(".modal:not(.hidden)")) {
+      document.body.classList.remove("modal-open");
+    }
+  }
+  if (pending) pending.resolve(Boolean(confirmed));
+}
+
+function askDeleteNodeConfirm(node) {
+  const title = displayTitle(node);
+  const phrase = nodeDeleteConfirmPhrase(title);
+  if (!phrase) return Promise.resolve(false);
+
+  const titleEl = document.getElementById("delete-node-confirm-title");
+  const phraseEl = document.getElementById("delete-node-confirm-phrase");
+  const input = document.getElementById("delete-node-confirm-input");
+  const err = document.getElementById("delete-node-confirm-error");
+  const submit = document.getElementById("btn-delete-node-confirm");
+  if (!titleEl || !phraseEl || !input || !submit) {
+    return Promise.resolve(
+      window.confirm(`Удалить узел «${title}» и всех потомков?`)
+    );
+  }
+
+  if (_deleteNodeConfirm) closeDeleteNodeConfirm(false);
+
+  titleEl.textContent = title;
+  phraseEl.textContent = phrase;
+  input.value = "";
+  if (err) err.textContent = "";
+  submit.disabled = true;
+  input.dataset.expected = phrase;
+
+  return new Promise((resolve) => {
+    _deleteNodeConfirm = { resolve, phrase };
+    showModal("delete-node-confirm-modal");
+    queueMicrotask(() => input.focus());
+  });
+}
+
+function syncDeleteNodeConfirmInput() {
+  const input = document.getElementById("delete-node-confirm-input");
+  const submit = document.getElementById("btn-delete-node-confirm");
+  const err = document.getElementById("delete-node-confirm-error");
+  if (!input || !submit || !_deleteNodeConfirm) return;
+  const typed = input.value.trim();
+  const ok = typed === _deleteNodeConfirm.phrase;
+  submit.disabled = !ok;
+  if (err && typed && !ok) {
+    err.textContent = "Введите фразу точно, как показано выше";
+  } else if (err) {
+    err.textContent = "";
+  }
+}
+
+async function requestDeleteNode(node) {
+  if (!node || node.node_type === "problem" || isHubMode()) return;
+  const ok = await askDeleteNodeConfirm(node);
+  if (!ok) return;
   setStatus("Удаление…");
   try {
     await KoiApi.deleteNode(nodeWriteProjectId(node), node.id);
@@ -3700,10 +4157,38 @@ async function onDeleteNode() {
     syncLabProject(state.project);
     setStatus("Сохранено в project.md");
     hideModal("node-modal");
+    hideModal("kanban-modal");
+    hideModal("method-questions-modal");
+    hideModal("card-report-modal");
     renderMindmap();
   } catch (err) {
     setStatus(err.message, true);
   }
+}
+
+function appendNodeDeleteButton(wrap, project, node) {
+  if (!wrap || !node || node.node_type === "problem" || isHubMode()) return;
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "node-delete";
+  btn.title = "Удалить узел";
+  btn.setAttribute(
+    "aria-label",
+    `Удалить узел «${displayTitle(node)}»`
+  );
+  btn.textContent = "×";
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (state.project?.id !== project.id) {
+      state.project = project;
+      setActiveProjectInList(project.id);
+    }
+    void requestDeleteNode(node);
+  });
+  btn.addEventListener("pointerdown", (e) => e.stopPropagation());
+  btn.addEventListener("mousedown", (e) => e.stopPropagation());
+  wrap.appendChild(btn);
 }
 
 function formatImportance(importance) {
@@ -4271,6 +4756,10 @@ function openKanbanModal(node) {
   document.getElementById("kanban-modal-type").textContent =
     TYPE_LABELS[node.node_type];
   fillKanbanNodeMeta(node);
+  void refreshNodePagesPanel(node.id, {
+    tableId: "kanban-pages-table",
+    addBtnId: "btn-kanban-add-master-page",
+  });
 
   setKanbanViewMode(state.kanbanViewMode);
   renderActiveKanbanView(board, node);
@@ -5689,6 +6178,7 @@ async function addCardToColumn(board, columnId, context = {}) {
 }
 
 const PROJECTS_SIDEBAR_KEY = "koi-projects-sidebar";
+const LAB_HIDDEN_TREES_KEY = "koi-lab-hidden-trees";
 const VIEW_MODE_KEY = "koi-view-mode";
 
 const VIEW_MODES = {
@@ -5716,18 +6206,100 @@ state.view = {
   mode: "chief",
 };
 
+function loadHiddenLabTrees() {
+  try {
+    const raw = localStorage.getItem(LAB_HIDDEN_TREES_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(arr) ? arr.map(String) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveHiddenLabTrees(ids) {
+  localStorage.setItem(LAB_HIDDEN_TREES_KEY, JSON.stringify([...ids]));
+}
+
+function ensureHiddenLabTrees() {
+  if (!state.lab) return new Set();
+  if (!(state.lab.hiddenTreeIds instanceof Set)) {
+    state.lab.hiddenTreeIds = loadHiddenLabTrees();
+  }
+  return state.lab.hiddenTreeIds;
+}
+
+function isLabTreeHidden(id) {
+  return Boolean(id) && ensureHiddenLabTrees().has(id);
+}
+
+function filterGroupedHiddenTrees(grouped) {
+  const hidden = ensureHiddenLabTrees();
+  if (!grouped || !hidden.size) return grouped;
+  return {
+    ...grouped,
+    groups: (grouped.groups || []).map((g) => ({
+      ...g,
+      composites: (g.composites || []).filter(
+        (c) => !hidden.has(compositeVirtualId(c.id))
+      ),
+      projects: (g.projects || []).filter((p) => !hidden.has(p.id)),
+    })),
+    ungrouped: (grouped.ungrouped || []).filter((p) => !hidden.has(p.id)),
+  };
+}
+
+function toggleLabTreeHidden(id) {
+  if (!id || !state.lab) return;
+  const hidden = ensureHiddenLabTrees();
+  if (hidden.has(id)) hidden.delete(id);
+  else hidden.add(id);
+  saveHiddenLabTrees(hidden);
+  void loadProjectList(state.project?.id);
+  if (state.lab.projectsById) {
+    renderLabMindmap({ preserveCamera: true });
+  }
+}
+
+/** Selecting a project brings its tree back onto the Laboratory map. */
+function ensureLabTreeVisible(id) {
+  if (!id || !state.lab) return false;
+  const hidden = ensureHiddenLabTrees();
+  if (!hidden.has(id)) return false;
+  hidden.delete(id);
+  saveHiddenLabTrees(hidden);
+  return true;
+}
+
+function renderProjectListEye(treeId) {
+  const hidden = isLabTreeHidden(treeId);
+  const title = hidden ? "Показать дерево на карте" : "Скрыть дерево с карты";
+  return (
+    `<button type="button" class="project-list__eye${hidden ? "" : " is-on"}"` +
+    ` data-tree-id="${escapeHtml(treeId)}"` +
+    ` title="${title}"` +
+    ` aria-label="${title}"` +
+    ` aria-pressed="${hidden ? "false" : "true"}">` +
+    `${hidden ? EYE_OFF_SVG : EYE_ON_SVG}` +
+    `</button>`
+  );
+}
+
 function renderProjectListButton(p, currentId) {
   const active = p.id === currentId;
+  const hidden = isLabTreeHidden(p.id);
   const compositeHint = p.composite_id
     ? ` title="composite: ${escapeHtml(p.composite_id)}"`
     : "";
   return (
-    `<li class="project-list__item">` +
+    `<li class="project-list__item${hidden ? " is-tree-hidden" : ""}">` +
+    `<div class="project-list__row">` +
     `<button type="button" class="project-list__btn${active ? " is-active" : ""}"` +
     ` data-project-id="${escapeHtml(p.id)}"` +
     compositeHint +
     (active ? ' aria-current="true"' : "") +
     `>${escapeHtml(p.title)}</button>` +
+    renderProjectListEye(p.id) +
+    `</div>` +
     `</li>`
   );
 }
@@ -5761,6 +6333,7 @@ function renderCompositeMemberBranch(member, currentId, selectedBranchId) {
 function renderCompositeListButton(c, currentId, selectedBranchId) {
   const virtualId = `composite:${c.id}`;
   const active = currentId === virtualId;
+  const hidden = isLabTreeHidden(virtualId);
   const members = compositeMemberMetas(c);
   const branches =
     members.length > 1
@@ -5769,11 +6342,14 @@ function renderCompositeListButton(c, currentId, selectedBranchId) {
         `</ul>`
       : "";
   return (
-    `<li class="project-list__item project-list__item--composite">` +
+    `<li class="project-list__item project-list__item--composite${hidden ? " is-tree-hidden" : ""}">` +
+    `<div class="project-list__row">` +
     `<button type="button" class="project-list__btn project-list__btn--composite${active ? " is-active" : ""}"` +
     ` data-composite-id="${escapeHtml(c.id)}"` +
     (active ? ' aria-current="true"' : "") +
     `><span class="project-list__composite-mark" aria-hidden="true">⎇</span> ${escapeHtml(c.title)}</button>` +
+    renderProjectListEye(virtualId) +
+    `</div>` +
     branches +
     `</li>`
   );
@@ -5903,6 +6479,84 @@ function programLayoutItems(group, hiddenMemberIds) {
 function nodeWriteProjectId(node) {
   if (!node) return state.project?.id;
   return node.source_project_id || node.project_id || state.project?.id;
+}
+
+/** Real repo ids that may store master pages for the current view. */
+function pagesMemberProjectIds() {
+  if (isCompositeView()) {
+    const fromMembers = (state.project?.members || [])
+      .map((m) => m.project_id)
+      .filter((id) => id && !isCompositeVirtualId(id));
+    if (fromMembers.length) return fromMembers;
+  }
+  const pid = state.project?.id;
+  if (pid && !isCompositeVirtualId(pid)) return [pid];
+  return [];
+}
+
+/** Where to create/attach pages in composite: branch picker, existing pin owner, else node owner. */
+function pagesWriteProjectId(nodeId) {
+  if (!isCompositeView()) {
+    const pid = state.project?.id;
+    return pid && !isCompositeVirtualId(pid) ? pid : null;
+  }
+  if (state.literatureBranchId) return state.literatureBranchId;
+  const pins = nodePagePins(state.project, nodeId);
+  const owned = pins.find((p) => p.project_id && !isCompositeVirtualId(p.project_id));
+  if (owned?.project_id) return owned.project_id;
+  const node = (state.project?.nodes || []).find((n) => n.id === nodeId);
+  const viaNode = nodeWriteProjectId(node);
+  if (viaNode && !isCompositeVirtualId(viaNode)) return viaNode;
+  return pagesMemberProjectIds()[0] || null;
+}
+
+async function listMergedNodePageAttachments(nodeId) {
+  const projectIds = pagesMemberProjectIds();
+  const out = [];
+  const seen = new Set();
+  await Promise.all(
+    projectIds.map(async (pid) => {
+      try {
+        const data = await KoiApi.listNodePages(pid, nodeId);
+        for (const item of data.attachments || []) {
+          const pageId = item.page_id;
+          if (!pageId || seen.has(`${pid}:${pageId}`)) continue;
+          seen.add(`${pid}:${pageId}`);
+          out.push({ ...item, project_id: item.project_id || pid });
+        }
+      } catch {
+        /* node may be absent in this member */
+      }
+    })
+  );
+  return out;
+}
+
+async function listMergedPagesCatalog(nodeId) {
+  const projectIds = pagesMemberProjectIds();
+  const pages = [];
+  const attached = new Set();
+  const attachments = await listMergedNodePageAttachments(nodeId);
+  for (const a of attachments) {
+    if (a.page_id) attached.add(`${a.project_id || ""}:${a.page_id}`);
+  }
+  await Promise.all(
+    projectIds.map(async (pid) => {
+      try {
+        const data = await KoiApi.listPages(pid);
+        for (const page of data.pages || []) {
+          pages.push({ ...page, project_id: pid });
+        }
+      } catch {
+        /* ignore missing member */
+      }
+    })
+  );
+  return {
+    pages,
+    available: pages.filter((p) => !attached.has(`${p.project_id}:${p.id}`)),
+    attachments,
+  };
 }
 
 function boardWriteProjectId(board) {
@@ -6202,6 +6856,14 @@ function initProjectsSidebar() {
   });
 
   document.getElementById("project-list")?.addEventListener("click", (e) => {
+    const eyeBtn = e.target.closest(".project-list__eye");
+    if (eyeBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      const treeId = eyeBtn.dataset.treeId;
+      if (treeId) toggleLabTreeHidden(treeId);
+      return;
+    }
     const branchBtn = e.target.closest("[data-branch-id]");
     if (branchBtn) {
       const branchId = branchBtn.dataset.branchId;
@@ -7633,6 +8295,7 @@ function renderKnowledgeDashboard(s) {
       <span class="kb-chip" title="Инсайтов в research.json">инсайтов: ${st.insights ?? 0}</span>
       <span class="kb-chip" title="Документов в knowledge/">документов: ${st.docs ?? 0}</span>
       <span class="kb-chip" title="Отчётов по карточкам экспериментов">отчётов: ${st.reports ?? 0}</span>
+      <span class="kb-chip" title="Мастер-отчёты в pages/">pages: ${st.pages ?? 0}</span>
     </div>
     <div class="kb-progress" title="Гипотезы: ${st.supported ?? 0} ✔ · ${st.refuted ?? 0} ✗ · ${st.open ?? 0} открыто">
       ${seg(st.supported, "supported")}${seg(st.refuted, "refuted")}${seg(st.open, "open")}
@@ -7669,6 +8332,15 @@ function renderKnowledgeDashboard(s) {
       </a>`
     )
     .join("");
+  const pages = (s.pages || [])
+    .map(
+      (p) => `
+      <button type="button" class="kb-doc kb-page" data-page-id="${escapeHtml(p.id || "")}" data-page-title="${escapeHtml(p.title || "")}">
+        <span class="kb-doc-title">${escapeHtml(p.title || p.slug || "page")} <span class="kb-doc-auto">page</span></span>
+        ${p.slug ? `<span class="kb-doc-summary">pages/${escapeHtml(p.slug)}/</span>` : ""}
+      </button>`
+    )
+    .join("");
   const log = (s.log_recent || [])
     .slice(0, 3)
     .map(
@@ -7687,10 +8359,23 @@ function renderKnowledgeDashboard(s) {
       <div class="kb-hyps">${hyps || '<p class="md-empty">Гипотез пока нет.</p>'}</div>
       <h3 class="kb-h">Документы знаний</h3>
       <div class="kb-docs">${docs || '<p class="md-empty">Документов пока нет — положите .md в <code>knowledge/</code>.</p>'}</div>
+      <h3 class="kb-h">Мастер-отчёты (pages)</h3>
+      <div class="kb-docs">${pages || '<p class="md-empty">Нет pages — создайте HTML в <code>pages/</code> или через узел дерева.</p>'}</div>
       <h3 class="kb-h">Последние пополнения <button type="button" class="btn kb-log-all" id="kb-open-log">весь журнал</button></h3>
       <div class="kb-log">${log || '<p class="md-empty">Журнал пуст.</p>'}</div>
     </div>`;
   hookKnowledgeLinks(body);
+  body.querySelectorAll(".kb-page[data-page-id]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const pageId = btn.getAttribute("data-page-id");
+      if (!pageId || !state.project) return;
+      openMasterPageView(
+        state.project.id,
+        pageId,
+        btn.getAttribute("data-page-title") || ""
+      );
+    });
+  });
   document.getElementById("kb-open-log")?.addEventListener("click", () => {
     knowledgeState.tab = "log";
     void loadKnowledgeTab();
@@ -9776,6 +10461,9 @@ async function init() {
   }
   initKanbanViewTabs();
   initKanbanModalChrome();
+  document.getElementById("btn-master-page-create")?.addEventListener("click", () => {
+    if (_masterPagePickNodeId) void createEmptyMasterPage(_masterPagePickNodeId);
+  });
   if (!hubMode) bindCardLiveModal(cardLiveUi);
   document.querySelectorAll("[data-close]").forEach((el) => {
     el.addEventListener("click", () => {
@@ -9795,6 +10483,11 @@ async function init() {
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       if (document.activeElement?.classList.contains("inline-edit-field")) return;
+      const deleteConfirmModal = document.getElementById("delete-node-confirm-modal");
+      if (deleteConfirmModal && !deleteConfirmModal.classList.contains("hidden")) {
+        closeDeleteNodeConfirm(false);
+        return;
+      }
       const reportModal = document.getElementById("card-report-modal");
       if (!reportModal.classList.contains("hidden")) {
         void closeReportModal();
@@ -9860,6 +10553,17 @@ async function init() {
   if (!hubMode) setupInlineEdits();
   document.getElementById("add-child-form").addEventListener("submit", onAddChildSubmit);
   document.getElementById("btn-delete-node").addEventListener("click", onDeleteNode);
+  document.getElementById("delete-node-confirm-input")?.addEventListener("input", syncDeleteNodeConfirmInput);
+  document.getElementById("delete-node-confirm-form")?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (!_deleteNodeConfirm) return;
+    const typed = document.getElementById("delete-node-confirm-input")?.value.trim() || "";
+    if (typed !== _deleteNodeConfirm.phrase) {
+      syncDeleteNodeConfirmInput();
+      return;
+    }
+    closeDeleteNodeConfirm(true);
+  });
   document.getElementById("btn-add-method")?.addEventListener("click", (e) => {
     e.preventDefault();
     const node = state.project?.nodes?.find((n) => n.id === state.activeNodeId);

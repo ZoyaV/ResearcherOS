@@ -12,13 +12,13 @@
       document.documentElement.classList.add("hub-viewer");
       // document.write so <base> exists before any relative CSS/JS is parsed.
       document.write('<base href="/core/">');
-      document.write('<link rel="stylesheet" href="/static/hub-overrides.css?v=16">');
+      document.write('<link rel="stylesheet" href="/static/hub-overrides.css?v=17">');
     })();
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20260722ac" />
+  <link rel="stylesheet" href="styles.css?v=20260803b" />
   <script>
     (function () {
       var t = localStorage.getItem("koi-theme");
@@ -425,6 +425,13 @@
           </button>
           <button type="button" id="btn-delete-node" class="btn btn-danger hidden">Удалить узел</button>
         </div>
+        <section id="node-pages-block" class="node-pages-block" aria-label="Мастер-отчёты">
+          <div class="node-pages-head">
+            <h3 class="node-pages-title">Мастер-отчёты</h3>
+            <button type="button" id="btn-add-master-page" class="btn btn-primary btn-small">+ Добавить</button>
+          </div>
+          <div id="node-pages-table" class="node-pages-table"></div>
+        </section>
       </div>
       <div id="add-child-block" class="add-child-block hidden">
         <h3 id="node-modal-title"></h3>
@@ -443,6 +450,41 @@
           </div>
         </form>
       </div>
+    </div>
+  </div>
+
+  <!-- Подтверждение удаления узла -->
+  <div id="delete-node-confirm-modal" class="modal hidden" role="dialog" aria-labelledby="delete-node-confirm-heading">
+    <div class="modal-backdrop" data-close="delete-node-confirm-modal"></div>
+    <div class="modal-panel modal-panel--narrow">
+      <button type="button" class="modal-close" data-close="delete-node-confirm-modal" aria-label="Закрыть">×</button>
+      <p class="modal-type">Удаление узла</p>
+      <h2 id="delete-node-confirm-heading" class="delete-node-confirm-heading">Удалить узел?</h2>
+      <p class="delete-node-confirm-lead">
+        Будут удалены узел <strong id="delete-node-confirm-title"></strong>, все потомки, канбан-доски и отчёты.
+      </p>
+      <p class="delete-node-confirm-hint">
+        Для подтверждения введите первые два слова заголовка:
+        <code id="delete-node-confirm-phrase"></code>
+      </p>
+      <form id="delete-node-confirm-form" class="form">
+        <label>
+          Подтверждение
+          <input
+            type="text"
+            id="delete-node-confirm-input"
+            name="confirm"
+            autocomplete="off"
+            spellcheck="false"
+            required
+          />
+        </label>
+        <p id="delete-node-confirm-error" class="delete-node-confirm-error" role="alert"></p>
+        <div class="form-actions">
+          <button type="button" class="btn" data-close="delete-node-confirm-modal">Отмена</button>
+          <button type="submit" id="btn-delete-node-confirm" class="btn btn-danger" disabled>Удалить</button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -465,6 +507,13 @@
           <textarea id="kanban-node-desc-input" class="inline-edit-field hidden" rows="3"></textarea>
           <button type="button" id="kanban-desc-toggle" class="kanban-desc-toggle hidden" aria-expanded="false">развернуть</button>
         </div>
+        <section id="kanban-pages-block" class="node-pages-block node-pages-block--kanban" aria-label="Мастер-отчёты">
+          <div class="node-pages-head">
+            <h3 class="node-pages-title">Мастер-отчёты</h3>
+            <button type="button" id="btn-kanban-add-master-page" class="btn btn-primary btn-small">+ Добавить</button>
+          </div>
+          <div id="kanban-pages-table" class="node-pages-table"></div>
+        </section>
         <p class="modal-desc kanban-modal-hint hidden" id="kanban-modal-hint">⠿ — перетащить · + в колонке — новая карточка · двойной клик — правка · в Done под заголовком — краткий вывод · ↗ — отчёт</p>
         <div class="kanban-modal-toolbar">
           <div id="kanban-view-tabs" class="kanban-view-tabs" role="tablist" aria-label="Режим доски">
@@ -541,6 +590,35 @@
         <button type="button" id="card-report-save" class="btn btn-primary">Сохранить</button>
       </div>
       <p class="card-report-hint">Файл в <code>reports/</code> · опционально <code>compute_cost:</code> в шапке · Ctrl+V — картинка в <code>assets/</code> · Write / View · секции <code>##</code> сворачиваются · при закрытии сохраняется</p>
+    </div>
+  </div>
+
+  <!-- Выбор / создание мастер-отчёта -->
+  <div id="master-page-pick-modal" class="modal hidden" role="dialog" aria-labelledby="master-page-pick-title">
+    <div class="modal-backdrop" data-close="master-page-pick-modal"></div>
+    <div class="modal-panel modal-panel--narrow">
+      <button type="button" class="modal-close" data-close="master-page-pick-modal" aria-label="Закрыть">×</button>
+      <p class="modal-type">Мастер-отчёт</p>
+      <h2 id="master-page-pick-title">Добавить к узлу</h2>
+      <div class="master-page-pick-actions">
+        <button type="button" id="btn-master-page-create" class="btn btn-primary">Создать пустой HTML</button>
+      </div>
+      <p class="master-page-pick-lead">или выбрать из <code>pages/</code>:</p>
+      <div id="master-page-pick-list" class="master-page-pick-list"></div>
+    </div>
+  </div>
+
+  <!-- Просмотр мастер-отчёта (HTML) -->
+  <div id="master-page-view-modal" class="modal hidden" role="dialog" aria-labelledby="master-page-view-title">
+    <div class="modal-backdrop" data-close="master-page-view-modal"></div>
+    <div class="modal-panel modal-panel--page">
+      <button type="button" class="modal-close" data-close="master-page-view-modal" aria-label="Закрыть">×</button>
+      <header class="master-page-view-header">
+        <p class="modal-type">Мастер-отчёт</p>
+        <h2 id="master-page-view-title" class="inline-edit-title"></h2>
+        <a id="master-page-view-open" class="btn btn-small" href="#" target="_blank" rel="noopener">Открыть в вкладке</a>
+      </header>
+      <iframe id="master-page-view-frame" class="master-page-view-frame" title="Мастер-отчёт"></iframe>
     </div>
   </div>
 
@@ -743,6 +821,6 @@
 
   <div id="koi-widgets-root" aria-live="polite"></div>
 
-  <script type="module" src="app.js?v=20260723a"></script>
+  <script type="module" src="app.js?v=20260803b"></script>
 </body>
 </html>

@@ -944,6 +944,7 @@ body.hub-readonly .add-slot-wrap--readonly .add-preview-ghosts {
 
 body.hub-readonly .inline-edit-field,
 body.hub-readonly #btn-delete-node,
+body.hub-readonly .node-delete,
 body.hub-readonly #btn-add-method,
 body.hub-readonly #btn-toggle-rq-edit,
 body.hub-readonly #btn-save-rq,
