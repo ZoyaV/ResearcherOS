@@ -370,6 +370,20 @@ def test_delete_card_removes_incoming_dependencies(
     assert command_context["deletions"] == [("demo", "card-a")]
 
 
+def test_delete_node_removes_owned_boards_and_card_reports(
+    project: Project,
+    command_context: dict[str, list],
+) -> None:
+    result = project_commands.delete_node("demo", "method")
+
+    assert {node.id for node in result.nodes} == {"problem"}
+    assert result.boards == []
+    assert command_context["deletions"] == [("demo", "card-a"), ("demo", "card-b")]
+    assert command_context["sync"] == [
+        ("demo", "tree_updated", "удалён узел method")
+    ]
+
+
 def test_create_node_uses_repository_rule_and_enqueues_sync(
     project: Project,
     command_context: dict[str, list],

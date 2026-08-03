@@ -299,11 +299,33 @@ def update_node(project_id: str, node_id: str, command: UpdateNodeCommand) -> Pr
 
 def delete_node(project_id: str, node_id: str) -> Project:
     project = _require_project(project_id)
+    node = next((item for item in project.nodes if item.id == node_id), None)
+    if node is None:
+        raise EntityNotFoundError("Node not found")
+
+    to_remove = {node_id}
+
+    def collect_children(parent_id: str) -> None:
+        for item in project.nodes:
+            if item.parent_id == parent_id:
+                to_remove.add(item.id)
+                collect_children(item.id)
+
+    collect_children(node_id)
+    report_card_ids = [
+        card.id
+        for board in project.boards
+        if board.owner_node_id in to_remove
+        for card in board.cards
+    ]
+
     try:
         project_ops.delete_node(project, node_id)
     except StopIteration as exc:
         raise EntityNotFoundError("Node not found") from exc
     repository.save_project(project)
+    for card_id in report_card_ids:
+        card_reports.delete_report(project_id, card_id)
     _enqueue_sync(project_id, "tree_updated", f"удалён узел {node_id}")
     return project
 
