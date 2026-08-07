@@ -160,6 +160,13 @@ async def _sync_project(project: HubProject, access_token: str) -> dict[str, Any
             payload["reports"] = {"ok": True, "count": reports_count}
         except Exception as exc:  # noqa: BLE001 — surface partial sync to the owner
             payload["reports"] = {"ok": False, "error": str(exc)[:300]}
+        # Master HTML pages (map pins) — usually small; still best-effort.
+        pages_src = tmp / "pages"
+        try:
+            pages_count = store.save_pages_tree(project.slug, pages_src)
+            payload["pages"] = {"ok": True, "count": pages_count}
+        except Exception as exc:  # noqa: BLE001
+            payload["pages"] = {"ok": False, "error": str(exc)[:300]}
         return payload
     finally:
         shutil.rmtree(tmp, ignore_errors=True)

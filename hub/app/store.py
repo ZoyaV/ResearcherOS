@@ -177,11 +177,13 @@ class HubStore:
             self._s3.delete_object(Bucket=self.config.s3_bucket, Key=f"projects/{slug}.json")
             self._s3.delete_object(Bucket=self.config.s3_bucket, Key=f"snapshots/{slug}.json")
             self._delete_prefix(f"reports/{slug}/")
+            self._delete_prefix(f"pages/{slug}/")
             self._delete_prefix(f"skills/entries/{slug}/")
         else:
             project_path = self.config.data_dir / "projects" / f"{slug}.json"
             snapshot_path = self.config.data_dir / "snapshots" / f"{slug}.json"
             reports_path = self.reports_dir(slug)
+            pages_path = self.pages_dir(slug)
             skills_path = self.config.data_dir / "skills" / "entries" / slug
             if project_path.exists():
                 project_path.unlink()
@@ -189,6 +191,8 @@ class HubStore:
                 snapshot_path.unlink()
             if reports_path.exists():
                 shutil.rmtree(reports_path, ignore_errors=True)
+            if pages_path.exists():
+                shutil.rmtree(pages_path, ignore_errors=True)
             if skills_path.exists():
                 shutil.rmtree(skills_path, ignore_errors=True)
         index = self._read_json("projects/index.json") or []
@@ -419,6 +423,119 @@ class HubStore:
             self._delete_prefix(f"reports/{slug}/")
             return
         dest = self.reports_dir(slug)
+        if dest.exists():
+            shutil.rmtree(dest, ignore_errors=True)
+
+    def pages_dir(self, slug: str) -> Path:
+        return self.config.data_dir / "pages" / slug
+
+    def save_pages_tree(self, slug: str, src: Path) -> int:
+        """Copy ``koi-structure/pages`` into Hub storage. Returns file count."""
+        if not src.is_dir():
+            self._clear_pages(slug)
+            return 0
+        if self._s3:
+            prefix = f"pages/{slug}/"
+            keep: set[str] = set()
+            count = 0
+            for path in src.rglob("*"):
+                if not path.is_file():
+                    continue
+                rel = path.relative_to(src).as_posix()
+                key = f"{prefix}{rel}"
+                body = path.read_bytes()
+                content_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+                self._s3.put_object(
+                    Bucket=self.config.s3_bucket,
+                    Key=key,
+                    Body=body,
+                    ContentType=content_type,
+                )
+                keep.add(key)
+                count += 1
+            token = None
+            while True:
+                kwargs: dict[str, Any] = {
+                    "Bucket": self.config.s3_bucket,
+                    "Prefix": prefix,
+                }
+                if token:
+                    kwargs["ContinuationToken"] = token
+                resp = self._s3.list_objects_v2(**kwargs)
+                stale = [
+                    {"Key": item["Key"]}
+                    for item in resp.get("Contents") or []
+                    if item.get("Key") and item["Key"] not in keep
+                ]
+                if stale:
+                    for i in range(0, len(stale), 1000):
+                        self._s3.delete_objects(
+                            Bucket=self.config.s3_bucket,
+                            Delete={"Objects": stale[i : i + 1000]},
+                        )
+                if not resp.get("IsTruncated"):
+                    break
+                token = resp.get("NextContinuationToken")
+            return count
+
+        dest = self.pages_dir(slug)
+        if dest.exists():
+            shutil.rmtree(dest, ignore_errors=True)
+        shutil.copytree(src, dest)
+        return sum(1 for p in dest.rglob("*") if p.is_file())
+
+    def resolve_page_file(
+        self, slug: str, page_id: str, relative: str = "index.html"
+    ) -> Optional[Path]:
+        """Resolve a file under stored pages/<page-slug>/ via index.json."""
+        page_id = str(page_id or "").strip()
+        rel = (relative or "index.html").strip().lstrip("/")
+        if not page_id or not rel or ".." in Path(rel).parts:
+            return None
+        index_path = self.resolve_pages_path(slug, "index.json")
+        if index_path is None:
+            return None
+        try:
+            data = json.loads(index_path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            return None
+        pages = data.get("pages") if isinstance(data, dict) else None
+        if not isinstance(pages, dict):
+            return None
+        meta = pages.get(page_id)
+        if not isinstance(meta, dict):
+            return None
+        page_slug = str(meta.get("slug") or "").strip()
+        if not page_slug or ".." in Path(page_slug).parts:
+            return None
+        return self.resolve_pages_path(slug, f"{page_slug}/{rel}")
+
+    def resolve_pages_path(self, slug: str, relative: str) -> Optional[Path]:
+        """Resolve a path under stored pages/; materializes from S3 when needed."""
+        rel = relative.strip().lstrip("/")
+        if not rel or ".." in Path(rel).parts:
+            return None
+        if self._s3:
+            key = f"pages/{slug}/{rel}"
+            cache = self.config.data_dir / ".s3-cache" / "pages" / slug / rel
+            try:
+                obj = self._s3.get_object(Bucket=self.config.s3_bucket, Key=key)
+                cache.parent.mkdir(parents=True, exist_ok=True)
+                cache.write_bytes(obj["Body"].read())
+                return cache
+            except Exception:
+                return None
+        path = (self.pages_dir(slug) / rel).resolve()
+        root = self.pages_dir(slug).resolve()
+        if not str(path).startswith(str(root) + "/") and path != root:
+            return None
+        return path if path.is_file() else None
+
+    def _clear_pages(self, slug: str) -> None:
+        if self._s3:
+            self._delete_prefix(f"pages/{slug}/")
+            return
+        dest = self.pages_dir(slug)
         if dest.exists():
             shutil.rmtree(dest, ignore_errors=True)
 

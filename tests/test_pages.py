@@ -54,3 +54,30 @@ def test_discover_orphan_html_folder(project_pages: str) -> None:
     )
     pages = pages_store.list_pages(project_pages)
     assert any(p["slug"] == "dropped-report" and p["title"] == "Dropped" for p in pages)
+
+
+def test_visible_pins_from_pages_root(tmp_path: Path) -> None:
+    pages_root = tmp_path / "pages"
+    pages_root.mkdir()
+    (pages_root / "overview").mkdir()
+    (pages_root / "overview" / "index.html").write_text(
+        "<html><title>Overview</title></html>", encoding="utf-8"
+    )
+    (pages_root / "index.json").write_text(
+        """
+{
+  "version": 1,
+  "pages": {
+    "p1": {"id": "p1", "title": "Overview", "slug": "overview", "entry": "index.html"}
+  },
+  "attachments": {
+    "node-a": [{"page_id": "p1", "visible": true}],
+    "node-b": [{"page_id": "p1", "visible": false}]
+  }
+}
+""".strip(),
+        encoding="utf-8",
+    )
+    pins = pages_store.visible_pins_from_pages_root(pages_root)
+    assert pins == {"node-a": [{"id": "p1", "title": "Overview"}]}
+    assert pages_store.visible_pins_from_pages_root(tmp_path / "missing") == {}

@@ -392,11 +392,12 @@ def set_page_visible(
     return attachments_for_node(project_id, node_id)
 
 
-def visible_pins(project_id: str) -> dict[str, list[dict[str, str]]]:
-    """node_id → visible pages for map icons."""
-    index = load_index(project_id)
+def visible_pins_from_index(index: dict[str, Any]) -> dict[str, list[dict[str, str]]]:
+    """Build map pins from a pages ``index.json`` payload (no project mount)."""
     pages = index.get("pages") or {}
     pins: dict[str, list[dict[str, str]]] = {}
+    if not isinstance(pages, dict):
+        return pins
     for node_id, items in (index.get("attachments") or {}).items():
         if not isinstance(items, list):
             continue
@@ -417,6 +418,36 @@ def visible_pins(project_id: str) -> dict[str, list[dict[str, str]]]:
         if visible:
             pins[str(node_id)] = visible
     return pins
+
+
+def load_index_from_pages_root(pages_root: Path) -> dict[str, Any]:
+    """Read ``pages/index.json`` from a koi-structure tree (Hub sync temp dir)."""
+    path = pages_root / INDEX_NAME
+    if not path.is_file():
+        return _empty_index()
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return _empty_index()
+    if not isinstance(data, dict):
+        return _empty_index()
+    pages = data.get("pages")
+    attachments = data.get("attachments")
+    return {
+        "version": 1,
+        "pages": pages if isinstance(pages, dict) else {},
+        "attachments": attachments if isinstance(attachments, dict) else {},
+    }
+
+
+def visible_pins_from_pages_root(pages_root: Path) -> dict[str, list[dict[str, str]]]:
+    """node_id → visible pages using an on-disk ``pages/`` directory."""
+    return visible_pins_from_index(load_index_from_pages_root(pages_root))
+
+
+def visible_pins(project_id: str) -> dict[str, list[dict[str, str]]]:
+    """node_id → visible pages for map icons."""
+    return visible_pins_from_index(load_index(project_id))
 
 
 def list_pages_for_docs(project_id: str) -> list[dict[str, Any]]:

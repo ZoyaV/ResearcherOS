@@ -169,4 +169,33 @@ def load_hub_composite(
     composite = build_composite(resolved_id, grouped)
     if composite is None:
         return None
-    return composite_to_client(composite)
+    payload = composite_to_client(composite)
+    # Member repos are not mounted on Hub — merge pins from synced snapshots.
+    merged: dict[str, list[dict[str, str]]] = {}
+    pin_seen: dict[str, set[str]] = {}
+    for hub_project, project in group:
+        pid = str(project.get("id") or hub_project.slug)
+        pins = project.get("page_pins") if isinstance(project, dict) else None
+        if not isinstance(pins, dict):
+            continue
+        for node_id, items in pins.items():
+            if not isinstance(items, list):
+                continue
+            bucket = merged.setdefault(str(node_id), [])
+            seen_ids = pin_seen.setdefault(str(node_id), set())
+            for pin in items:
+                if not isinstance(pin, dict):
+                    continue
+                page_id = str(pin.get("id") or pin.get("page_id") or "").strip()
+                if not page_id or page_id in seen_ids:
+                    continue
+                seen_ids.add(page_id)
+                bucket.append(
+                    {
+                        "id": page_id,
+                        "title": str(pin.get("title") or ""),
+                        "project_id": pid,
+                    }
+                )
+    payload["page_pins"] = merged
+    return payload

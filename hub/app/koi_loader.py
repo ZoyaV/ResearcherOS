@@ -60,4 +60,13 @@ def project_snapshot(koi_root: Path) -> Optional[dict]:
     project = load_project_from_koi_root(koi_root)
     if project is None:
         return None
-    return project_to_client(project)
+    payload = project_to_client(project)
+    # project_to_client reads pins via local project mounts; Hub sync uses a temp
+    # checkout — override from the synced pages/index.json so map badges work.
+    try:
+        from koi.adapters.pages import visible_pins_from_pages_root
+
+        payload["page_pins"] = visible_pins_from_pages_root(koi_root / "pages")
+    except Exception:
+        payload["page_pins"] = {}
+    return payload

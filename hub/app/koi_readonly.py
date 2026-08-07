@@ -441,6 +441,56 @@ def kanban_live_monitor(_request: Request, project_id: str) -> dict[str, Any]:
     return {"ok": True, "project_id": project_id, "items": [], "boards": {}}
 
 
+@router.get("/projects/{project_id}/pages")
+def list_pages_readonly(request: Request, project_id: str) -> dict[str, Any]:
+    """Pins from snapshot; page catalog from stored pages/index.json when present."""
+    _config, store, hub_project = _resolve_hub_project(request, project_id)
+    project = _snapshot_project(store, hub_project.slug) or {}
+    pins = project.get("page_pins") if isinstance(project.get("page_pins"), dict) else {}
+    pages: list[dict[str, Any]] = []
+    index_path = store.resolve_pages_path(hub_project.slug, "index.json")
+    if index_path is not None:
+        try:
+            data = json.loads(index_path.read_text(encoding="utf-8"))
+            raw_pages = data.get("pages") if isinstance(data, dict) else None
+            if isinstance(raw_pages, dict):
+                for page_id, meta in raw_pages.items():
+                    if not isinstance(meta, dict):
+                        continue
+                    item = dict(meta)
+                    item["id"] = str(meta.get("id") or page_id)
+                    pages.append(item)
+                pages.sort(key=lambda p: (str(p.get("title") or "").lower(), p["id"]))
+        except (json.JSONDecodeError, OSError):
+            pages = []
+    return {"pages": pages, "pins": pins, "readonly": True}
+
+
+@router.get("/projects/{project_id}/pages/{page_id}/file/{file_path:path}")
+def get_page_file_readonly(
+    request: Request,
+    project_id: str,
+    page_id: str,
+    file_path: str = "index.html",
+) -> FileResponse:
+    _config, store, hub_project = _resolve_hub_project(request, project_id)
+    path = store.resolve_page_file(
+        hub_project.slug, page_id, file_path or "index.html"
+    )
+    if path is None:
+        raise HTTPException(404, "Page file not found")
+    return FileResponse(path)
+
+
+@router.get("/projects/{project_id}/nodes/{node_id}/pages")
+def get_node_pages_readonly(
+    request: Request, project_id: str, node_id: str
+) -> dict[str, Any]:
+    """Hub is view-only: no attach/detach UI; return empty attachments."""
+    _resolve_hub_project(request, project_id)
+    return {"attachments": [], "readonly": True}
+
+
 @router.get("/projects/{project_id}/boards/{board_id}/dag-layout")
 def get_board_dag_layout(request: Request, project_id: str, board_id: str) -> dict[str, Any]:
     config: HubConfig = request.app.state.hub_config
