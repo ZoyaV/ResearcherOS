@@ -257,9 +257,9 @@ class KanbanDagEditor {
   }
 
   visibleCards() {
-    const filters = this.ctx.tagFilters || [];
     const match = this.ctx.cardMatchesFilter;
-    if (!filters.length || !match) return this.cards;
+    if (!match) return this.cards;
+    const filters = this.ctx.tagFilters || [];
     return this.cards.filter((c) => match(c, filters));
   }
 

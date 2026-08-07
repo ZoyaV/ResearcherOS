@@ -520,7 +520,11 @@
             <button type="button" id="kanban-tab-board" class="kanban-view-tab is-active" role="tab" aria-selected="true" aria-controls="kanban-pane-board">Kanban</button>
             <button type="button" id="kanban-tab-dag" class="kanban-view-tab" role="tab" aria-selected="false" aria-controls="kanban-pane-dag">DAG view</button>
           </div>
-          <div id="kanban-tag-filter" class="kanban-tag-filter kanban-tag-filter--inline hidden" aria-label="Фильтр по тегам"></div>
+          <div id="kanban-board-filters" class="kanban-board-filters" aria-label="Фильтры доски">
+            <div id="kanban-date-filter" class="kanban-date-filter" role="group" aria-label="Период изменения"></div>
+            <div id="kanban-tag-filter" class="kanban-tag-filter kanban-tag-filter--inline hidden" aria-label="Фильтр по тегам"></div>
+            <button type="button" id="kanban-filters-clear" class="kanban-filters-clear hidden" title="Сбросить все фильтры" aria-label="Сбросить все фильтры">Сбросить</button>
+          </div>
         </div>
       </header>
       <div class="kanban-modal-body">

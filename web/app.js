@@ -308,6 +308,7 @@ let state = {
   activeNodeId: null,
   kanbanNodeId: null,
   kanbanDisabledTagFilters: [],
+  kanbanDateFilter: "all",
   questionsNodeId: null,
   reportCardId: null,
   reportBoardId: null,
@@ -4751,6 +4752,7 @@ function openKanbanModal(node) {
   if (!board) return;
 
   state.kanbanDisabledTagFilters = loadKanbanDisabledTagFilters(state.project?.id, board.id);
+  state.kanbanDateFilter = loadKanbanDateFilter(state.project?.id, board.id);
   state.kanbanViewMode = state.kanbanViewMode || "board";
 
   document.getElementById("kanban-modal-type").textContent =
@@ -4772,6 +4774,7 @@ function setKanbanViewMode(mode) {
   const boardPane = document.getElementById("kanban-pane-board");
   const dagPane = document.getElementById("kanban-pane-dag");
   const tagFilter = document.getElementById("kanban-tag-filter");
+  const filtersBar = document.getElementById("kanban-board-filters");
   const hint = document.getElementById("kanban-modal-hint");
   const modalPanel = document.querySelector(".modal-panel--kanban");
   const isBoard = mode !== "dag";
@@ -4787,9 +4790,10 @@ function setKanbanViewMode(mode) {
   if (dagPane) dagPane.hidden = isBoard;
   if (isBoard) destroyKanbanDagView();
   tagFilter?.classList.toggle("hidden", !tagFilter.childElementCount);
+  filtersBar?.classList.toggle("is-filtering", hasActiveKanbanFilters());
   if (hint) {
     hint.textContent = isHubMode()
-      ? "Только просмотр · ↗ — отчёт · фильтр по тегам · DAG — связи между карточками"
+      ? "Только просмотр · ↗ — отчёт · фильтр · DAG — связи между карточками"
       : isBoard
         ? "⠿ — перетащить · + — новая карточка · двойной клик — правка · ↗ — отчёт"
         : "DAG — → зажать на карточке, отпустить на цели · двойной клик на стрелке — удалить";
@@ -4807,7 +4811,7 @@ function getKanbanDagContext(board, node) {
       node,
       projectId: state.project?.id,
       tagFilters: state.kanbanDisabledTagFilters || [],
-      cardMatchesFilter: cardMatchesKanbanTagFilter,
+      cardMatchesFilter: cardMatchesKanbanFilters,
       cardTagsHtml: (card) => cardTagsRowHtml(card.tags, { dag: true }),
       onOpenReport: (card) => void openCardReport(card, liveBoard()),
       readOnly: true,
@@ -4827,7 +4831,7 @@ function getKanbanDagContext(board, node) {
     node,
     projectId: writeProjectId || state.project?.id,
     tagFilters: state.kanbanDisabledTagFilters || [],
-    cardMatchesFilter: cardMatchesKanbanTagFilter,
+    cardMatchesFilter: cardMatchesKanbanFilters,
     cardTagsHtml: (card) => cardTagsRowHtml(card.tags, { dag: true }),
     onOpenReport: (card) => void openCardReport(card, liveBoard()),
     onStatus: (msg, isError = false) => setStatus(msg, isError),
@@ -4936,7 +4940,7 @@ function renderKanbanDagBoard(board, node) {
 }
 
 function renderActiveKanbanView(board, node) {
-  renderKanbanTagFilter(state.project, board);
+  renderKanbanBoardFilters(state.project, board);
   if (state.kanbanViewMode === "dag") {
     renderKanbanDagBoard(board, node);
     return;
@@ -4990,15 +4994,10 @@ async function persistCard(board, cardId, fields, opts = {}) {
   const { rerenderKanban = false, refreshMapStats = false } = opts;
   setStatus("Сохранение…");
   try {
-    const card = getBoardCard(board, cardId);
+    // Partial PATCH only — do not re-send depends_on/tags/etc. unless the
+    // caller changed them. Re-posting existing DAG edges fails when the board
+    // already has cycles (common after manual deps), blocking tag edits.
     const payload = { ...fields };
-    if (card) {
-      if (payload.title === undefined) payload.title = card.title;
-      if (payload.description === undefined) payload.description = card.description ?? "";
-      if (payload.column_id === undefined) payload.column_id = card.column_id;
-      if (payload.tags === undefined) payload.tags = card.tags || [];
-      if (payload.depends_on === undefined) payload.depends_on = card.depends_on || [];
-    }
     await KoiApi.patchCard(boardWriteProjectId(board), board.id, cardId, payload);
     state.project = await reloadProjectView();
     syncLabProject(state.project);
@@ -5323,9 +5322,20 @@ function boardCardTagSuggestions(board, project) {
 }
 
 const KANBAN_TAG_FILTER_KEY = "koi-kanban-tag-filter-disabled";
+const KANBAN_DATE_FILTER_KEY = "koi-kanban-date-filter";
+const KANBAN_DATE_FILTER_OPTIONS = [
+  { id: "all", label: "Все" },
+  { id: "today", label: "Сегодня" },
+  { id: "7d", label: "7 дней" },
+  { id: "30d", label: "30 дней" },
+];
 
 function kanbanTagFilterStorageKey(projectId, boardId) {
   return `${KANBAN_TAG_FILTER_KEY}:${projectId || ""}:${boardId || ""}`;
+}
+
+function kanbanDateFilterStorageKey(projectId, boardId) {
+  return `${KANBAN_DATE_FILTER_KEY}:${projectId || ""}:${boardId || ""}`;
 }
 
 function loadKanbanDisabledTagFilters(projectId, boardId) {
@@ -5349,6 +5359,26 @@ function saveKanbanDisabledTagFilters(projectId, boardId, disabled) {
   }
 }
 
+function loadKanbanDateFilter(projectId, boardId) {
+  try {
+    const raw = localStorage.getItem(kanbanDateFilterStorageKey(projectId, boardId)) || "all";
+    return KANBAN_DATE_FILTER_OPTIONS.some((o) => o.id === raw) ? raw : "all";
+  } catch {
+    return "all";
+  }
+}
+
+function saveKanbanDateFilter(projectId, boardId, windowId) {
+  try {
+    const key = kanbanDateFilterStorageKey(projectId, boardId);
+    const value = KANBAN_DATE_FILTER_OPTIONS.some((o) => o.id === windowId) ? windowId : "all";
+    if (value === "all") localStorage.removeItem(key);
+    else localStorage.setItem(key, value);
+  } catch {
+    /* ignore quota */
+  }
+}
+
 function reconcileKanbanDisabledTagFilters(board, project = state.project) {
   const vocab = boardCardTagSuggestions(board, project);
   const allowed = new Set(vocab.map((t) => t.toLowerCase()));
@@ -5362,10 +5392,100 @@ function reconcileKanbanDisabledTagFilters(board, project = state.project) {
   return disabled;
 }
 
+function hasActiveKanbanFilters() {
+  return Boolean(
+    (state.kanbanDateFilter && state.kanbanDateFilter !== "all") ||
+      (state.kanbanDisabledTagFilters || []).length
+  );
+}
+
+function parseCardTimestamp(raw) {
+  if (!raw) return null;
+  const stamp = String(raw).trim();
+  if (!stamp) return null;
+  const ms = Date.parse(stamp);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+function cardActivityTimestamp(card) {
+  return parseCardTimestamp(card?.updated_at) ?? parseCardTimestamp(card?.created_at);
+}
+
+function cardWithinDateWindow(card, windowId) {
+  if (!windowId || windowId === "all") return true;
+  const ts = cardActivityTimestamp(card);
+  if (ts == null) return false;
+  const now = Date.now();
+  if (windowId === "today") {
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    return ts >= start.getTime();
+  }
+  const days = windowId === "7d" ? 7 : windowId === "30d" ? 30 : 0;
+  if (!days) return true;
+  return ts >= now - days * 24 * 60 * 60 * 1000;
+}
+
+function formatCardAbsoluteTime(raw) {
+  const ms = parseCardTimestamp(raw);
+  if (ms == null) return "";
+  try {
+    return new Intl.DateTimeFormat("ru-RU", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(new Date(ms));
+  } catch {
+    return String(raw);
+  }
+}
+
+function formatCardRelativeTime(raw) {
+  const ms = parseCardTimestamp(raw);
+  if (ms == null) return "";
+  const deltaSec = Math.round((ms - Date.now()) / 1000);
+  const abs = Math.abs(deltaSec);
+  const rtf = (() => {
+    try {
+      return new Intl.RelativeTimeFormat("ru", { numeric: "auto" });
+    } catch {
+      return null;
+    }
+  })();
+  const pick = (value, unit) => (rtf ? rtf.format(value, unit) : `${Math.abs(value)} ${unit}`);
+  if (abs < 60) return pick(deltaSec, "second");
+  if (abs < 3600) return pick(Math.round(deltaSec / 60), "minute");
+  if (abs < 86400) return pick(Math.round(deltaSec / 3600), "hour");
+  if (abs < 86400 * 30) return pick(Math.round(deltaSec / 86400), "day");
+  if (abs < 86400 * 365) return pick(Math.round(deltaSec / (86400 * 30)), "month");
+  return pick(Math.round(deltaSec / (86400 * 365)), "year");
+}
+
+function kanbanCardTimeHtml(card) {
+  const updated = card?.updated_at || "";
+  const created = card?.created_at || "";
+  const primary = updated || created;
+  if (!primary) return "";
+  const relative = formatCardRelativeTime(primary);
+  if (!relative) return "";
+  const absUpdated = formatCardAbsoluteTime(updated);
+  const absCreated = formatCardAbsoluteTime(created);
+  const tipParts = [];
+  if (absCreated) tipParts.push(`создана ${absCreated}`);
+  if (absUpdated) tipParts.push(`изменена ${absUpdated}`);
+  const label = updated ? `изм. ${relative}` : `созд. ${relative}`;
+  return `<time class="kanban-card-time" datetime="${escapeHtml(primary)}" title="${escapeHtml(tipParts.join(" · ") || label)}">${escapeHtml(label)}</time>`;
+}
+
 function cardMatchesKanbanTagFilter(card, disabledFilters) {
   if (!disabledFilters?.length) return true;
   const cardTags = (card.tags || []).map((t) => String(t).toLowerCase());
   return !disabledFilters.some((f) => cardTags.includes(f));
+}
+
+function cardMatchesKanbanFilters(card, disabledFilters = state.kanbanDisabledTagFilters) {
+  if (!cardMatchesKanbanTagFilter(card, disabledFilters)) return false;
+  if (!cardWithinDateWindow(card, state.kanbanDateFilter || "all")) return false;
+  return true;
 }
 
 function kanbanTagFilterChipHtml(tag, isEnabled) {
@@ -5375,6 +5495,49 @@ function kanbanTagFilterChipHtml(tag, isEnabled) {
     <span class="kanban-tag-filter-dot" aria-hidden="true"></span>
     <span class="kanban-tag-filter-label">${escapeHtml(tag)}</span>
   </button>`;
+}
+
+function renderKanbanDateFilter(project, board) {
+  const el = document.getElementById("kanban-date-filter");
+  if (!el) return;
+  const active = state.kanbanDateFilter || "all";
+  el.innerHTML = KANBAN_DATE_FILTER_OPTIONS.map((opt) => {
+    const isActive = opt.id === active;
+    return `<button type="button" class="kanban-date-filter-chip${isActive ? " is-active" : ""}" data-window="${opt.id}" aria-pressed="${isActive ? "true" : "false"}">${escapeHtml(opt.label)}</button>`;
+  }).join("");
+  el.querySelectorAll(".kanban-date-filter-chip").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const windowId = btn.dataset.window || "all";
+      state.kanbanDateFilter = windowId;
+      if (project?.id && board?.id) saveKanbanDateFilter(project.id, board.id, windowId);
+      rerenderKanbanAfterFilters(board);
+    });
+  });
+}
+
+function syncKanbanFilterChrome(project, board) {
+  const clearBtn = document.getElementById("kanban-filters-clear");
+  const active = hasActiveKanbanFilters();
+  clearBtn?.classList.toggle("hidden", !active);
+  document.getElementById("kanban-board-filters")?.classList.toggle("is-filtering", active);
+  if (clearBtn && !clearBtn.dataset.bound) {
+    clearBtn.dataset.bound = "1";
+    clearBtn.addEventListener("click", () => {
+      const node = state.project?.nodes?.find((n) => n.id === state.kanbanNodeId);
+      const b =
+        board ||
+        (node?.board_id ? state.project?.boards?.[node.board_id] : null);
+      if (!b) return;
+      state.kanbanDateFilter = "all";
+      state.kanbanDisabledTagFilters = [];
+      const pid = project?.id || state.project?.id;
+      if (pid && b.id) {
+        saveKanbanDateFilter(pid, b.id, "all");
+        saveKanbanDisabledTagFilters(pid, b.id, []);
+      }
+      rerenderKanbanAfterFilters(b);
+    });
+  }
 }
 
 function renderKanbanTagFilter(project, board) {
@@ -5392,20 +5555,21 @@ function renderKanbanTagFilter(project, board) {
   const chips = tags
     .map((t) => kanbanTagFilterChipHtml(t, !disabled.includes(t.toLowerCase())))
     .join("");
-  const clearBtn =
-    disabled.length > 0
-      ? `<button type="button" class="kanban-tag-filter-clear" title="Включить все теги">Сбросить</button>`
-      : "";
 
   el.classList.remove("hidden");
   el.innerHTML = `
     <div class="kanban-tag-filter-row">
       <span class="kanban-tag-filter-title">Теги</span>
       <div class="kanban-tag-filter-chips" role="group" aria-label="Фильтр по тегам">${chips}</div>
-      ${clearBtn}
     </div>`;
 
   bindKanbanTagFilter(project, board);
+}
+
+function renderKanbanBoardFilters(project, board) {
+  renderKanbanDateFilter(project, board);
+  renderKanbanTagFilter(project, board);
+  syncKanbanFilterChrome(project, board);
 }
 
 function bindKanbanTagFilter(project, board) {
@@ -5423,25 +5587,26 @@ function bindKanbanTagFilter(project, board) {
       else disabled.push(key);
       state.kanbanDisabledTagFilters = disabled;
       if (project?.id && board?.id) saveKanbanDisabledTagFilters(project.id, board.id, disabled);
-      rerenderKanbanAfterTagFilter(board);
+      rerenderKanbanAfterFilters(board);
     });
-  });
-
-  el.querySelector(".kanban-tag-filter-clear")?.addEventListener("click", () => {
-    state.kanbanDisabledTagFilters = [];
-    if (project?.id && board?.id) saveKanbanDisabledTagFilters(project.id, board.id, []);
-    rerenderKanbanAfterTagFilter(board);
   });
 }
 
-function rerenderKanbanAfterTagFilter(board) {
+function rerenderKanbanAfterFilters(board) {
   const node = state.project?.nodes?.find((n) => n.id === state.kanbanNodeId);
-  renderKanbanTagFilter(state.project, board);
+  const liveBoard =
+    (node?.board_id && state.project?.boards?.[node.board_id]) || board;
+  renderKanbanBoardFilters(state.project, liveBoard);
   if (state.kanbanViewMode === "dag") {
-    renderKanbanDagBoard(board, node);
+    renderKanbanDagBoard(liveBoard, node);
     return;
   }
-  renderKanbanBoard(board);
+  renderKanbanBoard(liveBoard);
+}
+
+/** @deprecated use rerenderKanbanAfterFilters */
+function rerenderKanbanAfterTagFilter(board) {
+  rerenderKanbanAfterFilters(board);
 }
 
 function cardTagsEqual(a, b) {
@@ -6032,6 +6197,7 @@ function kanbanCardHtml(c, col, variant = "modal") {
           <div class="kanban-card-footer">
             ${costChip}
             ${cardTagsRowHtml(c.tags, { dag: isHubMode(), kanban: !isHubMode() })}
+            ${kanbanCardTimeHtml(c)}
             <div class="kanban-card-actions">
               ${copyBtn}
               <button type="button" class="card-expand-report card-action-btn" title="Открыть отчёт" aria-label="Открыть отчёт">
@@ -6043,11 +6209,11 @@ function kanbanCardHtml(c, col, variant = "modal") {
 }
 
 function kanbanBoardHtml(board, variant = "modal", { tagFilters = [] } = {}) {
-  const filtering = tagFilters?.length > 0;
+  const filtering = hasActiveKanbanFilters();
   return (board.columns || [])
     .map((col) => {
       const cards = board.cards.filter(
-        (c) => c.column_id === col.id && cardMatchesKanbanTagFilter(c, tagFilters)
+        (c) => c.column_id === col.id && cardMatchesKanbanFilters(c, tagFilters)
       );
       const totalInCol = board.cards.filter((c) => c.column_id === col.id).length;
       const hiddenByFilter = filtering ? totalInCol - cards.length : 0;
@@ -6058,7 +6224,7 @@ function kanbanBoardHtml(board, variant = "modal", { tagFilters = [] } = {}) {
       const cardsHtml = cards.map((c) => kanbanCardHtml(c, col, variant)).join("");
       const emptyHtml =
         filtering && totalInCol > 0
-          ? '<span class="col-empty col-empty--filtered">Все карточки скрыты фильтром</span>'
+          ? '<span class="col-empty col-empty--filtered">Нет совпадений — смягчите фильтр</span>'
           : '<span class="col-empty">Перетащите сюда</span>';
       return `
         <div class="kanban-col" data-col="${col.id}">
