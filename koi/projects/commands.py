@@ -8,7 +8,7 @@ from uuid import uuid4
 
 from koi.adapters import card_reports, repository
 from koi.core import project_ops
-from koi.core.md_io import normalize_card_tags, register_project_card_tags
+from koi.core.md_io import card_now_iso, normalize_card_tags, register_project_card_tags
 from koi.core.models import (
     DEFAULT_KANBAN_COLUMNS,
     ExperimentCard,
@@ -334,6 +334,7 @@ def create_card(project_id: str, board_id: str, command: CreateCardCommand) -> P
     project = _require_project(project_id)
     board = _require_board(project, board_id)
     card_id = f"c-{uuid4().hex[:8]}"
+    now = card_now_iso()
     card = ExperimentCard(
         id=card_id,
         board_id=board_id,
@@ -346,6 +347,8 @@ def create_card(project_id: str, board_id: str, command: CreateCardCommand) -> P
             {item.id for item in board.cards},
             card_id,
         ),
+        created_at=now,
+        updated_at=now,
     )
     register_project_card_tags(project, card.tags)
     board.cards.append(card)
@@ -367,26 +370,39 @@ def update_card(
     old_title = card.title
     old_column = card.column_id
     dependencies_changed = False
+    touched = False
 
     if command.title is not None:
         card.title = command.title
+        touched = True
     if command.description is not None:
         card.description = command.description
+        touched = True
     if command.column_id is not None:
         card.column_id = command.column_id
+        touched = True
     if command.tags is not None:
         card.tags = normalize_card_tags(list(command.tags))
         register_project_card_tags(project, card.tags)
+        touched = True
     if command.depends_on is not None:
         dependencies = normalize_dependency_ids(
             list(command.depends_on),
             {item.id for item in board.cards},
             card_id,
         )
-        if would_create_cycle(board.cards, card_id, dependencies):
-            raise ValueError("depends_on would create a cycle")
-        card.depends_on = dependencies
-        dependencies_changed = True
+        if dependencies != list(card.depends_on or []):
+            if would_create_cycle(board.cards, card_id, dependencies):
+                raise ValueError("depends_on would create a cycle")
+            card.depends_on = dependencies
+            dependencies_changed = True
+            touched = True
+
+    if touched:
+        now = card_now_iso()
+        if not card.created_at:
+            card.created_at = now
+        card.updated_at = now
 
     repository.save_project(project)
     if command.column_id is not None and command.column_id != old_column:

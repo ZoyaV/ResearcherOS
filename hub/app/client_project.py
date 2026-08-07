@@ -64,6 +64,8 @@ def project_from_client(data: dict) -> Project:
                 tags=list(card.get("tags") or []),
                 depends_on=list(card.get("depends_on") or []),
                 linked_node_id=card.get("linked_node_id"),
+                created_at=card.get("created_at") or None,
+                updated_at=card.get("updated_at") or None,
             )
             for card in raw_board.get("cards") or []
         ]

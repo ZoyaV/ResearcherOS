@@ -75,6 +75,44 @@ Method
     assert reloaded_by_id == {"c-gpu": ["gpu", "ablation"], "c-plain": []}
 
 
+def test_roundtrip_preserves_card_timestamps() -> None:
+    text = """---
+id: proj-ts
+title: Timestamps
+---
+# problem: root
+
+Root
+
+#### method: m1
+
+Method
+
+<!-- koi:kanban board-m1 -->
+| backlog | running | done | successful |
+| --- | --- | --- | --- |
+| Dated <!-- id:c-ts created:2026-08-01T10:00:00Z updated:2026-08-07T12:30:00Z desc:plan tags:gpu --> | | | |
+| Legacy <!-- id:c-old desc:no dates --> | | | |
+"""
+    project = parse_project_md(text, project_id="proj-ts")
+    board = project.boards[0]
+    by_id = {c.id: c for c in board.cards}
+    assert by_id["c-ts"].created_at == "2026-08-01T10:00:00Z"
+    assert by_id["c-ts"].updated_at == "2026-08-07T12:30:00Z"
+    assert by_id["c-ts"].tags == ["gpu"]
+    assert by_id["c-old"].created_at is None
+    assert by_id["c-old"].updated_at is None
+
+    reserialized = serialize_project_md(project)
+    assert "created:2026-08-01T10:00:00Z" in reserialized
+    assert "updated:2026-08-07T12:30:00Z" in reserialized
+    reloaded = parse_project_md(reserialized, project_id="proj-ts")
+    re_by_id = {c.id: c for c in reloaded.boards[0].cards}
+    assert re_by_id["c-ts"].created_at == "2026-08-01T10:00:00Z"
+    assert re_by_id["c-ts"].updated_at == "2026-08-07T12:30:00Z"
+    assert re_by_id["c-old"].created_at is None
+
+
 def test_roundtrip_preserves_multiline_card_description() -> None:
     text = """---
 id: proj-subtasks

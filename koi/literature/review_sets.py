@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from koi.adapters import card_reports, repository
+from koi.core.md_io import card_now_iso
 from koi.core.models import ExperimentCard, NodeType, Project
 from koi import literature
 
@@ -72,6 +73,7 @@ def create_review_set(command: CreateReviewSetCommand) -> ReviewSetResult:
     if board is None:
         raise RuntimeError("Review board was not created")
 
+    now = card_now_iso()
     board.cards = [
         ExperimentCard(
             id=literature.review_card_id(),
@@ -79,6 +81,8 @@ def create_review_set(command: CreateReviewSetCommand) -> ReviewSetResult:
             column_id="backlog",
             title=str(result["title"]),
             description=str(result["arxiv_url"]),
+            created_at=now,
+            updated_at=now,
         )
         for result in results
     ]

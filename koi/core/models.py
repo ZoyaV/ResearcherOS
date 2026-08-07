@@ -82,6 +82,8 @@ class ExperimentCard(BaseModel):
     tags: list[str] = Field(default_factory=list)
     depends_on: list[str] = Field(default_factory=list)  # prerequisite card ids (DAG edges)
     linked_node_id: Optional[str] = None  # optional link to tree experiment node
+    created_at: Optional[str] = None  # ISO-8601 UTC, set on create
+    updated_at: Optional[str] = None  # ISO-8601 UTC, bumped on every card update
 
 
 class KanbanBoard(BaseModel):

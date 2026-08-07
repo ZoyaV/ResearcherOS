@@ -120,15 +120,47 @@ def _parse_card_deps(raw: str) -> list[str]:
     return out
 
 
-def _parse_card_comment(meta: str) -> tuple[Optional[str], str, list[str], list[str]]:
+def card_now_iso() -> str:
+    """UTC timestamp for ExperimentCard created_at / updated_at."""
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _parse_card_timestamp(raw: str) -> Optional[str]:
+    stamp = str(raw or "").strip()
+    if not stamp:
+        return None
+    # Accept ISO-8601 with optional fractional seconds / offset; normalize to Z form when possible.
+    try:
+        normalized = stamp.replace("Z", "+00:00")
+        dt = datetime.fromisoformat(normalized)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    except ValueError:
+        return stamp if re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z?", stamp) else None
+
+
+def _parse_card_comment(
+    meta: str,
+) -> tuple[Optional[str], str, list[str], list[str], Optional[str], Optional[str]]:
     card_id: Optional[str] = None
     desc = ""
     tags: list[str] = []
     depends_on: list[str] = []
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
 
     id_m = re.search(r"\bid:(\S+)", meta)
     if id_m:
         card_id = id_m.group(1)
+
+    created_m = re.search(r"\bcreated:(\S+)", meta)
+    if created_m:
+        created_at = _parse_card_timestamp(created_m.group(1))
+
+    updated_m = re.search(r"\bupdated:(\S+)", meta)
+    if updated_m:
+        updated_at = _parse_card_timestamp(updated_m.group(1))
 
     deps_m = re.search(r"\bdeps:([^\s]+)", meta)
     if deps_m:
@@ -141,26 +173,32 @@ def _parse_card_comment(meta: str) -> tuple[Optional[str], str, list[str], list[
         tags = _parse_card_tags(tags_m.group(1).strip())
 
     meta_for_desc = meta
-    for m in sorted((m for m in (deps_m, tags_m) if m), key=lambda m: m.start(), reverse=True):
+    for m in sorted(
+        (m for m in (deps_m, tags_m, created_m, updated_m) if m),
+        key=lambda m: m.start(),
+        reverse=True,
+    ):
         meta_for_desc = (meta_for_desc[: m.start()] + meta_for_desc[m.end() :]).rstrip()
 
     desc_m = re.search(r"\bdesc:(.*)$", meta_for_desc, re.DOTALL)
     if desc_m:
         desc = _decode_card_desc(desc_m.group(1).strip())
 
-    return card_id, desc, tags, depends_on
+    return card_id, desc, tags, depends_on, created_at, updated_at
 
 
-def _parse_card_cell(raw: str) -> tuple[str, Optional[str], str, list[str], list[str]]:
+def _parse_card_cell(
+    raw: str,
+) -> tuple[str, Optional[str], str, list[str], list[str], Optional[str], Optional[str]]:
     m = CARD_META_RE.match(raw)
     if not m:
-        return raw.strip(), None, "", [], []
+        return raw.strip(), None, "", [], [], None, None
     title = m.group(1).strip()
     comment = m.group(2)
     if not comment:
-        return title, None, "", [], []
-    card_id, desc, tags, depends_on = _parse_card_comment(comment)
-    return title, card_id, desc, tags, depends_on
+        return title, None, "", [], [], None, None
+    card_id, desc, tags, depends_on, created_at, updated_at = _parse_card_comment(comment)
+    return title, card_id, desc, tags, depends_on, created_at, updated_at
 
 
 def _split_frontmatter(text: str) -> tuple[dict[str, Any], str]:
@@ -251,7 +289,9 @@ def _parse_kanban_table(lines: list[str], board_id: str, owner_node_id: str) -> 
         for col_id, raw in zip(header_cells, cells):
             if not raw or raw in ("—", "-", ""):
                 continue
-            title, card_id, desc, tags, depends_on = _parse_card_cell(raw)
+            title, card_id, desc, tags, depends_on, created_at, updated_at = _parse_card_cell(
+                raw
+            )
             cards.append(
                 ExperimentCard(
                     id=card_id or f"card-{len(cards)}",
@@ -261,6 +301,8 @@ def _parse_kanban_table(lines: list[str], board_id: str, owner_node_id: str) -> 
                     description=desc,
                     tags=tags,
                     depends_on=depends_on,
+                    created_at=created_at,
+                    updated_at=updated_at,
                 )
             )
 
@@ -394,6 +436,10 @@ def _format_card(cell: ExperimentCard) -> str:
     parts: list[str] = []
     if cell.id:
         parts.append(f"id:{cell.id}")
+    if cell.created_at:
+        parts.append(f"created:{cell.created_at}")
+    if cell.updated_at:
+        parts.append(f"updated:{cell.updated_at}")
     if cell.description:
         parts.append(f"desc:{_encode_card_desc(cell.description)}")
     if cell.tags:

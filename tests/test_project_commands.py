@@ -176,6 +176,8 @@ def test_create_card_coordinates_domain_persistence_and_report(
     assert card.title == "Card C"
     assert card.tags == ["baseline"]
     assert card.depends_on == ["card-a"]
+    assert card.created_at
+    assert card.updated_at == card.created_at
     assert result.card_tags == ["baseline"]
     assert command_context["saved_projects"] == [project]
     assert command_context["reports"][0][2] == card.id
@@ -353,6 +355,8 @@ def test_update_card_renames_report_and_enqueues_edit(
     )
 
     assert result.boards[0].cards[0].title == "Renamed"
+    assert result.boards[0].cards[0].updated_at
+    assert result.boards[0].cards[0].created_at
     assert command_context["renames"][0][2:] == ("card-a", "Renamed")
     assert command_context["sync"] == [
         ("demo", "kanban_updated", "правка карточки Renamed")
