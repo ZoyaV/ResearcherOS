@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Optional
+
 from koi.core.models import ALLOWED_CHILDREN, KANBAN_OWNER_TYPES, NodeType, Project
 
 
@@ -47,7 +49,11 @@ def merge_page_pins(project_ids: list[str]) -> dict[str, list[dict[str, str]]]:
     return out
 
 
-def project_to_client(project: Project) -> dict:
+def project_to_client(
+    project: Project,
+    *,
+    board_sources: Optional[dict[str, str]] = None,
+) -> dict:
     boards_by_owner = {board.owner_node_id: board for board in project.boards}
     nodes_out = []
     for node in project.nodes:
@@ -95,8 +101,9 @@ def project_to_client(project: Project) -> dict:
         board.id: {
             "id": board.id,
             "owner_node_id": board.owner_node_id,
-            "source_project_id": project.id,
+            "source_project_id": (board_sources or {}).get(board.id) or project.id,
             "columns": [column.model_dump() for column in board.columns],
+            # Only CRUD-authored created_at/updated_at — never filesystem mtime.
             "cards": [card.model_dump() for card in board.cards],
         }
         for board in project.boards

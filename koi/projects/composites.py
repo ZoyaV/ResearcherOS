@@ -326,7 +326,10 @@ def build_composite(
 def composite_to_client(composite: CompositeProject) -> dict[str, Any]:
     from koi.projects.views import merge_page_pins
 
-    payload = project_to_client(composite.project)
+    payload = project_to_client(
+        composite.project,
+        board_sources=composite.board_sources,
+    )
     payload["is_composite"] = True
     payload["composite_id"] = composite.composite_id
     payload["members"] = composite.members
