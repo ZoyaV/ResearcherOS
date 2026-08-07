@@ -93,7 +93,14 @@ def load_project(project_id: str, *, sync_reports: bool = False) -> Optional[Pro
     else:
         migrated_research = merge_research_from_md(project)
     kanban_upgrade = kanban_md_needs_upgrade(text)
-    if ensure_project_structure(project) or migrated_research or kanban_upgrade:
+    timestamps_scrubbed = False
+    try:
+        from koi.adapters.card_reports import scrub_filesystem_echo_timestamps
+
+        timestamps_scrubbed = scrub_filesystem_echo_timestamps(project)
+    except Exception:
+        timestamps_scrubbed = False
+    if ensure_project_structure(project) or migrated_research or kanban_upgrade or timestamps_scrubbed:
         save_project(project)
     if sync_reports:
         from koi.adapters.card_reports import sync_reports_for_project

@@ -7,7 +7,7 @@ import re
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 from uuid import uuid4
 
 from koi.core.models import NodeType
@@ -206,6 +206,196 @@ def sync_reports_for_project(project: Project) -> int:
     if index_dirty:
         save_index(project_id, index)
     return created
+
+
+def _iso_from_mtime(path: Path) -> Optional[str]:
+    try:
+        ts = path.stat().st_mtime
+    except OSError:
+        return None
+    return datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _iso_from_created(path: Path) -> Optional[str]:
+    try:
+        st = path.stat()
+    except OSError:
+        return None
+    birth = getattr(st, "st_birthtime", None)
+    if birth:
+        return datetime.fromtimestamp(birth, tz=timezone.utc).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
+    return datetime.fromtimestamp(st.st_mtime, tz=timezone.utc).strftime(
+        "%Y-%m-%dT%H:%M:%SZ"
+    )
+
+
+def _parse_iso_ts(raw: Optional[str]) -> Optional[float]:
+    if not raw:
+        return None
+    text = str(raw).strip()
+    if not text:
+        return None
+    try:
+        normalized = text.replace("Z", "+00:00")
+        dt = datetime.fromisoformat(normalized)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.timestamp()
+    except ValueError:
+        return None
+
+
+def _earlier_iso(a: Optional[str], b: Optional[str]) -> Optional[str]:
+    ta, tb = _parse_iso_ts(a), _parse_iso_ts(b)
+    if ta is None:
+        return b
+    if tb is None:
+        return a
+    return a if ta <= tb else b
+
+
+def _later_iso(a: Optional[str], b: Optional[str]) -> Optional[str]:
+    ta, tb = _parse_iso_ts(a), _parse_iso_ts(b)
+    if ta is None:
+        return b
+    if tb is None:
+        return a
+    return a if ta >= tb else b
+
+
+def resolve_card_report_path(
+    storage_project_id: str,
+    project: Project,
+    board: "KanbanBoard",
+    card: "ExperimentCard",
+    index: Optional[dict[str, str]] = None,
+) -> Optional[Path]:
+    """Locate the on-disk report markdown for a card, if any."""
+    if not storage_project_id or str(storage_project_id).startswith("composite:"):
+        return None
+    idx = index if index is not None else load_index(storage_project_id)
+    rel = idx.get(card.id)
+    if rel:
+        candidate = report_path_for_relative(storage_project_id, rel)
+        if candidate.exists():
+            return candidate
+    try:
+        expected = _expected_relative(
+            project, board.id, card.id, card.title, idx
+        )
+        candidate = report_path_for_relative(storage_project_id, expected)
+        if candidate.exists():
+            return candidate
+    except Exception:
+        return None
+    return None
+
+
+def resolve_card_fs_timestamps(
+    storage_project_id: str,
+    project: Project,
+    board: "KanbanBoard",
+    card: "ExperimentCard",
+    index: Optional[dict[str, str]] = None,
+) -> tuple[Optional[str], Optional[str]]:
+    """System activity times from report / .run.md file metadata.
+
+    Returns ``(created_at, updated_at)`` ISO UTC strings, or ``(None, None)``
+    when no report files exist. ``updated_at`` is the newest mtime among the
+    public report and working ``.run.md``; ``created_at`` prefers birthtime.
+    """
+    report_path = resolve_card_report_path(
+        storage_project_id, project, board, card, index=index
+    )
+    if report_path is None:
+        return None, None
+
+    created = _iso_from_created(report_path)
+    updated = _iso_from_mtime(report_path)
+    run_path = report_path.with_name(report_path.stem + RUN_EXT)
+    if run_path.exists():
+        updated = _later_iso(updated, _iso_from_mtime(run_path))
+        created = _earlier_iso(created, _iso_from_created(run_path))
+    return created, updated
+
+
+def merge_card_activity_timestamps(
+    stored_created: Optional[str],
+    stored_updated: Optional[str],
+    fs_created: Optional[str],
+    fs_updated: Optional[str],
+) -> tuple[Optional[str], Optional[str]]:
+    """Combine markdown-stored stamps with live filesystem activity.
+
+    Prefer stored CRUD stamps. Filesystem times are unreliable after git/rsync
+    bulk touches — callers should not treat FS mtime as card edit time.
+    Kept for optional diagnostics only.
+    """
+    created = stored_created or fs_created
+    updated = stored_updated or fs_updated
+    if created and not updated:
+        updated = created
+    elif updated and not created:
+        created = updated
+    return created, updated
+
+
+def _same_second(a: Optional[str], b: Optional[str]) -> bool:
+    ta, tb = _parse_iso_ts(a), _parse_iso_ts(b)
+    if ta is None or tb is None:
+        return False
+    return abs(ta - tb) < 1.0
+
+
+def scrub_filesystem_echo_timestamps(project: Project) -> bool:
+    """Drop card timestamps that look like bulk checkout/sync fingerprints.
+
+    Report ``mtime`` after clone/rsync is often identical across many files.
+    Those must not be shown as «card edited». Unique CRUD stamps are kept.
+    """
+    project_id = project.id
+    if str(project_id).startswith("composite:"):
+        return False
+
+    cards = [card for board in project.boards for card in board.cards]
+    stamp_card_ids: dict[str, set[str]] = {}
+    for card in cards:
+        for stamp in {card.created_at, card.updated_at}:
+            if stamp:
+                stamp_card_ids.setdefault(stamp, set()).add(card.id)
+
+    changed = False
+    for board in project.boards:
+        for card in board.cards:
+            if not card.created_at and not card.updated_at:
+                continue
+
+            def is_bulk_stamp(stamp: Optional[str]) -> bool:
+                if not stamp:
+                    return False
+                # Identical second on multiple cards ⇒ sync/checkout fingerprint.
+                # Do NOT compare to project.md mtime: every save bumps that file
+                # to the same second as the card we just edited.
+                return len(stamp_card_ids.get(stamp, ())) >= 2
+
+            if is_bulk_stamp(card.created_at):
+                card.created_at = None
+                changed = True
+            if is_bulk_stamp(card.updated_at):
+                card.updated_at = None
+                changed = True
+
+    return changed
+
+
+def enrich_missing_card_timestamps(project: Project) -> bool:
+    """Deprecated: do not backfill from filesystem mtimes.
+
+    Kept as a no-op so older call sites do not resurrect bulk-sync dates.
+    """
+    return False
 
 
 def _report_meta(project_id: str, card_id: str, relative: str, path: Path) -> dict[str, str]:
