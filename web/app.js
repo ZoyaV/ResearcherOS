@@ -3710,9 +3710,21 @@ function closeMasterPageView() {
 async function refreshNodePagesPanel(nodeId, { tableId, addBtnId }) {
   const table = document.getElementById(tableId);
   const addBtn = document.getElementById(addBtnId);
+  const block =
+    tableId === "kanban-pages-table"
+      ? document.getElementById("kanban-pages-block")
+      : document.getElementById("node-pages-block");
   if (!table || !nodeId || !state.project) return;
+  // Hub: view hanging map pins only — no attach/manage UI inside node/kanban cards.
+  if (isHubMode()) {
+    block?.classList.add("hidden");
+    if (addBtn) addBtn.classList.add("hidden");
+    table.innerHTML = "";
+    return;
+  }
+  block?.classList.remove("hidden");
   if (addBtn) {
-    addBtn.classList.toggle("hidden", isHubMode());
+    addBtn.classList.remove("hidden");
     addBtn.onclick = () => openMasterPagePickModal(nodeId);
   }
   table.innerHTML = `<p class="node-pages-empty">Загрузка…</p>`;

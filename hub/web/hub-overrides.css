@@ -1009,6 +1009,15 @@ body.hub-readonly .kanban-col-body .col-empty:not(.col-empty--filtered) {
   display: none;
 }
 
+/* Master pages: map pins only — no attach/manage panels inside node/kanban cards */
+body.hub-readonly #node-pages-block,
+body.hub-readonly #kanban-pages-block,
+body.hub-readonly #btn-add-master-page,
+body.hub-readonly #btn-kanban-add-master-page,
+body.hub-readonly #master-page-pick-modal {
+  display: none !important;
+}
+
 @media (max-width: 720px) {
   .hub-panel__body {
     flex-direction: column;
