@@ -180,6 +180,27 @@ export const KoiApi = {
     api(`/projects/${encodeURIComponent(projectId)}/literature/${encodeURIComponent(runId)}`, {
       method: "DELETE",
     }),
+  stagePaperMorphology: (projectId, paper) =>
+    api(`/projects/${encodeURIComponent(projectId)}/morphology/stage`, {
+      method: "POST",
+      body: JSON.stringify({ paper }),
+    }),
+  listMorphologyRuns: (projectId, paperKey = "") =>
+    api(
+      `/projects/${encodeURIComponent(projectId)}/morphology${
+        paperKey ? `?paper_key=${encodeURIComponent(paperKey)}` : ""
+      }`
+    ),
+  getMorphologyRun: (projectId, runId) =>
+    api(`/projects/${encodeURIComponent(projectId)}/morphology/${encodeURIComponent(runId)}`),
+  getMorphologyArticle: (projectId, runId) =>
+    api(
+      `/projects/${encodeURIComponent(projectId)}/morphology/${encodeURIComponent(runId)}/article`
+    ),
+  deleteMorphologyRun: (projectId, runId) =>
+    api(`/projects/${encodeURIComponent(projectId)}/morphology/${encodeURIComponent(runId)}`, {
+      method: "DELETE",
+    }),
   generateRelatedWorks: (projectId, { problem = "", cluster_keys = [] } = {}) =>
     api(`/projects/${projectId}/paper-question-agent/related-works`, {
       method: "POST",
@@ -439,6 +460,17 @@ export const KoiApi = {
       body: JSON.stringify(body),
     }),
   getCursorUsage: () => api("/cursor/usage"),
+  getMilestones: (projectId, nodeId) =>
+    api(`/projects/${projectId}/nodes/${encodeURIComponent(nodeId)}/milestones`),
+  createMilestones: (projectId, nodeId) =>
+    api(`/projects/${projectId}/nodes/${encodeURIComponent(nodeId)}/milestones`, {
+      method: "POST",
+    }),
+  saveMilestones: (projectId, nodeId, milestones) =>
+    api(`/projects/${projectId}/nodes/${encodeURIComponent(nodeId)}/milestones`, {
+      method: "PUT",
+      body: JSON.stringify({ milestones }),
+    }),
   listWidgets: () => api("/widgets"),
   getWidgetData: (projectId, widgetId) =>
     api(`/widgets/${encodeURIComponent(projectId)}/${encodeURIComponent(widgetId)}/data`),

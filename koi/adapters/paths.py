@@ -62,6 +62,10 @@ def literature_dir(project_id: str) -> Path:
     return koi_root(project_id) / "literature"
 
 
+def paper_morphology_dir(project_id: str) -> Path:
+    return koi_root(project_id) / "paper_morphology"
+
+
 def paper_answers_dir(project_id: str) -> Path:
     return koi_root(project_id) / "paper_answers"
 

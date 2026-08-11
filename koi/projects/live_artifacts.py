@@ -26,6 +26,21 @@ DEFAULT_TAIL_LINES = 100
 MAX_TAIL_LINES = 500
 MAX_IMAGES = 24
 LIVE_ACTIVITY_MAX_AGE_SEC = 30 * 60
+# Prefer gather/host dashboards at the top of the KOI metrics pane.
+METRICS_IMAGE_PRIORITY = (
+    "gather_dashboard.png",
+    "aggregate_metrics.png",
+    "host_sysmon.png",
+    "gpu_util.png",
+    "gpu_mem.png",
+    "disk_free.png",
+    "progress_over_time.png",
+    "traj_per_hour.png",
+    "aw_ow_growth.png",
+    "trajectories.png",
+    "sr.png",
+    "recent_vocab_additions.png",
+)
 
 
 def parse_live_hints(text: str) -> dict[str, str]:
@@ -164,23 +179,29 @@ def list_metric_images(path: Path, *, limit: int = MAX_IMAGES) -> list[dict[str,
     if not path.is_dir():
         raise NotADirectoryError(str(path))
     limit = max(1, min(limit, MAX_IMAGES))
-    entries: list[tuple[float, Path]] = []
+    priority = {name: idx for idx, name in enumerate(METRICS_IMAGE_PRIORITY)}
+    entries: list[tuple[int, float, Path]] = []
     for child in path.iterdir():
         if not child.is_file():
             continue
         if child.suffix.lower() not in IMAGE_SUFFIXES:
             continue
         try:
-            entries.append((child.stat().st_mtime, child))
+            mtime = child.stat().st_mtime
         except OSError:
             continue
-    entries.sort(key=lambda item: item[0], reverse=True)
+        rank = priority.get(child.name, len(METRICS_IMAGE_PRIORITY) + 1)
+        # Keep sample dialogs after dashboards but before random leftovers.
+        if child.name.startswith("sample_dialog_"):
+            rank = len(METRICS_IMAGE_PRIORITY)
+        entries.append((rank, -mtime, child))
+    entries.sort(key=lambda item: (item[0], item[1]))
     out: list[dict[str, Any]] = []
-    for mtime, child in entries[:limit]:
+    for _rank, neg_mtime, child in entries[:limit]:
         out.append(
             {
                 "name": child.name,
-                "mtime": datetime.fromtimestamp(mtime, tz=timezone.utc).isoformat(),
+                "mtime": datetime.fromtimestamp(-neg_mtime, tz=timezone.utc).isoformat(),
             }
         )
     return out

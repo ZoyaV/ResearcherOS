@@ -13,6 +13,7 @@ import {
 } from "./compute-cost.js";
 import { KoiApi } from "./api.js?v=20260723b";
 import { destroyKanbanDagView, fitKanbanDagView, refreshKanbanDagView } from "./kanban-dag.js?v=20260715a";
+import { clearKanbanMilestones, clearMilestoneBoardFilter, refreshKanbanMilestones } from "./milestones.js?v=20260807e";
 import {
   koiLoaderTypingHtml,
   refreshInlineLoaderHints,
@@ -309,6 +310,8 @@ let state = {
   kanbanNodeId: null,
   kanbanDisabledTagFilters: [],
   kanbanDateFilter: "all",
+  kanbanMilestoneFilterId: null,
+  kanbanMilestoneCardIds: null,
   questionsNodeId: null,
   reportCardId: null,
   reportBoardId: null,
@@ -2971,6 +2974,11 @@ function hideModal(id) {
   document.getElementById(id).classList.add("hidden");
   if (id === "node-modal") resetNodeModal();
   if (id === "method-questions-modal") resetMethodQuestionsEditMode();
+  if (id === "kanban-modal") {
+    state.kanbanMilestoneFilterId = null;
+    state.kanbanMilestoneCardIds = null;
+    clearKanbanMilestones();
+  }
   if (!document.querySelector(".modal:not(.hidden)")) {
     document.body.classList.remove("modal-open");
   }
@@ -4777,6 +4785,27 @@ function openKanbanModal(node) {
 
   setKanbanViewMode(state.kanbanViewMode);
   renderActiveKanbanView(board, node);
+  void refreshKanbanMilestones({
+    projectId: boardWriteProjectId(board) || state.project?.id,
+    node,
+    board,
+    readOnly: isHubMode(),
+    onStatus: (msg, isError = false) => setStatus(msg, isError),
+    onBoardFilterChange: (payload) => {
+      if (!payload) {
+        state.kanbanMilestoneFilterId = null;
+        state.kanbanMilestoneCardIds = null;
+      } else {
+        state.kanbanMilestoneFilterId = payload.milestoneId;
+        state.kanbanMilestoneCardIds = new Set(payload.cardIds || []);
+      }
+      const live =
+        state.project?.boards?.[board.id] ||
+        (node?.board_id ? state.project?.boards?.[node.board_id] : null) ||
+        board;
+      if (live) rerenderKanbanAfterFilters(live);
+    },
+  });
   showModal("kanban-modal");
 }
 
@@ -5407,7 +5436,8 @@ function reconcileKanbanDisabledTagFilters(board, project = state.project) {
 function hasActiveKanbanFilters() {
   return Boolean(
     (state.kanbanDateFilter && state.kanbanDateFilter !== "all") ||
-      (state.kanbanDisabledTagFilters || []).length
+      (state.kanbanDisabledTagFilters || []).length ||
+      state.kanbanMilestoneFilterId
   );
 }
 
@@ -5497,6 +5527,9 @@ function cardMatchesKanbanTagFilter(card, disabledFilters) {
 function cardMatchesKanbanFilters(card, disabledFilters = state.kanbanDisabledTagFilters) {
   if (!cardMatchesKanbanTagFilter(card, disabledFilters)) return false;
   if (!cardWithinDateWindow(card, state.kanbanDateFilter || "all")) return false;
+  if (state.kanbanMilestoneCardIds) {
+    return state.kanbanMilestoneCardIds.has(card.id);
+  }
   return true;
 }
 
@@ -5542,6 +5575,9 @@ function syncKanbanFilterChrome(project, board) {
       if (!b) return;
       state.kanbanDateFilter = "all";
       state.kanbanDisabledTagFilters = [];
+      state.kanbanMilestoneFilterId = null;
+      state.kanbanMilestoneCardIds = null;
+      clearMilestoneBoardFilter();
       const pid = project?.id || state.project?.id;
       if (pid && b.id) {
         saveKanbanDateFilter(pid, b.id, "all");

@@ -6568,7 +6568,7 @@ textarea.inline-edit-field {
 .modal-panel--kanban .kanban-board {
   flex: 1 1 0;
   min-height: 0;
-  height: 100%;
+  height: auto;
 }
 
 .modal-panel--kanban .kanban-col {
@@ -10274,11 +10274,45 @@ button.kb-doc {
 
 .rw-library-item {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto 1fr auto;
   gap: 0.55rem;
   align-items: start;
   padding: 0.65rem 0.2rem;
   border-bottom: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+}
+
+.rw-library-item-morph {
+  display: grid;
+  place-items: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  margin-top: 0.1rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.rw-library-item:hover .rw-library-item-morph,
+.rw-library-item-morph:focus-visible {
+  opacity: 1;
+}
+
+.rw-library-item-morph:hover,
+.rw-library-item-morph:focus-visible {
+  color: var(--cyan);
+  border-color: color-mix(in srgb, var(--cyan) 45%, transparent);
+  background: color-mix(in srgb, var(--cyan) 10%, transparent);
+}
+
+@media (hover: none) {
+  .rw-library-item-morph {
+    opacity: 1;
+  }
 }
 
 .rw-library-item:hover {
@@ -13040,3 +13074,1541 @@ button.kb-doc {
 }
 
 /* Cursor usage widget styles moved to widgets/catalog/cursor-usage/web/widget.css */
+
+/* —— Kanban milestones timeline —— */
+#kanban-pane-board {
+  gap: 0.55rem;
+}
+
+.kanban-milestones {
+  flex: 0 0 auto;
+  max-height: min(40vh, 300px);
+  overflow: auto;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface-board) 88%, transparent);
+  padding: 0.5rem 0.65rem 0.55rem;
+}
+
+.kanban-milestones.is-editing {
+  max-height: min(58vh, 460px);
+}
+
+.kanban-milestones.hidden {
+  display: none !important;
+}
+
+.ms-create-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.ms-create-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.ms-create-hint,
+.ms-hint {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.ms-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.ms-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.ms-head__left {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.ms-title {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ms-sort-hint {
+  font-size: 0.65rem;
+  color: color-mix(in srgb, var(--cyan) 70%, var(--muted));
+  letter-spacing: 0.02em;
+}
+
+.ms-path {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.65rem;
+  color: var(--muted);
+  opacity: 0.85;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.ms-track {
+  list-style: none;
+  margin: 0;
+  padding: 0.65rem 0.15rem 0.25rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  position: relative;
+}
+
+.ms-track::before {
+  content: "";
+  position: absolute;
+  left: 0.75rem;
+  right: 0.75rem;
+  top: 2.15rem;
+  height: 1px;
+  background: color-mix(in srgb, var(--border) 70%, var(--cyan) 18%);
+  pointer-events: none;
+}
+
+.ms-node-wrap {
+  flex: 0 0 auto;
+  min-width: 8.25rem;
+  max-width: 10.5rem;
+  position: relative;
+  scroll-snap-align: start;
+}
+
+.ms-node-wrap + .ms-node-wrap {
+  margin-left: 0.15rem;
+}
+
+.ms-node {
+  appearance: none;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0.1rem 0.35rem 0.2rem;
+  text-align: center;
+  border-radius: 8px;
+  transition: background 0.15s ease;
+}
+
+.ms-node:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.ms-node:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
+
+.ms-date {
+  font-family: "Syne", sans-serif;
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.ms-dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-board) 40%, var(--cyan));
+  border: 2px solid color-mix(in srgb, var(--cyan) 55%, white);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--surface-board) 90%, transparent);
+  z-index: 1;
+  transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ms-node:hover .ms-dot,
+.ms-node.is-filtering .ms-dot,
+.ms-node.is-editing .ms-dot {
+  transform: scale(1.12);
+  background: var(--cyan);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--surface-board) 90%, transparent),
+    0 0 0 5px color-mix(in srgb, var(--cyan) 28%, transparent);
+}
+
+.ms-node.is-filtering {
+  background: color-mix(in srgb, var(--cyan) 8%, transparent);
+}
+
+.ms-node.is-editing {
+  background: color-mix(in srgb, var(--purple) 10%, transparent);
+}
+
+.ms-node.is-editing .ms-dot {
+  background: var(--purple);
+  border-color: color-mix(in srgb, var(--purple) 55%, white);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--surface-board) 90%, transparent),
+    0 0 0 5px color-mix(in srgb, var(--purple) 28%, transparent);
+}
+
+.ms-name {
+  font-size: 0.78rem;
+  line-height: 1.25;
+  color: var(--text);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.ms-meta {
+  font-size: 0.62rem;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.ms-step {
+  font-variant-numeric: tabular-nums;
+  color: color-mix(in srgb, var(--muted) 80%, var(--cyan));
+}
+
+.ms-count {
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-card);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ms-count:not(.is-empty) {
+  color: color-mix(in srgb, var(--cyan) 75%, var(--text));
+  border-color: color-mix(in srgb, var(--cyan) 35%, var(--border));
+}
+
+.ms-node.is-filtering .ms-count:not(.is-empty) {
+  background: color-mix(in srgb, var(--cyan) 14%, transparent);
+}
+
+.ms-linked-list {
+  list-style: none;
+  margin: 0 0 0.35rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.28rem;
+  max-height: 9rem;
+  overflow: auto;
+}
+
+.ms-linked-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.35rem 0.45rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-card);
+}
+
+.ms-linked-title {
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: var(--text);
+  min-width: 0;
+}
+
+.ms-empty {
+  font-size: 0.78rem;
+  color: var(--muted);
+  padding: 0.35rem 0.1rem;
+}
+
+.ms-editor {
+  margin-top: 0.15rem;
+  padding: 0.5rem 0.55rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--surface-col) 88%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.ms-editor__row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.ms-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  min-width: 6.5rem;
+}
+
+.ms-field--grow {
+  flex: 1 1 12rem;
+}
+
+.ms-input {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--surface-input);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0.35rem 0.5rem;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ms-input:focus-visible {
+  outline: none;
+  border-color: color-mix(in srgb, var(--cyan) 55%, var(--border));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--cyan) 22%, transparent);
+}
+
+.ms-input--search {
+  min-width: 10rem;
+  flex: 1 1 auto;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.ms-attach__head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.3rem;
+}
+
+.ms-attach__label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.ms-card-list {
+  max-height: 14rem;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding-right: 0.1rem;
+}
+
+.ms-card-opt {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 0.45rem;
+  padding: 0.3rem 0.35rem;
+  border-radius: 7px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.ms-card-opt:hover {
+  background: var(--surface-muted-btn-hover);
+}
+
+.ms-card-opt.hidden {
+  display: none !important;
+}
+
+.ms-card-opt__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.ms-card-opt__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+.ms-card-opt__col {
+  width: fit-content;
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+}
+
+.ms-card-opt__col[data-col="backlog"] {
+  color: var(--purple);
+  border-color: color-mix(in srgb, var(--purple) 35%, var(--border));
+}
+.ms-card-opt__col[data-col="running"] {
+  color: var(--orange);
+  border-color: color-mix(in srgb, var(--orange) 35%, var(--border));
+}
+.ms-card-opt__col[data-col="done"] {
+  color: var(--lime);
+  border-color: color-mix(in srgb, var(--lime) 35%, var(--border));
+}
+.ms-card-opt__col[data-col="successful"] {
+  color: var(--cyan);
+  border-color: color-mix(in srgb, var(--cyan) 35%, var(--border));
+}
+
+.ms-attach-empty {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.ms-editor__actions {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.ms-btn-danger {
+  color: color-mix(in srgb, #ff6b7a 80%, var(--text));
+}
+
+.kanban-card.is-milestone-linked {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--cyan) 55%, transparent);
+}
+
+.kanban-card.is-milestone-dimmed {
+  opacity: 0.4;
+}
+
+
+.ms-attach-tip {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.ms-card-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  margin-bottom: 0.35rem;
+}
+
+.ms-card-group__title {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0.2rem 0.15rem;
+  background: color-mix(in srgb, var(--surface-col) 92%, transparent);
+}
+
+#kanban-board.is-ms-attach-mode .kanban-card {
+  cursor: pointer;
+}
+
+#kanban-board.is-ms-attach-mode .kanban-card.is-ms-attached {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--cyan) 60%, transparent);
+}
+
+#kanban-board.is-ms-attach-mode .kanban-card:not(.is-ms-attached) {
+  opacity: 0.72;
+}
+
+#kanban-board.is-ms-attach-mode .kanban-card:not(.is-ms-attached):hover {
+  opacity: 1;
+}
+
+.modal-panel--kanban.is-dag-mode .kanban-milestones {
+  display: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ms-dot,
+  .ms-node,
+  .ms-input,
+  .ms-card-opt {
+    transition: none !important;
+  }
+  .ms-node:hover .ms-dot,
+  .ms-node.is-filtering .ms-dot, .ms-node.is-editing .ms-dot {
+    transform: none;
+  }
+}
+
+[data-theme="light"] .ms-node:hover {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+[data-theme="light"] .ms-track::before {
+  background: color-mix(in srgb, var(--border) 80%, var(--cyan) 20%);
+}
+
+/* ============================================================ Morphology page */
+
+.morph-body {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--bg);
+}
+
+.morph-page {
+  display: grid;
+  grid-template-columns: 19rem minmax(0, 1fr) 20rem;
+  gap: 1px;
+  flex: 1;
+  min-height: 0;
+  background: color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.morph-side,
+.morph-main,
+.morph-inspector {
+  min-width: 0;
+  overflow-y: auto;
+  background: var(--bg);
+}
+
+.morph-side {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  padding: 1.1rem 1rem;
+}
+
+.morph-paper-card {
+  display: grid;
+  gap: 0.35rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.morph-paper-meta {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.morph-paper-title {
+  font-family: "Syne", system-ui, sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.morph-paper-title:hover {
+  color: var(--cyan);
+}
+
+.morph-paper-abstract {
+  margin: 0.3rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.morph-side-title {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.morph-runs-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.morph-runs-scope {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.morph-runs-list {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.morph-runs-empty {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.morph-run-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 0.6rem;
+}
+
+.morph-run-item:hover {
+  background: var(--surface-card);
+}
+
+.morph-run-item.is-active {
+  border-color: color-mix(in srgb, var(--cyan) 45%, transparent);
+  background: color-mix(in srgb, var(--cyan) 8%, transparent);
+}
+
+.morph-run-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.5rem;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  padding: 0.5rem 0.55rem;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.morph-run-delete {
+  padding: 0 0.5rem;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.morph-run-item:hover .morph-run-delete,
+.morph-run-delete:focus-visible {
+  opacity: 1;
+}
+
+.morph-run-delete:hover {
+  color: var(--pink);
+}
+
+.morph-run-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--orange) 70%, transparent);
+}
+
+.morph-run-dot.is-ready {
+  background: var(--lime);
+}
+
+.morph-run-copy {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.morph-run-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.morph-run-sub {
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+/* ---- center column */
+
+.morph-main {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.morph-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1.1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.morph-tabs {
+  display: inline-flex;
+  gap: 0.2rem;
+  padding: 0.2rem;
+  border: 1px solid var(--border);
+  border-radius: 0.65rem;
+  background: var(--surface-col);
+}
+
+.morph-tab {
+  padding: 0.32rem 0.8rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.morph-tab.is-active {
+  background: var(--surface-card);
+  color: var(--text);
+}
+
+.morph-toolbar-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.morph-status {
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.morph-status.is-ok {
+  color: var(--lime);
+}
+
+.morph-status.is-warn {
+  color: var(--orange);
+}
+
+.morph-status.is-error {
+  color: var(--pink);
+}
+
+.morph-panel {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 1.1rem;
+}
+
+.morph-panel#morph-panel-graph,
+.morph-panel#morph-panel-article {
+  display: flex;
+  flex-direction: column;
+  padding: 0.85rem 1.1rem 1.1rem;
+}
+
+.morph-panel#morph-panel-graph .morph-canvas-wrap {
+  flex: 1;
+}
+
+.morph-panel#morph-panel-article .morph-article-full {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  background: var(--bg-elevated);
+  overflow: hidden;
+}
+
+.morph-panel#morph-panel-article .morph-article-full.hidden {
+  display: none;
+}
+
+.morph-panel.hidden {
+  display: none;
+}
+
+.morph-empty {
+  max-width: 34rem;
+  margin: 3rem auto;
+  text-align: center;
+}
+
+.morph-empty h3 {
+  margin: 0 0 0.5rem;
+  font-family: "Syne", system-ui, sans-serif;
+  font-size: 1.1rem;
+  color: var(--text);
+}
+
+.morph-empty p {
+  margin: 0;
+  font-size: 0.86rem;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.morph-prompt-block {
+  display: grid;
+  gap: 0.6rem;
+  max-width: 52rem;
+  margin: 0 auto;
+}
+
+.morph-prompt-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.morph-prompt-head h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.morph-prompt-hint {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.morph-prompt {
+  max-height: 24rem;
+  margin: 0;
+  padding: 0.9rem;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  background: var(--pre-bg);
+  font-size: 0.76rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  color: var(--text);
+}
+
+/* ---- graph canvas */
+
+.morph-canvas-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.5rem;
+  height: 100%;
+  min-height: 26rem;
+  min-width: 0;
+}
+
+.morph-canvas-wrap.has-article {
+  grid-template-columns: minmax(0, 1.1fr) minmax(18rem, 0.9fr);
+}
+
+.morph-canvas-wrap.hidden {
+  display: none;
+}
+
+.morph-graph-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+  min-height: 0;
+}
+
+.morph-article-pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  background: var(--bg-elevated);
+  overflow: hidden;
+}
+
+.morph-article-pane.hidden {
+  display: none;
+}
+
+.morph-article-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.morph-article-title {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.morph-article-meta {
+  margin: 0.2rem 0 0;
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.morph-article-body,
+.morph-article-full {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.85rem 1rem 1.4rem;
+}
+
+.morph-article-empty {
+  padding: 2rem 1.4rem;
+  color: var(--muted);
+}
+
+.morph-article-empty h3 {
+  margin: 0 0 0.5rem;
+  color: var(--text);
+}
+
+.morph-article-toggle.is-active {
+  border-color: var(--cyan);
+  color: var(--text);
+}
+
+.morph-art-doc {
+  max-width: 46rem;
+  color: var(--text);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.morph-art-h {
+  margin: 1.4rem 0 0.55rem;
+  font-size: 0.95rem;
+  line-height: 1.3;
+}
+
+.morph-art-p {
+  margin: 0 0 0.85rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.morph-art-mark {
+  background: color-mix(in srgb, var(--cyan) 22%, transparent);
+  border-bottom: 1.5px solid color-mix(in srgb, var(--cyan) 55%, transparent);
+  border-radius: 0.15rem;
+  cursor: pointer;
+  transition: background 0.12s ease, box-shadow 0.12s ease;
+}
+
+.morph-art-mark:hover {
+  background: color-mix(in srgb, var(--cyan) 34%, transparent);
+}
+
+.morph-art-mark.is-active {
+  background: color-mix(in srgb, var(--cyan) 42%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--cyan) 35%, transparent);
+}
+
+.morph-art-mark.role-problem {
+  background: color-mix(in srgb, var(--pink) 24%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--pink) 55%, transparent);
+}
+
+.morph-art-mark.role-origin,
+.morph-art-mark.role-symptom,
+.morph-art-mark.role-gap {
+  background: color-mix(in srgb, var(--orange) 22%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--orange) 55%, transparent);
+}
+
+.morph-art-mark.role-method_step,
+.morph-art-mark.role-mechanism,
+.morph-art-mark.role-result {
+  background: color-mix(in srgb, var(--lime) 22%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--lime) 55%, transparent);
+}
+
+.morph-art-mark.role-thesis,
+.morph-art-mark.role-assumption {
+  background: color-mix(in srgb, var(--purple) 22%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--purple) 55%, transparent);
+}
+
+.morph-legend {
+  display: grid;
+  gap: 0.3rem;
+  justify-items: end;
+  flex: 0 0 auto;
+}
+
+.morph-legend-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.morph-legend-caption {
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.morph-chapter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.18rem 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  background: var(--surface-col);
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.morph-chapter-chip:hover {
+  color: var(--text);
+}
+
+.morph-chapter-chip.is-active {
+  border-color: var(--morph-chapter);
+  background: color-mix(in srgb, var(--morph-chapter) 18%, transparent);
+  color: var(--text);
+}
+
+.morph-chapter-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--morph-chapter);
+}
+
+.morph-chapter-count {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.6;
+}
+
+.morph-legend-btn {
+  padding: 0.18rem 0.45rem;
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  background: var(--surface-col);
+  color: var(--muted);
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+
+.morph-legend-btn:hover {
+  color: var(--text);
+}
+
+.morph-legend-btn-accent {
+  border-color: color-mix(in srgb, var(--cyan) 45%, var(--border));
+  color: var(--text);
+  background: color-mix(in srgb, var(--cyan) 14%, var(--surface-col));
+}
+
+.morph-legend-btn-accent:hover {
+  border-color: var(--cyan);
+}
+
+.morph-legend-item {
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.4rem;
+  border: 1px solid var(--border);
+  background: var(--surface-col);
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.morph-legend-item.is-quoted {
+  border-color: color-mix(in srgb, var(--cyan) 45%, transparent);
+  color: var(--cyan);
+}
+
+.morph-legend-item.is-inferred {
+  border-style: dashed;
+}
+
+.morph-canvas {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  cursor: grab;
+  touch-action: none;
+}
+
+.morph-canvas.is-panning {
+  cursor: grabbing;
+}
+
+.morph-edges path {
+  fill: none;
+  stroke: color-mix(in srgb, var(--text) 28%, transparent);
+  stroke-width: 1.6;
+}
+
+.morph-edge {
+  color: color-mix(in srgb, var(--text) 28%, transparent);
+}
+
+.morph-edge.is-inferred path {
+  stroke-dasharray: 5 4;
+}
+
+.morph-edge {
+  transition: opacity 0.15s ease;
+}
+
+.morph-edge.is-faded {
+  opacity: 0.08;
+}
+
+.morph-edge.is-upstream path {
+  stroke: color-mix(in srgb, var(--orange) 75%, transparent);
+  stroke-width: 2.2;
+}
+
+.morph-edge.is-upstream {
+  color: color-mix(in srgb, var(--orange) 75%, transparent);
+}
+
+.morph-edge.is-downstream path {
+  stroke: color-mix(in srgb, var(--lime) 70%, transparent);
+  stroke-width: 2.2;
+}
+
+.morph-edge.is-downstream {
+  color: color-mix(in srgb, var(--lime) 70%, transparent);
+}
+
+.morph-edge-label {
+  fill: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.morph-edge-cue {
+  fill: color-mix(in srgb, var(--cyan) 75%, var(--muted));
+  font-size: 10px;
+  font-style: italic;
+}
+
+.morph-node {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  box-sizing: border-box;
+  height: 100%;
+  padding: 0.55rem 0.65rem 0.5rem;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--morph-chapter, var(--border));
+  border-radius: 0.7rem;
+  background: var(--bg-elevated);
+  cursor: grab;
+  overflow: hidden;
+  transition: opacity 0.15s ease, border-color 0.15s ease;
+}
+
+.morph-node:hover {
+  border-color: color-mix(in srgb, var(--cyan) 50%, transparent);
+  border-left-color: var(--morph-chapter, var(--cyan));
+}
+
+.morph-node.is-dragging {
+  cursor: grabbing;
+  box-shadow: 0 10px 28px var(--shadow-heavy);
+}
+
+.morph-node.is-selected {
+  border-color: var(--cyan);
+  box-shadow: var(--glow-cyan);
+}
+
+.morph-node.is-upstream {
+  border-color: color-mix(in srgb, var(--orange) 65%, transparent);
+}
+
+.morph-node.is-downstream {
+  border-color: color-mix(in srgb, var(--lime) 60%, transparent);
+}
+
+.morph-node.is-faded {
+  opacity: 0.16;
+}
+
+.morph-node-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.3rem;
+}
+
+.morph-node-section {
+  padding: 0.1rem 0.34rem;
+  border-radius: 0.3rem;
+  background: color-mix(in srgb, var(--morph-chapter, var(--muted)) 22%, transparent);
+  color: var(--text);
+  font-size: 0.62rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.morph-node-where {
+  margin-top: auto;
+  color: var(--muted);
+  font-size: 0.64rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.morph-node.is-paraphrased {
+  border-style: dashed;
+}
+
+.morph-node.is-inferred {
+  border-style: dashed;
+  opacity: 0.72;
+}
+
+.morph-node-role {
+  align-self: flex-start;
+  padding: 0.12rem 0.42rem;
+  border-radius: 0.35rem;
+  background: color-mix(in srgb, var(--purple) 22%, transparent);
+  color: var(--text);
+  font-size: 0.63rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.morph-node-role.role-problem,
+.role-problem .morph-node-role {
+  background: color-mix(in srgb, var(--pink) 26%, transparent);
+}
+
+.morph-node-role.role-origin,
+.role-origin .morph-node-role {
+  background: color-mix(in srgb, var(--orange) 26%, transparent);
+}
+
+.morph-node-role.role-symptom,
+.role-symptom .morph-node-role {
+  background: color-mix(in srgb, var(--peach) 26%, transparent);
+}
+
+.morph-node-role.role-result,
+.role-result .morph-node-role,
+.morph-node-role.role-method_step,
+.role-method_step .morph-node-role {
+  background: color-mix(in srgb, var(--lime) 24%, transparent);
+}
+
+.morph-node-role.role-thesis,
+.role-thesis .morph-node-role {
+  background: color-mix(in srgb, var(--cyan) 24%, transparent);
+}
+
+.morph-node-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  font-size: 0.74rem;
+  line-height: 1.32;
+  color: var(--text);
+  overflow: hidden;
+}
+
+/* ---- shape tab */
+
+.morph-shape-body {
+  display: grid;
+  gap: 1.6rem;
+  max-width: 54rem;
+}
+
+.morph-shape-section h3 {
+  margin: 0 0 0.4rem;
+  font-family: "Syne", system-ui, sans-serif;
+  font-size: 0.95rem;
+  color: var(--text);
+}
+
+.morph-shape-hint {
+  margin: 0 0 0.7rem;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.morph-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.morph-table th,
+.morph-table td {
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.morph-table th {
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.morph-score {
+  display: inline-block;
+  width: 4.5rem;
+  height: 0.4rem;
+  margin-right: 0.4rem;
+  border-radius: 0.2rem;
+  background: var(--surface-col);
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+.morph-score-fill {
+  display: block;
+  height: 100%;
+  background: var(--grad-cool);
+}
+
+.morph-score-value {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.morph-missing {
+  color: var(--orange);
+}
+
+.morph-style {
+  display: grid;
+  grid-template-columns: 8rem 1fr;
+  gap: 0.35rem 0.8rem;
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.morph-style dt {
+  color: var(--muted);
+}
+
+.morph-style dd {
+  margin: 0;
+  color: var(--text);
+}
+
+.morph-style code {
+  padding: 0.1rem 0.3rem;
+  border-radius: 0.3rem;
+  background: var(--code-bg);
+  font-size: 0.76rem;
+}
+
+.morph-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+/* ---- inspector */
+
+.morph-inspector {
+  padding: 1.1rem 1rem;
+}
+
+.morph-inspector-empty p {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.morph-inspector-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.6rem;
+}
+
+.morph-grounding {
+  padding: 0.12rem 0.42rem;
+  border: 1px solid var(--border);
+  border-radius: 0.35rem;
+  font-size: 0.63rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.morph-grounding.is-quoted {
+  border-color: color-mix(in srgb, var(--cyan) 45%, transparent);
+  color: var(--cyan);
+}
+
+.morph-grounding.is-inferred {
+  border-style: dashed;
+  color: var(--orange);
+}
+
+.morph-inspector-section {
+  margin: 0 0 0.5rem;
+  padding-left: 0.5rem;
+  border-left: 3px solid var(--morph-chapter, var(--border));
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.morph-inspector-statement {
+  margin: 0 0 1rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.morph-inspector-title {
+  margin: 1rem 0 0.4rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.morph-quote {
+  margin: 0 0 0.7rem;
+  padding-left: 0.7rem;
+  border-left: 2px solid color-mix(in srgb, var(--cyan) 45%, transparent);
+}
+
+.morph-quote blockquote {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.morph-quote figcaption {
+  margin-top: 0.25rem;
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.morph-transitions {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.morph-transition {
+  display: grid;
+  gap: 0.15rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.morph-transition-rel {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.morph-transition-dir {
+  color: var(--muted);
+}
+
+.morph-transition-node {
+  color: var(--muted);
+}
+
+.morph-transition-cue {
+  color: color-mix(in srgb, var(--cyan) 75%, var(--muted));
+  font-style: italic;
+}
+
+.morph-explain-btn {
+  width: 100%;
+  margin-top: 1rem;
+}
+
+@media (max-width: 1200px) {
+  .morph-page {
+    grid-template-columns: 16rem minmax(0, 1fr);
+    grid-template-rows: 1fr auto;
+  }
+
+  .morph-inspector {
+    grid-column: 1 / -1;
+    max-height: 20rem;
+  }
+}

@@ -131,6 +131,10 @@ class LiteratureClusterBody(BaseModel):
     papers: list[dict] = Field(default_factory=list)
 
 
+class MorphologyStageBody(BaseModel):
+    paper: dict = Field(default_factory=dict)
+
+
 class RelatedWorksAnswerBody(BaseModel):
     markdown: str = Field(min_length=1)
 

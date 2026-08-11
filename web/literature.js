@@ -1,4 +1,4 @@
-import { KoiApi } from "./api.js?v=20260722v";
+import { KoiApi } from "./api.js?v=20260811a";
 import {
   showKoiLoader,
   hideKoiLoader,
@@ -21,6 +21,9 @@ const BRAND_TAGLINES = [
 const TAGLINE_ROTATE_MS = 60_000;
 const TAGLINE_FADE_MS = 450;
 const CONTEXT_APPEND_MARKER = "\n\nProject context:\n";
+const MORPH_HANDOFF_KEY = "koi-morph-paper";
+const MORPH_ICON_SVG =
+  '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12 2a2.5 2.5 0 0 1 1 4.79V9h4a3 3 0 0 1 3 3v1.21a2.5 2.5 0 1 1-2 0V12a1 1 0 0 0-1-1h-4v2.21a2.5 2.5 0 1 1-2 0V11H7a1 1 0 0 0-1 1v1.21a2.5 2.5 0 1 1-2 0V12a3 3 0 0 1 3-3h4V6.79A2.5 2.5 0 0 1 12 2z"/></svg>';
 
 let literatureResults = [];
 let selectedPaperUrls = new Set();
@@ -773,6 +776,36 @@ function formatAuthorsLine(authors, max = 72) {
 function paperMetaLine(paper) {
   const year = paper.year ? String(paper.year) : "—";
   return `${year} · ${formatAuthorsLine(paper.authors)}`;
+}
+
+/** Hand the full paper record to the morphology page (URL alone loses the abstract). */
+function openPaperMorphology(paperUrl) {
+  const paper = literatureResults.find((item) => item.arxiv_url === paperUrl);
+  if (!paper) {
+    setLiteratureStatus("Статья не найдена в текущем списке.", true);
+    return;
+  }
+  const projectId = selectedProjectId();
+  if (!projectId) {
+    setLiteratureStatus("Сначала выберите проект.", true);
+    return;
+  }
+  try {
+    sessionStorage.setItem(
+      MORPH_HANDOFF_KEY,
+      JSON.stringify({
+        title: paper.title,
+        url: paper.arxiv_url,
+        authors: paper.authors,
+        year: paper.year,
+        abstract: paper.abstract || paper.abstract_preview || "",
+      })
+    );
+  } catch {
+    /* private mode — the page falls back to the library lookup */
+  }
+  const params = new URLSearchParams({ project: projectId, paper: paper.arxiv_url });
+  window.location.href = `morphology.html?${params.toString()}`;
 }
 
 function updateLibraryPanelChrome() {
@@ -2537,9 +2570,19 @@ function renderLiteratureResults(results = [], _query = "") {
             <p class="rw-library-item-meta">${escapeHtml(paperMetaLine(paper))}</p>
             <a class="rw-library-item-title" href="${escapeHtml(href)}" target="_blank" rel="noreferrer">${escapeHtml(paper.title)}</a>
           </div>
+          <button type="button" class="rw-library-item-morph" data-paper-url="${escapeHtml(paper.arxiv_url)}" title="Морфология — разобрать логику статьи" aria-label="Морфология статьи">
+            ${MORPH_ICON_SVG}
+          </button>
         </article>`;
     })
     .join("");
+
+  root.querySelectorAll(".rw-library-item-morph").forEach((btn) => {
+    btn.addEventListener("click", (event) => {
+      event.preventDefault();
+      openPaperMorphology(event.currentTarget?.dataset?.paperUrl || "");
+    });
+  });
 
   root.querySelectorAll(".literature-result-checkbox").forEach((input) => {
     input.addEventListener("change", (event) => {
