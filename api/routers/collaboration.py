@@ -1,0 +1,284 @@
+"""Local collaboration session API (Spike A: same ResearcherOS instance)."""
+
+from __future__ import annotations
+
+import asyncio
+import base64
+from pathlib import Path
+from typing import Any
+
+from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconnect
+from pydantic import BaseModel, Field
+
+from api.deps import parse_project
+from koi.paper.catalog import get_paper_slot_dir, normalize_paper_slug
+from koi.paper.generator import TEX_NAME
+from koi.paper.collaboration.session import (
+    get_or_create_session,
+    get_session,
+    get_session_by_tex_path,
+    register_agent_task,
+)
+
+router = APIRouter(tags=["collaboration"])
+
+
+class AgentTaskBody(BaseModel):
+    task_id: str | None = None
+
+
+class CollabEditBody(BaseModel):
+    text: str = Field(default="")
+    base_revision: int | None = None
+    peer_id: str = "rest"
+
+
+class ProposalResolutionBody(BaseModel):
+    proposal_id: str
+
+
+class ProposalHunkResolutionBody(ProposalResolutionBody):
+    hunk_id: str
+
+
+class EditorBufferBody(BaseModel):
+    path: str
+    text: str
+    version: int | None = None
+
+
+class EditorSyncBody(BaseModel):
+    path: str
+    force: bool = False
+
+
+def _slot(project_id: str, slug: str):
+    parse_project(project_id)
+    normalized = normalize_paper_slug(slug)
+    slot_dir = get_paper_slot_dir(project_id, normalized)
+    if slot_dir is None:
+        raise HTTPException(404, f"Статья «{normalized}» не найдена")
+    return normalized, slot_dir
+
+
+def _session(project_id: str, slug: str, *, create: bool = False):
+    normalized, slot_dir = _slot(project_id, slug)
+    tex_path = slot_dir / TEX_NAME
+    if create:
+        return get_or_create_session(project_id, normalized, tex_path)
+    session = get_session(project_id, normalized)
+    if session is None:
+        raise HTTPException(404, "Нет активной collaborative session")
+    return session
+
+
+@router.get("/projects/{project_id}/papers/{slug}/collab")
+def get_collab_status(project_id: str, slug: str) -> dict[str, Any]:
+    parse_project(project_id)
+    normalized = normalize_paper_slug(slug)
+    session = get_session(project_id, normalized)
+    if session is None:
+        return {"active": False, "project_id": project_id, "slug": normalized, "peer_count": 0}
+    return session.status()
+
+
+@router.post("/projects/{project_id}/papers/{slug}/collab/open")
+def open_collab_session(project_id: str, slug: str) -> dict[str, Any]:
+    session = _session(project_id, slug, create=True)
+    return session.status()
+
+
+@router.post("/projects/{project_id}/papers/{slug}/collab/flush")
+def flush_collab_session(project_id: str, slug: str) -> dict[str, Any]:
+    session = _session(project_id, slug)
+    return session.flush()
+
+
+@router.get("/projects/{project_id}/papers/{slug}/collab/proposal")
+def get_collab_proposal(project_id: str, slug: str) -> dict[str, Any]:
+    session = _session(project_id, slug)
+    return session.proposal_event()
+
+
+@router.post("/projects/{project_id}/papers/{slug}/collab/proposal/accept")
+def accept_collab_proposal(
+    project_id: str,
+    slug: str,
+    body: ProposalResolutionBody,
+) -> dict[str, Any]:
+    session = _session(project_id, slug)
+    try:
+        return session.accept_proposal(body.proposal_id)
+    except KeyError as exc:
+        raise HTTPException(409, "Предложение уже изменилось или было обработано") from exc
+
+
+@router.post("/projects/{project_id}/papers/{slug}/collab/proposal/reject")
+def reject_collab_proposal(
+    project_id: str,
+    slug: str,
+    body: ProposalResolutionBody,
+) -> dict[str, Any]:
+    session = _session(project_id, slug)
+    try:
+        return session.reject_proposal(body.proposal_id)
+    except KeyError as exc:
+        raise HTTPException(409, "Предложение уже изменилось или было обработано") from exc
+
+
+@router.post("/projects/{project_id}/papers/{slug}/collab/proposal/hunk/accept")
+def accept_collab_proposal_hunk(
+    project_id: str,
+    slug: str,
+    body: ProposalHunkResolutionBody,
+) -> dict[str, Any]:
+    session = _session(project_id, slug)
+    try:
+        return session.resolve_proposal_hunk(body.proposal_id, body.hunk_id, accept=True)
+    except KeyError as exc:
+        raise HTTPException(409, "Фрагмент уже изменился; проверьте актуальный diff") from exc
+
+
+@router.post("/projects/{project_id}/papers/{slug}/collab/proposal/hunk/reject")
+def reject_collab_proposal_hunk(
+    project_id: str,
+    slug: str,
+    body: ProposalHunkResolutionBody,
+) -> dict[str, Any]:
+    session = _session(project_id, slug)
+    try:
+        return session.resolve_proposal_hunk(body.proposal_id, body.hunk_id, accept=False)
+    except KeyError as exc:
+        raise HTTPException(409, "Фрагмент уже изменился; проверьте актуальный diff") from exc
+
+
+@router.post("/collaboration/editor-buffer")
+def post_editor_buffer(body: EditorBufferBody) -> dict[str, Any]:
+    session = get_session_by_tex_path(Path(body.path))
+    if session is None:
+        raise HTTPException(404, "Для main.tex нет активной collaborative session")
+    session.import_external(body.text, source="cursor-buffer")
+    proposal = session.proposal.to_dict() if session.proposal else None
+    return {
+        "accepted": True,
+        "version": body.version,
+        "proposal": proposal,
+    }
+
+
+@router.get("/collaboration/editor-buffer/command")
+def get_editor_buffer_command(
+    path: str = Query(...),
+    after: str | None = Query(default=None),
+) -> dict[str, Any]:
+    session = get_session_by_tex_path(Path(path))
+    if session is None:
+        raise HTTPException(404, "Для main.tex нет активной collaborative session")
+    return {"command": session.latest_editor_command(after)}
+
+
+@router.post("/collaboration/editor-buffer/sync")
+def post_editor_buffer_sync(body: EditorSyncBody) -> dict[str, Any]:
+    session = get_session_by_tex_path(Path(body.path))
+    if session is None:
+        raise HTTPException(404, "Для main.tex нет активной collaborative session")
+    return {"command": session.queue_editor_sync(force=body.force)}
+
+
+@router.post("/projects/{project_id}/papers/{slug}/collab/agent-task")
+def post_collab_agent_task(
+    project_id: str,
+    slug: str,
+    body: AgentTaskBody | None = None,
+) -> dict[str, Any]:
+    normalized, slot_dir = _slot(project_id, slug)
+    task = register_agent_task(
+        project_id,
+        normalized,
+        slot_dir / TEX_NAME,
+        task_id=body.task_id if body else None,
+    )
+    return {
+        "task_id": task.task_id,
+        "base_revision": task.base_revision,
+        "base_hash": task.base_hash,
+    }
+
+
+@router.post("/projects/{project_id}/papers/{slug}/collab/edit")
+def post_collab_edit(project_id: str, slug: str, body: CollabEditBody) -> dict[str, Any]:
+    session = _session(project_id, slug, create=True)
+    return session.apply_client_text(body.peer_id, body.text, body.base_revision)
+
+
+@router.websocket("/projects/{project_id}/papers/{slug}/collab")
+async def collab_ws(
+    websocket: WebSocket,
+    project_id: str,
+    slug: str,
+    peer: str | None = Query(default=None),
+    user: str = Query(default="anonymous"),
+    actor: str = Query(default="human"),
+) -> None:
+    try:
+        parse_project(project_id)
+        normalized = normalize_paper_slug(slug)
+    except (ValueError, HTTPException):
+        await websocket.close(code=1008)
+        return
+    slot_dir = get_paper_slot_dir(project_id, normalized)
+    if slot_dir is None:
+        await websocket.close(code=1008)
+        return
+    session = get_or_create_session(project_id, normalized, slot_dir / TEX_NAME)
+    await websocket.accept()
+    loop = asyncio.get_running_loop()
+
+    def handler(event: dict[str, Any]) -> None:
+        try:
+            asyncio.run_coroutine_threadsafe(websocket.send_json(event), loop)
+        except Exception:
+            return
+
+    joined = session.join(peer, user_name=user, actor_type=actor, handler=handler)
+    await websocket.send_json(session.sync_event())
+    await websocket.send_json({"type": "hello", "peer_id": joined.peer_id, **session.status()})
+    if session.proposal is not None:
+        await websocket.send_json(session.proposal_event())
+    try:
+        while True:
+            message = await websocket.receive_json()
+            kind = message.get("type")
+            if kind == "crdt_update":
+                try:
+                    update = base64.b64decode(str(message.get("update") or ""), validate=True)
+                except (ValueError, TypeError):
+                    await websocket.close(code=1003)
+                    return
+                await websocket.send_json(session.apply_crdt_update(joined.peer_id, update))
+            elif kind == "op":
+                session.apply_client_op(
+                    joined.peer_id,
+                    int(message.get("start") or 0),
+                    int(message.get("delete_len") or 0),
+                    str(message.get("insert") or ""),
+                    message.get("base_revision"),
+                    base_hash=message.get("base_hash"),
+                )
+            elif kind == "edit":
+                session.apply_client_text(
+                    joined.peer_id,
+                    str(message.get("text") or ""),
+                    message.get("base_revision"),
+                )
+            elif kind == "presence":
+                session.update_presence(joined.peer_id, message)
+            elif kind == "flush":
+                await websocket.send_json(session.flush())
+            elif kind == "ping":
+                await websocket.send_json({"type": "pong"})
+    except WebSocketDisconnect:
+        session.leave(joined.peer_id)
+    except Exception:
+        session.leave(joined.peer_id)
+        raise

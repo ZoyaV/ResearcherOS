@@ -220,8 +220,13 @@ def get_project_paper_tex(project_id: str, slug: str):
     path = slot_dir / TEX_NAME
     if not path.is_file():
         raise HTTPException(404, "main.tex ещё не сгенерирован")
+    from koi.paper.collaboration.session import live_text
+
+    text = live_text(project_id, normalized)
+    if text is None:
+        text = path.read_text(encoding="utf-8")
     return PlainTextResponse(
-        path.read_text(encoding="utf-8"),
+        text,
         media_type="text/plain; charset=utf-8",
         headers={"Cache-Control": "no-store"},
     )
@@ -229,9 +234,24 @@ def get_project_paper_tex(project_id: str, slug: str):
 
 @router.put("/projects/{project_id}/papers/{slug}/tex")
 def put_project_paper_tex(project_id: str, slug: str, body: PaperTexUpdateBody) -> dict:
-    _, slot_dir = _require_paper_slot(project_id, slug)
+    normalized, slot_dir = _require_paper_slot(project_id, slug)
     slot_dir.mkdir(parents=True, exist_ok=True)
     path = slot_dir / TEX_NAME
+    from koi.paper.collaboration.session import get_session
+
+    session = get_session(project_id, normalized)
+    if session is not None and not session.closed:
+        if body.content == session.document.to_string():
+            flushed = session.flush()
+            return {"ok": True, "tex_mtime": flushed.get("tex_mtime") or path.stat().st_mtime}
+        imported = session.import_external(body.content, source="api")
+        if imported.conflict:
+            raise HTTPException(
+                409,
+                imported.reason or "Не удалось применить изменение поверх collaborative session",
+            )
+        flushed = session.flush()
+        return {"ok": True, "tex_mtime": flushed.get("tex_mtime") or path.stat().st_mtime}
     path.write_text(body.content, encoding="utf-8")
     return {"ok": True, "tex_mtime": path.stat().st_mtime}
 

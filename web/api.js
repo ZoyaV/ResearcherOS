@@ -353,6 +353,66 @@ export const KoiApi = {
       method: "PUT",
       body: JSON.stringify({ content }),
     }),
+  getPaperCollab: (projectId, slug = "default") =>
+    api(`/projects/${projectId}/papers/${encodeURIComponent(slug)}/collab`),
+  flushPaperCollab: (projectId, slug = "default") =>
+    api(`/projects/${projectId}/papers/${encodeURIComponent(slug)}/collab/flush`, {
+      method: "POST",
+    }),
+  getPaperCollabProposal: (projectId, slug = "default") =>
+    api(`/projects/${projectId}/papers/${encodeURIComponent(slug)}/collab/proposal`),
+  acceptPaperCollabProposal: (projectId, slug, proposalId) =>
+    api(`/projects/${projectId}/papers/${encodeURIComponent(slug)}/collab/proposal/accept`, {
+      method: "POST",
+      body: JSON.stringify({ proposal_id: proposalId }),
+    }),
+  rejectPaperCollabProposal: (projectId, slug, proposalId) =>
+    api(`/projects/${projectId}/papers/${encodeURIComponent(slug)}/collab/proposal/reject`, {
+      method: "POST",
+      body: JSON.stringify({ proposal_id: proposalId }),
+    }),
+  acceptPaperCollabProposalHunk: (projectId, slug, proposalId, hunkId) =>
+    api(`/projects/${projectId}/papers/${encodeURIComponent(slug)}/collab/proposal/hunk/accept`, {
+      method: "POST",
+      body: JSON.stringify({ proposal_id: proposalId, hunk_id: hunkId }),
+    }),
+  rejectPaperCollabProposalHunk: (projectId, slug, proposalId, hunkId) =>
+    api(`/projects/${projectId}/papers/${encodeURIComponent(slug)}/collab/proposal/hunk/reject`, {
+      method: "POST",
+      body: JSON.stringify({ proposal_id: proposalId, hunk_id: hunkId }),
+    }),
+  registerPaperCollabAgentTask: (projectId, slug = "default", taskId = null) =>
+    api(`/projects/${projectId}/papers/${encodeURIComponent(slug)}/collab/agent-task`, {
+      method: "POST",
+      body: JSON.stringify(taskId ? { task_id: taskId } : {}),
+    }),
+  paperCollabWsUrl: (projectId, slug = "default", params = {}) => {
+    const httpBase = apiBase();
+    const wsBase = httpBase.replace(/^http/i, "ws");
+    const query = new URLSearchParams(
+      Object.fromEntries(
+        Object.entries(params).filter(([, value]) => value != null && value !== "")
+      )
+    ).toString();
+    return `${wsBase}/projects/${encodeURIComponent(projectId)}/papers/${encodeURIComponent(slug)}/collab${
+      query ? `?${query}` : ""
+    }`;
+  },
+  paperCollabWsFallbackUrl: (projectId, slug = "default", params = {}) => {
+    if (typeof window === "undefined" || !window.location?.hostname) {
+      return "";
+    }
+    const { protocol, hostname } = window.location;
+    const wsProto = protocol === "https:" ? "wss:" : "ws:";
+    const query = new URLSearchParams(
+      Object.fromEntries(
+        Object.entries(params).filter(([, value]) => value != null && value !== "")
+      )
+    ).toString();
+    return `${wsProto}//${hostname}:8010/projects/${encodeURIComponent(projectId)}/papers/${encodeURIComponent(slug)}/collab${
+      query ? `?${query}` : ""
+    }`;
+  },
   compilePaper: (projectId, slug = "default") =>
     api(`/projects/${projectId}/papers/${encodeURIComponent(slug)}/compile`, {
       method: "POST",

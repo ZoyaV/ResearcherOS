@@ -4976,6 +4976,46 @@ textarea.inline-edit-field {
   field-sizing: content;
 }
 
+.paper-proposal-preview {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  box-sizing: border-box;
+  min-height: 100%;
+  padding: 0.35rem 0.85rem 0.35rem 0;
+  background: #12151c;
+  color: #d6deea;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  pointer-events: none;
+}
+
+.paper-proposal-preview.hidden {
+  display: none;
+}
+
+.paper-proposal-preview__insert {
+  color: color-mix(in srgb, var(--lime) 78%, var(--text));
+  background: color-mix(in srgb, var(--lime) 18%, transparent);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--lime) 65%, transparent);
+}
+
+.paper-proposal-preview__delete {
+  color: color-mix(in srgb, var(--pink) 78%, var(--text));
+  background: color-mix(in srgb, var(--pink) 14%, transparent);
+  text-decoration: line-through;
+}
+
+[data-theme="light"] .paper-proposal-preview {
+  background: #f6f8fb;
+  color: #1f2937;
+}
+
 .paper-tex-mirror {
   position: absolute;
   inset: 0;
@@ -5014,13 +5054,34 @@ textarea.inline-edit-field {
   border-left-color: rgba(0, 0, 0, 0.08);
 }
 
-.paper-comment-anchor {
+.paper-comment-anchor,
+.paper-proposal-anchor {
   position: absolute;
   left: 0.35rem;
   right: 0.25rem;
   pointer-events: auto;
   z-index: 2;
   transition: transform 0.18s ease;
+}
+
+.paper-proposal-anchor .paper-comment-card {
+  border-color: color-mix(in srgb, #ffb86c 55%, var(--border));
+}
+
+.paper-proposal-anchor .paper-comment-card__rail {
+  background: linear-gradient(180deg, #ffb86c, var(--orange));
+}
+
+.paper-proposal-diff {
+  max-height: 9rem;
+  margin: 0 0 0.5rem;
+  padding: 0.4rem;
+  overflow: auto;
+  border-radius: 0.35rem;
+  background: var(--pre-bg);
+  color: var(--text);
+  font: 0.64rem/1.4 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  white-space: pre-wrap;
 }
 
 .paper-comment-anchor.is-collapsed {
@@ -5441,6 +5502,21 @@ textarea.inline-edit-field {
 }
 
 .paper-tex-dirty.hidden {
+  display: none;
+}
+
+.paper-collab-status {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: color-mix(in srgb, #3de8ff 70%, var(--text));
+  flex-shrink: 0;
+}
+
+.paper-collab-status.is-conflict {
+  color: #ffb86c;
+}
+
+.paper-collab-status.hidden {
   display: none;
 }
 

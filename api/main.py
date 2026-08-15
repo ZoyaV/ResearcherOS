@@ -5,7 +5,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routers import agents, composites, cursor, knowledge, library, meta, milestones, morphology, pages, paper, programs, projects, review, sync, widgets
+from api.routers import agents, collaboration, composites, cursor, knowledge, library, meta, milestones, morphology, pages, paper, programs, projects, review, sync, widgets
 
 app = FastAPI(
     title="KOI API",
@@ -30,6 +30,7 @@ for router in (
     milestones.router,
     knowledge.router,
     paper.router,
+    collaboration.router,
     review.router,
     morphology.router,
     agents.router,
@@ -54,3 +55,6 @@ def _shutdown() -> None:
     from koi.adapters.project_discovery_watch import stop_project_discovery_watch
 
     stop_project_discovery_watch()
+    from koi.paper.collaboration.session import shutdown_all_sessions
+
+    shutdown_all_sessions()

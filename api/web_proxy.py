@@ -11,6 +11,8 @@ from __future__ import annotations
 import argparse
 import http.client
 import mimetypes
+import select
+import socket
 import sys
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -33,7 +35,7 @@ class KoiWebHandler(SimpleHTTPRequestHandler):
     def log_message(self, fmt, *args):
         sys.stderr.write("%s - %s\n" % (self.address_string(), fmt % args))
 
-    def _proxy_api(self) -> None:
+    def _upstream_path(self) -> str:
         path = self.path
         if path.startswith(API_PREFIX):
             path = path[len(API_PREFIX) :] or "/"
@@ -41,6 +43,64 @@ class KoiWebHandler(SimpleHTTPRequestHandler):
         upstream_path = url.path
         if url.query:
             upstream_path = f"{upstream_path}?{url.query}"
+        return upstream_path
+
+    def _is_websocket(self) -> bool:
+        upgrade = (self.headers.get("Upgrade") or "").lower()
+        connection = (self.headers.get("Connection") or "").lower()
+        return upgrade == "websocket" and "upgrade" in connection
+
+    def _proxy_websocket(self) -> None:
+        upstream_path = self._upstream_path()
+        try:
+            remote = socket.create_connection((self.api_host, self.api_port), timeout=15)
+        except OSError as exc:
+            msg = f'{{"detail":"API unavailable on {self.api_host}:{self.api_port}: {exc}"}}'
+            body_bytes = msg.encode("utf-8")
+            self.send_response(502)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body_bytes)))
+            self.end_headers()
+            self.wfile.write(body_bytes)
+            return
+
+        request = [f"{self.command} {upstream_path} HTTP/1.1", f"Host: {self.api_host}:{self.api_port}"]
+        for key, value in self.headers.items():
+            if key.lower() == "host":
+                continue
+            request.append(f"{key}: {value}")
+        request.append("")
+        request.append("")
+        remote.sendall("\r\n".join(request).encode("latin-1"))
+
+        client = self.connection
+        sockets = [client, remote]
+        try:
+            while True:
+                readable, _, errored = select.select(sockets, [], sockets, 60)
+                if errored:
+                    break
+                if not readable:
+                    continue
+                for sock in readable:
+                    other = remote if sock is client else client
+                    data = sock.recv(65536)
+                    if not data:
+                        return
+                    other.sendall(data)
+        except OSError:
+            return
+        finally:
+            try:
+                remote.close()
+            except OSError:
+                pass
+
+    def _proxy_api(self) -> None:
+        if self._is_websocket():
+            self._proxy_websocket()
+            return
+        upstream_path = self._upstream_path()
 
         content_length = int(self.headers.get("Content-Length", "0") or 0)
         body = self.rfile.read(content_length) if content_length else None

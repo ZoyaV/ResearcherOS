@@ -11,7 +11,8 @@ import {
   computeCostChipHtml,
   mergeComputeCost,
 } from "./compute-cost.js";
-import { KoiApi } from "./api.js?v=20260723b";
+import { KoiApi } from "./api.js?v=20260815d";
+import { createPaperCollabClient } from "./paper-collab.js?v=20260815k";
 import { destroyKanbanDagView, fitKanbanDagView, refreshKanbanDagView } from "./kanban-dag.js?v=20260715a";
 import { clearKanbanMilestones, clearMilestoneBoardFilter, refreshKanbanMilestones } from "./milestones.js?v=20260807e";
 import {
@@ -8741,6 +8742,11 @@ const paperState = {
   texSaving: false,
   texCompiling: false,
   texSavedAt: 0,
+  collabKey: null,
+  collabApplying: false,
+  collabPeers: [],
+  collabProposal: null,
+  collabProposalResolving: false,
   gutterLineCount: 0,
   progressSettingsOpen: false,
   progressDeadlineTimer: null,
@@ -8748,6 +8754,159 @@ const paperState = {
 const PAPER_INBOX_CONFIGURED_KEY = "koi_paper_inbox_configured";
 const PAPER_TEX_POLL_MS = 3000;
 const PAPER_TEX_SAVE_GRACE_MS = 15000;
+const paperCollab = createPaperCollabClient({
+  onState: ({ text, applyToEditor = true }) => {
+    applyRemoteCollabText(text, { applyToEditor });
+  },
+  onPresence: () => {
+    updatePaperCollabUi();
+  },
+  onConflict: (conflict) => {
+    const reason = conflict?.reason || "конфликт с правкой на диске";
+    showPaperToast(`Collaboration: ${reason}`, { variant: "error" });
+    const status = paperEls().texCollab;
+    if (status) {
+      status.textContent = "конфликт — оставьте текущий текст или перезагрузите";
+      status.classList.add("is-conflict");
+      status.classList.remove("hidden");
+    }
+  },
+  onProposal: (proposal, resolution = "") => {
+    paperState.collabProposal = proposal || null;
+    paperState.collabProposalResolving = false;
+    renderPaperCollabProposal();
+    if (!proposal && resolution === "accepted") {
+      showPaperToast("Предложение принято");
+    } else if (!proposal && resolution === "rejected") {
+      showPaperToast("Предложение отклонено");
+    }
+  },
+  onStatus: (status) => {
+    paperState.collabPeers = status?.peers || [];
+    updatePaperCollabUi();
+  },
+  onMaterialized: (event) => {
+    paperState.texDirty = false;
+    if (event?.tex_mtime != null) paperState.lastRemoteTexMtime = event.tex_mtime;
+    paperState.texSavedAt = Date.now();
+    updatePaperSaveUi();
+  },
+});
+
+function updatePaperCollabUi() {
+  const el = paperEls().texCollab;
+  if (!el) return;
+  if (!paperCollab.isActive()) {
+    el.classList.add("hidden");
+    el.classList.remove("is-conflict");
+    return;
+  }
+  el.classList.remove("hidden");
+  if (el.classList.contains("is-conflict")) return;
+  const others = (paperState.collabPeers || []).filter((peer) => peer.peer_id);
+  const count = Math.max(1, others.length);
+  el.textContent = count > 1 ? `live · ${count}` : "live";
+}
+
+function renderPaperCollabProposal() {
+  const els = paperEls();
+  const proposal = paperState.collabProposal;
+  if (els.proposalPreview) {
+    els.proposalPreview.classList.toggle("hidden", !proposal);
+    els.proposalPreview.innerHTML = proposal
+      ? (proposal.segments || [])
+          .map((segment) => {
+            const kind = ["insert", "delete"].includes(segment.kind)
+              ? ` paper-proposal-preview__${segment.kind}`
+              : "";
+            return `<span class="${kind.trim()}">${escapeHtml(segment.text || "")}</span>`;
+          })
+          .join("")
+      : "";
+  }
+  if (els.texInput) els.texInput.readOnly = Boolean(proposal);
+  void renderPaperCommentMargin();
+  requestAnimationFrame(syncPaperLayoutMetrics);
+}
+
+async function resolvePaperCollabProposalHunk(hunkId, resolution) {
+  const proposal = paperState.collabProposal;
+  const paper = activePaperEntry();
+  if (!proposal || !paper || paperState.collabProposalResolving) return;
+  paperState.collabProposalResolving = `${proposal.id}:${hunkId}`;
+  renderPaperCollabProposal();
+  try {
+    if (resolution === "accepted") {
+      const result = await KoiApi.acceptPaperCollabProposalHunk(
+        paper.project_id,
+        paper.slug,
+        proposal.id,
+        hunkId
+      );
+      paperState.collabProposal = result.proposal || null;
+    } else {
+      const result = await KoiApi.rejectPaperCollabProposalHunk(
+        paper.project_id,
+        paper.slug,
+        proposal.id,
+        hunkId
+      );
+      paperState.collabProposal = result.proposal || null;
+    }
+    paperState.collabProposalResolving = false;
+    renderPaperCollabProposal();
+  } catch {
+    paperState.collabProposalResolving = false;
+    renderPaperCollabProposal();
+    showPaperToast("Предложение уже изменилось — проверьте новую версию", {
+      variant: "error",
+    });
+  }
+}
+
+function applyRemoteCollabText(next, { applyToEditor = true } = {}) {
+  const ta = paperEls().texInput;
+  const prev = ta?.value ?? paperState.texText ?? "";
+  if (prev === next || !applyToEditor) {
+    paperState.texText = prev === next ? next : paperState.texText;
+    if (prev === next) paperState.texLines = next.split("\n");
+    return;
+  }
+  const start = ta?.selectionStart ?? 0;
+  const end = ta?.selectionEnd ?? 0;
+  paperState.collabApplying = true;
+  setTexEditorContent(next, { markClean: !paperState.texDirty });
+  if (ta) {
+    const mappedStart = paperCollab.mapOffset(prev, next, start);
+    const mappedEnd = paperCollab.mapOffset(prev, next, end);
+    try {
+      ta.setSelectionRange(mappedStart, mappedEnd);
+    } catch {
+      /* ignore invalid range */
+    }
+  }
+  paperState.collabApplying = false;
+}
+
+async function ensurePaperCollab(projectId, slug) {
+  const key = `${projectId}:${slug}`;
+  if (paperState.collabKey === key && paperCollab.isActive()) return;
+  paperState.collabKey = key;
+  try {
+    await paperCollab.connect(projectId, slug);
+    updatePaperCollabUi();
+  } catch {
+    paperState.collabKey = null;
+    updatePaperCollabUi();
+  }
+}
+
+async function stopPaperCollab() {
+  paperState.collabKey = null;
+  paperState.collabPeers = [];
+  await paperCollab.disconnect();
+  updatePaperCollabUi();
+}
 let paperInboxBootstrapCopied = false;
 let lastPaperInboxMessage = "";
 
@@ -8899,9 +9058,11 @@ function paperEls() {
     texScrollInner: document.getElementById("paper-tex-scroll-inner"),
     texGutter: document.getElementById("paper-tex-gutter"),
     texInput: document.getElementById("paper-tex-input"),
+    proposalPreview: document.getElementById("paper-proposal-preview"),
     texMirror: document.getElementById("paper-tex-mirror"),
     commentMargin: document.getElementById("paper-comment-margin"),
     texDirty: document.getElementById("paper-tex-dirty"),
+    texCollab: document.getElementById("paper-collab-status"),
     texExternalChange: document.getElementById("paper-tex-external-change"),
     texSave: document.getElementById("btn-paper-tex-save"),
     texCompile: document.getElementById("btn-paper-tex-compile"),
@@ -9358,6 +9519,7 @@ async function pollPaperPdfChanges(entry, st) {
 }
 
 async function pollPaperTexChanges(entry, st) {
+  if (paperCollab.isActive()) return;
   if (Date.now() - paperState.texSavedAt < PAPER_TEX_SAVE_GRACE_MS) return;
 
   const remoteMtime = st?.tex_mtime;
@@ -9398,6 +9560,7 @@ async function pollPaperTexChanges(entry, st) {
 function stopPaperPollingAll() {
   stopPaperPolling();
   stopPaperTexPolling();
+  void stopPaperCollab();
 }
 
 function showPaperLoader(step = "Генерация статьи…") {
@@ -9690,16 +9853,33 @@ async function refreshPaperCommentLayout({ rebuildGutter = false } = {}) {
     anchor.dataset.lineTop = String(top);
     anchor.style.top = `${top}px`;
   });
+  margin.querySelectorAll(".paper-proposal-anchor").forEach((anchor) => {
+    const lineNo = Number(anchor.dataset.lineNo || 1);
+    const top = measurePaperLineTop(lineNo);
+    anchor.dataset.lineTop = String(top);
+    anchor.style.top = `${top}px`;
+  });
   layoutPaperCommentAnchors();
 }
 
-function syncTexFromInput() {
+function syncTexFromInput(event) {
   const ta = paperEls().texInput;
   if (!ta) return;
   paperState.texText = ta.value;
   paperState.texLines = ta.value.split("\n");
   paperState.texDirty = true;
   updatePaperSaveUi();
+  if (!paperState.collabApplying && paperCollab.isActive()) {
+    paperEls().texCollab?.classList.remove("is-conflict");
+    paperCollab.queueInput(ta, event);
+    if (!paperState._collabLayoutTimer) {
+      paperState._collabLayoutTimer = setTimeout(() => {
+        paperState._collabLayoutTimer = null;
+        void refreshPaperCommentLayout({ rebuildGutter: true });
+      }, 400);
+    }
+    return;
+  }
   void refreshPaperCommentLayout({ rebuildGutter: true });
 }
 
@@ -9831,7 +10011,8 @@ function syncPaperTexEditorHeight() {
   if (!ta) return;
   const scrollMin = Math.max((els.texScroll?.clientHeight || 0) - 8, 120);
   const mirrorHeight = mirror?.offsetHeight || ta.scrollHeight;
-  const contentHeight = Math.max(mirrorHeight, scrollMin);
+  const proposalHeight = els.proposalPreview?.scrollHeight || 0;
+  const contentHeight = Math.max(mirrorHeight, proposalHeight, scrollMin);
   ta.style.height = `${contentHeight}px`;
   if (els.commentMargin) els.commentMargin.style.minHeight = `${contentHeight}px`;
 }
@@ -9839,7 +10020,9 @@ function syncPaperTexEditorHeight() {
 function layoutPaperCommentAnchors() {
   const margin = paperEls().commentMargin;
   if (!margin) return;
-  const anchors = [...margin.querySelectorAll(".paper-comment-anchor")];
+  const anchors = [
+    ...margin.querySelectorAll(".paper-comment-anchor, .paper-proposal-anchor"),
+  ];
   anchors.sort(
     (a, b) => Number(a.dataset.lineTop || 0) - Number(b.dataset.lineTop || 0)
   );
@@ -9864,8 +10047,14 @@ function bindPaperTexEditor() {
   if (!ta || ta.dataset.editorBound === "1") return;
   ta.dataset.editorBound = "1";
 
-  ta.addEventListener("input", () => {
-    syncTexFromInput();
+  ta.addEventListener("beforeinput", () => {
+    if (paperCollab.isActive()) paperCollab.rememberCaret(ta);
+  });
+  ta.addEventListener("mousedown", () => {
+    if (paperCollab.isActive()) paperCollab.rememberCaret(ta);
+  });
+  ta.addEventListener("input", (event) => {
+    syncTexFromInput(event);
   });
   ta.addEventListener("mouseup", () => {
     requestAnimationFrame(syncPaperTextSelection);
@@ -9875,6 +10064,13 @@ function bindPaperTexEditor() {
   });
   ta.addEventListener("select", () => {
     requestAnimationFrame(syncPaperTextSelection);
+    if (paperCollab.isActive()) {
+      paperCollab.sendPresence({
+        cursor: ta.selectionStart,
+        selection: [ta.selectionStart, ta.selectionEnd],
+        active_file: "main.tex",
+      });
+    }
   });
   ta.addEventListener("keydown", (event) => {
     if ((event.metaKey || event.ctrlKey) && event.key === "s") {
@@ -9918,7 +10114,9 @@ async function savePaperTex({ quiet = false } = {}) {
   paperState.texSaving = true;
   updatePaperSaveUi();
   try {
-    const res = await KoiApi.savePaperTex(entry.project_id, entry.slug, content);
+    const res = paperCollab.isActive()
+      ? await KoiApi.flushPaperCollab(entry.project_id, entry.slug)
+      : await KoiApi.savePaperTex(entry.project_id, entry.slug, content);
     paperState.texDirty = false;
     paperState.texText = content;
     paperState.texLines = content.split("\n");
@@ -10075,9 +10273,56 @@ function paperCommentComposeHtml() {
   </div>`;
 }
 
+function paperProposalAnchorHtml(proposal, hunk) {
+  const start = Math.max(1, Number(hunk.line_start) || 1);
+  const end = Math.max(start, Number(hunk.line_end) || start);
+  const lineTop = measurePaperLineTop(start);
+  const source =
+    proposal.source === "cursor-buffer"
+      ? "Cursor · не сохранено"
+      : proposal.source === "agent"
+        ? "Агент"
+        : "main.tex";
+  const resolving =
+    paperState.collabProposalResolving === `${proposal.id}:${hunk.id}`;
+  return `<div class="paper-proposal-anchor" data-proposal-id="${escapeHtml(proposal.id)}" data-hunk-id="${escapeHtml(hunk.id)}" data-line-no="${start}" data-line-top="${lineTop}" style="top:${lineTop}px">
+    <article class="paper-comment-card">
+      <div class="paper-comment-card__rail" aria-hidden="true"></div>
+      <div class="paper-comment-card__content">
+        <header class="paper-comment-card__head">
+          <span class="paper-comment-card__badge">L${start}${end !== start ? `–${end}` : ""}</span>
+          <span class="paper-comment-card__status is-stale">${escapeHtml(source)}</span>
+        </header>
+        <pre class="paper-proposal-diff">${escapeHtml(hunk.diff || "")}</pre>
+        <div class="paper-comment-card__actions paper-comment-card__actions--compact">
+          <button type="button" class="paper-comment-btn" data-proposal-hunk-reject="${escapeHtml(hunk.id)}" ${resolving ? "disabled" : ""}>Отклонить</button>
+          <button type="button" class="paper-comment-btn paper-comment-btn--primary" data-proposal-hunk-accept="${escapeHtml(hunk.id)}" ${resolving ? "disabled" : ""}>Принять</button>
+        </div>
+      </div>
+    </article>
+  </div>`;
+}
+
 function bindPaperCommentMarginEvents() {
   const margin = paperEls().commentMargin;
   if (!margin) return;
+
+  margin.querySelectorAll("[data-proposal-hunk-accept]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      void resolvePaperCollabProposalHunk(
+        btn.getAttribute("data-proposal-hunk-accept"),
+        "accepted"
+      );
+    });
+  });
+  margin.querySelectorAll("[data-proposal-hunk-reject]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      void resolvePaperCollabProposalHunk(
+        btn.getAttribute("data-proposal-hunk-reject"),
+        "rejected"
+      );
+    });
+  });
 
   margin.querySelectorAll(".paper-comment-anchor.is-collapsed[data-comment-id]").forEach((anchor) => {
     anchor.addEventListener("click", () => {
@@ -10153,6 +10398,10 @@ async function renderPaperCommentMargin() {
   });
 
   const parts = [];
+  const proposal = paperState.collabProposal;
+  for (const hunk of proposal?.hunks || []) {
+    parts.push(paperProposalAnchorHtml(proposal, hunk));
+  }
   if (paperState.composeOpen) parts.push(paperCommentComposeHtml());
   for (const comment of comments) {
     const expanded = comment.id === paperState.activeCommentId && !paperState.composeOpen;
@@ -10234,6 +10483,9 @@ async function loadPaperWorkspace(projectId, slug, { pdfExists = false, pdfStamp
     paperState.texLines = [];
   }
   await loadPaperComments(projectId, slug);
+  if (texLoaded) {
+    void ensurePaperCollab(projectId, slug);
+  }
 
   if (pdfExists) {
     paperState.lastRemotePdfMtime = pdfStamp || null;

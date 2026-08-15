@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20260811d" />
+  <link rel="stylesheet" href="styles.css?v=20260815d" />
   <script>
     (function () {
       var t = localStorage.getItem("koi-theme");
@@ -724,6 +724,7 @@
                 <span class="paper-pane__file">main.tex</span>
               </div>
               <span id="paper-tex-dirty" class="paper-tex-dirty hidden" aria-live="polite">не сохранено</span>
+              <span id="paper-collab-status" class="paper-collab-status hidden" aria-live="polite"></span>
               <div id="paper-tex-external-change" class="paper-tex-external-change hidden" role="status">
                 <span class="paper-tex-external-change__text">main.tex изменён на диске</span>
                 <button type="button" id="btn-paper-tex-reload" class="paper-comment-btn paper-comment-btn--primary">Перезагрузить</button>
@@ -741,6 +742,7 @@
                   <div id="paper-tex-gutter" class="paper-tex-gutter" aria-hidden="true"></div>
                   <div class="paper-tex-input-wrap">
                     <textarea id="paper-tex-input" class="paper-tex-input" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Редактор main.tex"></textarea>
+                    <div id="paper-proposal-preview" class="paper-proposal-preview hidden" aria-label="Предлагаемые изменения main.tex"></div>
                     <div id="paper-tex-mirror" class="paper-tex-mirror" aria-hidden="true"></div>
                   </div>
                   <div id="paper-comment-margin" class="paper-comment-margin" aria-label="Комментарии к строкам"></div>
@@ -826,6 +828,6 @@
 
   <div id="koi-widgets-root" aria-live="polite"></div>
 
-  <script type="module" src="app.js?v=20260807m"></script>
+  <script type="module" src="app.js?v=20260815k"></script>
 </body>
 </html>
