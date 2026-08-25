@@ -1,5 +1,7 @@
-import { KoiApi } from "./api.js?v=20260811e";
+import { KoiApi } from "./api.js?v=20260821e";
 import { renderMarkdown } from "./markdown.js";
+import { initPresentation } from "./morphology-presentation.js?v=20260821h";
+import { initFormulaLessons } from "./morphology-formula.js?v=20260821h";
 
 const THEME_STORAGE_KEY = "koi-theme";
 const MORPH_HANDOFF_KEY = "koi-morph-paper";
@@ -54,7 +56,7 @@ const COVERAGE_LABELS = {
 
 /** Hues for chapter accents — readable on both themes at 72%/60%. */
 const CHAPTER_HUES = [190, 320, 265, 30, 95, 350, 220, 160, 55, 285];
-const LAYOUT_STORAGE_PREFIX = "koi-morph-layout";
+const LAYOUT_STORAGE_PREFIX = "koi-morph-layout-v2";
 
 let projectId = "";
 let paperUrl = "";
@@ -77,6 +79,9 @@ const edgeEls = [];
 let articleData = null;
 let articleSplitOpen = true;
 const ARTICLE_SPLIT_KEY = "koi-morph-article-split";
+const INSPECTOR_WIDTH_KEY = "koi-morph-inspector-width";
+let presentation = null;
+let formulaLessons = null;
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -151,9 +156,19 @@ function nodeSection(node) {
 }
 
 function chapterRank(chapter) {
-  if (/^\d+$/.test(chapter)) return [1, Number(chapter), ""];
-  if (/^[A-Z]$/.test(chapter)) return [3, 0, chapter];
-  return [/^abstract$/i.test(chapter) ? 0 : 2, 0, chapter.toLowerCase()];
+  const text = String(chapter || "").trim();
+  const lower = text.toLowerCase();
+  if (/^abstract$/i.test(text)) return [0, 0, ""];
+  if (/^\d+$/.test(text)) return [2, Number(text), ""];
+  if (/^(introduction|overview)$/i.test(text)) return [1, 0, lower];
+  if (/background|related work|preliminar/i.test(text)) return [1, 1, lower];
+  if (/method|approach|model|architecture/i.test(text)) return [1, 2, lower];
+  if (/experiment|evaluation|setup|implementation/i.test(text)) return [1, 3, lower];
+  if (/result|analysis|discussion|ablation/i.test(text)) return [1, 4, lower];
+  if (/limitation/i.test(text)) return [1, 5, lower];
+  if (/conclusion|summary|future work/i.test(text)) return [3, 0, lower];
+  if (/^[A-Z]$/.test(text) || /appendix|supplement/i.test(text)) return [4, 0, lower];
+  return [3, 1, lower];
 }
 
 function compareChapters(a, b) {
@@ -439,10 +454,13 @@ function renderArticle() {
 
   bindArticleMarks(bodySplit);
   bindArticleMarks(bodyFull);
+  formulaLessons?.decorate(bodySplit);
+  formulaLessons?.decorate(bodyFull);
 
   const showSplit = available && articleSplitOpen && activeTab === "graph";
   pane?.classList.toggle("hidden", !showSplit);
   wrap?.classList.toggle("has-article", showSplit);
+  presentation?.sync();
 }
 
 function syncArticleSelection() {
@@ -644,6 +662,8 @@ function renderRun() {
   const canvasWrap = document.getElementById("morph-canvas-wrap");
   const runBtn = document.getElementById("morph-run");
   const graph = currentRun?.morphology;
+  presentation?.sync();
+  formulaLessons?.setAnalysis(currentRun?.math_analysis || null);
 
   const staged = Boolean(currentRun) && !graph;
   empty?.classList.toggle("hidden", Boolean(currentRun));
@@ -673,40 +693,26 @@ function renderRun() {
 
 function layoutGraph(nodes, edges) {
   const byId = new Map(nodes.map((node) => [node.id, node]));
-  const incoming = new Map(nodes.map((node) => [node.id, []]));
-  const outgoing = new Map(nodes.map((node) => [node.id, []]));
   const valid = edges.filter((edge) => byId.has(edge.from) && byId.has(edge.to));
-  for (const edge of valid) {
-    outgoing.get(edge.from).push(edge);
-    incoming.get(edge.to).push(edge);
-  }
-
-  // Longest-path layering over a topological order; nodes left in cycles land last.
-  const indegree = new Map(nodes.map((node) => [node.id, incoming.get(node.id).length]));
-  const queue = nodes.filter((node) => indegree.get(node.id) === 0).map((node) => node.id);
-  const order = [];
-  while (queue.length) {
-    const id = queue.shift();
-    order.push(id);
-    for (const edge of outgoing.get(id)) {
-      indegree.set(edge.to, indegree.get(edge.to) - 1);
-      if (indegree.get(edge.to) === 0) queue.push(edge.to);
-    }
-  }
-  for (const node of nodes) if (!order.includes(node.id)) order.push(node.id);
-
-  const layer = new Map(nodes.map((node) => [node.id, 0]));
-  for (const id of order) {
-    for (const edge of outgoing.get(id)) {
-      layer.set(edge.to, Math.max(layer.get(edge.to) || 0, (layer.get(id) || 0) + 1));
-    }
-  }
-
-  const columns = new Map();
+  const nodeOrder = new Map(nodes.map((node, index) => [node.id, index]));
+  const chapterNames = [
+    ...new Set(nodes.map((node) => nodeSection(node).chapter || "Без раздела")),
+  ].sort(compareChapters);
+  const columns = new Map(chapterNames.map((chapter, index) => [index, []]));
+  const chapterColumns = new Map(chapterNames.map((chapter, index) => [chapter, index]));
   for (const node of nodes) {
-    const index = layer.get(node.id) || 0;
-    if (!columns.has(index)) columns.set(index, []);
-    columns.get(index).push(node.id);
+    const chapter = nodeSection(node).chapter || "Без раздела";
+    columns.get(chapterColumns.get(chapter)).push(node.id);
+  }
+  for (const column of columns.values()) {
+    column.sort((leftId, rightId) => {
+      const left = nodeSection(byId.get(leftId));
+      const right = nodeSection(byId.get(rightId));
+      return (
+        left.number.localeCompare(right.number, undefined, { numeric: true }) ||
+        (nodeOrder.get(leftId) || 0) - (nodeOrder.get(rightId) || 0)
+      );
+    });
   }
 
   const positions = new Map();
@@ -902,7 +908,7 @@ function renderGraph(graph) {
               : ""
           }
         </span>
-        <span class="morph-node-text">${escapeHtml(shortText(node.statement, 118))}</span>
+        <span class="morph-node-text">${escapeHtml(node.statement)}</span>
         <span class="morph-node-where">${escapeHtml(shortText(section.title || "без якоря", 34))}</span>
       </div>`;
     nodeLayer.appendChild(holder);
@@ -1008,11 +1014,22 @@ function updateHighlight() {
     !selectedNodeId || id === selectedNodeId || upstream.has(id) || downstream.has(id);
   const inChapter = (el) => !chapterFilter || el.dataset.chapter === chapterFilter;
 
-  for (const [id, { div }] of nodeEls) {
-    div.classList.toggle("is-selected", id === selectedNodeId);
+  let selectedHolder = null;
+  for (const [id, { holder, div }] of nodeEls) {
+    const selected = id === selectedNodeId;
+    holder.setAttribute("height", String(NODE_H));
+    div.classList.toggle("is-selected", selected);
     div.classList.toggle("is-upstream", upstream.has(id));
     div.classList.toggle("is-downstream", downstream.has(id));
     div.classList.toggle("is-faded", !(inSubgraph(id) && inChapter(div)));
+    if (selected) {
+      holder.setAttribute("height", String(Math.max(NODE_H, Math.ceil(div.scrollHeight) + 2)));
+      selectedHolder = holder;
+    }
+  }
+  if (selectedHolder?.parentNode) {
+    selectedHolder.parentNode.appendChild(selectedHolder);
+    requestAnimationFrame(() => keepExpandedNodeVisible(selectedHolder));
   }
 
   for (const { group, edge } of edgeEls) {
@@ -1029,6 +1046,26 @@ function updateHighlight() {
   clearBtn?.classList.toggle("hidden", !selectedNodeId && !chapterFilter);
   const explainBtn = document.getElementById("morph-explain-subgraph");
   explainBtn?.classList.toggle("hidden", !selectedNodeId);
+}
+
+function keepExpandedNodeVisible(holder) {
+  const svg = document.getElementById("morph-canvas");
+  const nodeId = holder?.firstElementChild?.dataset.nodeId;
+  if (!svg || !nodeId || nodeId !== selectedNodeId) return;
+  const bounds = svg.getBoundingClientRect();
+  const card = holder.getBoundingClientRect();
+  if (!bounds.width || !bounds.height || !card.width || !card.height) return;
+  const margin = 16;
+  let dx = 0;
+  let dy = 0;
+  if (card.left < bounds.left + margin) dx = bounds.left + margin - card.left;
+  if (card.right > bounds.right - margin) dx = bounds.right - margin - card.right;
+  if (card.top < bounds.top + margin) dy = bounds.top + margin - card.top;
+  if (card.bottom > bounds.bottom - margin) dy = bounds.bottom - margin - card.bottom;
+  if (!dx && !dy) return;
+  viewTransform.x += dx;
+  viewTransform.y += dy;
+  applyTransform();
 }
 
 function applyTransform() {
@@ -1165,6 +1202,7 @@ function renderLegend(nodes) {
 
 function clearInspector() {
   selectedNodeId = "";
+  formulaLessons?.showNode();
   document.getElementById("morph-inspector-empty")?.classList.remove("hidden");
   const body = document.getElementById("morph-inspector-body");
   if (body) {
@@ -1179,6 +1217,7 @@ function selectNode(nodeId, { scrollArticle = true } = {}) {
   const graph = graphData;
   const node = nodeIndex.get(nodeId);
   if (!graph || !node) return;
+  formulaLessons?.showNode();
   selectedNodeId = nodeId;
   updateHighlight();
   if (scrollArticle) syncArticleSelection();
@@ -1387,8 +1426,110 @@ function initTheme() {
   });
 }
 
+function initInspectorResize() {
+  const page = document.querySelector(".morph-page");
+  const inspector = document.querySelector(".morph-inspector");
+  const handle = document.getElementById("morph-inspector-resizer");
+  const expand = document.getElementById("morph-inspector-expand");
+  if (!page || !inspector || !handle) return;
+
+  const limits = () => ({
+    min: 260,
+    max: Math.max(320, Math.min(960, Math.round(window.innerWidth * 0.55))),
+  });
+  const syncExpand = (width) => {
+    if (!expand) return;
+    const wide = width >= 480;
+    expand.setAttribute("aria-pressed", wide ? "true" : "false");
+    expand.textContent = wide ? "Уже" : "Шире";
+  };
+  const setWidth = (value, persist = false) => {
+    const { min, max } = limits();
+    const width = Math.round(Math.min(max, Math.max(min, Number(value) || 320)));
+    page.style.setProperty("--morph-inspector-width", `${width}px`);
+    handle.setAttribute("aria-valuemin", String(min));
+    handle.setAttribute("aria-valuemax", String(max));
+    handle.setAttribute("aria-valuenow", String(width));
+    syncExpand(width);
+    if (persist) {
+      try {
+        localStorage.setItem(INSPECTOR_WIDTH_KEY, String(width));
+      } catch {
+        /* private mode */
+      }
+    }
+  };
+
+  try {
+    setWidth(Number(localStorage.getItem(INSPECTOR_WIDTH_KEY)) || 320);
+  } catch {
+    setWidth(320);
+  }
+
+  let startX = 0;
+  let startWidth = 320;
+  let resizing = false;
+  const finish = (event) => {
+    if (!resizing) return;
+    resizing = false;
+    if (handle.hasPointerCapture(event.pointerId)) {
+      handle.releasePointerCapture(event.pointerId);
+    }
+    document.body.classList.remove("is-resizing-inspector");
+    setWidth(inspector.getBoundingClientRect().width, true);
+  };
+  handle.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    startX = event.clientX;
+    startWidth = inspector.getBoundingClientRect().width;
+    resizing = true;
+    handle.setPointerCapture(event.pointerId);
+    document.body.classList.add("is-resizing-inspector");
+    event.preventDefault();
+  });
+  handle.addEventListener("pointermove", (event) => {
+    if (!handle.hasPointerCapture(event.pointerId)) return;
+    setWidth(startWidth + startX - event.clientX);
+  });
+  handle.addEventListener("pointerup", finish);
+  handle.addEventListener("pointercancel", finish);
+  handle.addEventListener("dblclick", () => setWidth(320, true));
+  expand?.addEventListener("click", () => {
+    const current = inspector.getBoundingClientRect().width;
+    setWidth(current >= 480 ? 320 : Math.min(640, limits().max), true);
+  });
+  handle.addEventListener("keydown", (event) => {
+    if (!["ArrowLeft", "ArrowRight", "Home"].includes(event.key)) return;
+    const current = inspector.getBoundingClientRect().width;
+    const next =
+      event.key === "Home"
+        ? 320
+        : current + (event.key === "ArrowLeft" ? 24 : -24);
+    setWidth(next, true);
+    event.preventDefault();
+  });
+  window.addEventListener("resize", () => {
+    if (window.innerWidth <= 1200) return;
+    setWidth(inspector.getBoundingClientRect().width);
+  });
+}
+
 async function init() {
   initTheme();
+  initInspectorResize();
+  presentation = initPresentation({
+    getProjectId: () => projectId,
+    getMorphologyRunId: () => currentRun?.run_id || "",
+    getGraph: () => currentRun?.morphology || null,
+    getPaper: () => paper || {},
+    getMath: () => currentRun?.math_analysis || null,
+    canStage: () => Boolean(currentRun?.morphology && currentRun?.math_analysis),
+    copyPrompt,
+    setStatus,
+  });
+  formulaLessons = initFormulaLessons({
+    onSelectNode: (nodeId) => selectNode(nodeId),
+  });
   try {
     const saved = localStorage.getItem(ARTICLE_SPLIT_KEY);
     if (saved === "0") articleSplitOpen = false;

@@ -1,5 +1,10 @@
 /** API base URL: same port via /api proxy (koi_web_proxy.py), else direct :8010. */
 export function apiBase() {
+  if (typeof window !== "undefined" && window.__KOI_API_BASE__) {
+    return new URL(String(window.__KOI_API_BASE__), window.location.origin)
+      .toString()
+      .replace(/\/$/, "");
+  }
   if (typeof window !== "undefined" && window.__HUB__) {
     return window.location.origin;
   }
@@ -201,6 +206,25 @@ export const KoiApi = {
     api(`/projects/${encodeURIComponent(projectId)}/morphology/${encodeURIComponent(runId)}`, {
       method: "DELETE",
     }),
+  stageMorphologyPresentation: (projectId, runId) =>
+    api(
+      `/projects/${encodeURIComponent(projectId)}/morphology/${encodeURIComponent(
+        runId
+      )}/presentations/stage`,
+      { method: "POST" }
+    ),
+  listMorphologyPresentations: (projectId, runId) =>
+    api(
+      `/projects/${encodeURIComponent(projectId)}/morphology/${encodeURIComponent(
+        runId
+      )}/presentations`
+    ),
+  getMorphologyPresentation: (projectId, runId, presentationId) =>
+    api(
+      `/projects/${encodeURIComponent(projectId)}/morphology/${encodeURIComponent(
+        runId
+      )}/presentations/${encodeURIComponent(presentationId)}`
+    ),
   generateRelatedWorks: (projectId, { problem = "", cluster_keys = [] } = {}) =>
     api(`/projects/${projectId}/paper-question-agent/related-works`, {
       method: "POST",
@@ -359,6 +383,10 @@ export const KoiApi = {
     api(`/projects/${projectId}/papers/${encodeURIComponent(slug)}/collab/flush`, {
       method: "POST",
     }),
+  getPaperCollabNetwork: (projectId, slug = "default", peer = "") =>
+    api(
+      `/projects/${projectId}/papers/${encodeURIComponent(slug)}/collab/network?peer=${encodeURIComponent(peer)}`
+    ),
   getPaperCollabProposal: (projectId, slug = "default") =>
     api(`/projects/${projectId}/papers/${encodeURIComponent(slug)}/collab/proposal`),
   acceptPaperCollabProposal: (projectId, slug, proposalId) =>

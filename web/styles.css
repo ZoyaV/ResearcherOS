@@ -3847,8 +3847,8 @@ a.btn {
 
 .card-live-metrics-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 0.65rem;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.75rem;
 }
 
 .card-live-metric {
@@ -3863,6 +3863,9 @@ a.btn {
 .card-live-metric img {
   width: 100%;
   height: auto;
+  max-height: 520px;
+  object-fit: contain;
+  object-position: top;
   border-radius: 6px;
   border: 1px solid var(--border);
   background: #111;
@@ -13678,8 +13681,9 @@ button.kb-doc {
 }
 
 .morph-page {
+  --morph-inspector-width: 20rem;
   display: grid;
-  grid-template-columns: 19rem minmax(0, 1fr) 20rem;
+  grid-template-columns: 19rem minmax(0, 1fr) var(--morph-inspector-width);
   gap: 1px;
   flex: 1;
   min-height: 0;
@@ -14020,10 +14024,17 @@ button.kb-doc {
 .morph-canvas-wrap {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 0.5rem;
   height: 100%;
   min-height: 26rem;
   min-width: 0;
+}
+
+.morph-canvas-wrap > .morph-prompt-block {
+  grid-column: 1 / -1;
+  max-width: none;
+  margin: 0;
 }
 
 .morph-canvas-wrap.has-article {
@@ -14083,6 +14094,128 @@ button.kb-doc {
   min-height: 0;
   overflow: auto;
   padding: 0.85rem 1rem 1.4rem;
+}
+
+.morph-article-body .ltx_document {
+  width: min(100%, 56rem);
+  margin: 0 auto;
+  color: var(--text);
+  font-size: 0.88rem;
+  line-height: 1.62;
+  overflow-wrap: anywhere;
+}
+
+.morph-article-body .ltx_document > .ltx_title_document,
+.morph-article-body .ltx_title_document {
+  max-width: 48rem;
+  margin: 0.4rem auto 0.85rem;
+  font-family: Syne, sans-serif;
+  font-size: clamp(1.25rem, 2.4vw, 1.8rem);
+  line-height: 1.2;
+  text-align: center;
+}
+
+.morph-article-body .ltx_authors,
+.morph-article-body .ltx_dates {
+  margin: 0.4rem auto 1rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.morph-article-body .ltx_abstract {
+  margin: 1.2rem 0 1.8rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--purple);
+  border-radius: 0.65rem;
+  background: color-mix(in srgb, var(--purple) 6%, transparent);
+}
+
+.morph-article-body .ltx_abstract_heading {
+  margin-top: 0;
+}
+
+.morph-article-body .ltx_section {
+  margin-top: 1.8rem;
+}
+
+.morph-article-body :is(h1, h2, h3, h4, h5, h6) {
+  margin: 1.25rem 0 0.55rem;
+  color: var(--text);
+  font-family: Syne, sans-serif;
+  line-height: 1.28;
+}
+
+.morph-article-body h2 { font-size: 1.2rem; }
+.morph-article-body h3 { font-size: 1.05rem; }
+.morph-article-body h4 { font-size: 0.96rem; }
+.morph-article-body h5,
+.morph-article-body h6 { font-size: 0.88rem; }
+
+.morph-article-body .ltx_p {
+  margin: 0 0 0.85rem;
+}
+
+.morph-article-body .ltx_ref,
+.morph-article-body .ltx_cite a {
+  color: var(--link);
+}
+
+.morph-article-body .ltx_figure {
+  margin: 1.4rem auto;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.7rem;
+  background: color-mix(in srgb, var(--bg-elevated) 92%, var(--bg));
+  text-align: center;
+}
+
+.morph-article-body .ltx_figure img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  border-radius: 0.4rem;
+  background: #fff;
+}
+
+.morph-article-body .ltx_caption {
+  display: block;
+  margin-top: 0.65rem;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.morph-article-body table.ltx_equation,
+.morph-article-body .ltx_table {
+  display: block;
+  width: 100%;
+  margin: 1rem 0;
+  overflow-x: auto;
+}
+
+.morph-article-body math[display="block"] {
+  display: block;
+  min-width: max-content;
+  padding: 0.35rem 0.5rem;
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.morph-article-body .ltx_bibliography {
+  font-size: 0.78rem;
+}
+
+.morph-article-body .ltx_bibitem {
+  margin-bottom: 0.55rem;
+}
+
+.morph-article-body
+  :is(.ltx_page_navbar, .ltx_TOC, .arxiv-html-header, .ds-announcement, dialog) {
+  display: none !important;
 }
 
 .morph-article-empty {
@@ -14356,6 +14489,13 @@ button.kb-doc {
   box-shadow: var(--glow-cyan);
 }
 
+.morph-node.is-selected .morph-node-text {
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+}
+
 .morph-node.is-upstream {
   border-color: color-mix(in srgb, var(--orange) 65%, transparent);
 }
@@ -14560,7 +14700,457 @@ button.kb-doc {
 /* ---- inspector */
 
 .morph-inspector {
+  position: relative;
   padding: 1.1rem 1rem;
+}
+
+.morph-inspector-resizer {
+  position: absolute;
+  z-index: 8;
+  top: 0;
+  bottom: 0;
+  left: -5px;
+  width: 10px;
+  cursor: col-resize;
+  touch-action: none;
+}
+
+.morph-inspector-resizer::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 4px;
+  width: 2px;
+  background: color-mix(in srgb, var(--cyan) 38%, var(--border));
+  content: "";
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.morph-inspector-resizer:hover::after,
+.morph-inspector-resizer:focus-visible::after,
+.morph-body.is-resizing-inspector .morph-inspector-resizer::after {
+  background: var(--cyan);
+  box-shadow: var(--glow-cyan);
+}
+
+.morph-body.is-resizing-inspector {
+  cursor: col-resize;
+  user-select: none;
+}
+
+.morph-inspector-tabs {
+  position: sticky;
+  z-index: 4;
+  top: -1.1rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 0.25rem;
+  margin: -1.1rem -1rem 1rem;
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-elevated) 92%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+.morph-inspector-tab {
+  min-height: 2rem;
+  border: 1px solid transparent;
+  border-radius: 0.45rem;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.morph-inspector-tab:hover,
+.morph-inspector-tab.is-active {
+  border-color: color-mix(in srgb, var(--cyan) 38%, var(--border));
+  background: color-mix(in srgb, var(--cyan) 9%, transparent);
+  color: var(--text);
+}
+
+.morph-inspector-expand {
+  min-height: 2rem;
+  padding: 0 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 0.45rem;
+  background: color-mix(in srgb, var(--cyan) 8%, transparent);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.morph-inspector-expand[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--cyan) 45%, var(--border));
+  background: color-mix(in srgb, var(--cyan) 16%, transparent);
+}
+
+.morph-formula-note {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  margin: 0 0.12rem;
+  padding: 0 0.25rem;
+  border: 1px solid color-mix(in srgb, var(--purple) 55%, var(--border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--purple) 10%, var(--bg-elevated));
+  color: var(--purple);
+  font: 700 0.64rem/1 Outfit, sans-serif;
+  vertical-align: super;
+  cursor: pointer;
+}
+
+.morph-formula-note:hover,
+.morph-formula-note.is-active {
+  border-color: var(--purple);
+  background: color-mix(in srgb, var(--purple) 22%, var(--bg-elevated));
+  color: var(--text);
+}
+
+.morph-formula-panel {
+  padding-bottom: 1rem;
+}
+
+.morph-formula-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.morph-formula-position {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.morph-formula-position strong {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--purple) 18%, var(--bg-elevated));
+  color: var(--purple);
+}
+
+.morph-formula-position span,
+.morph-formula-language span {
+  font-size: 0.65rem;
+  color: var(--muted);
+}
+
+.morph-formula-language {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.morph-formula-language select {
+  min-height: 1.9rem;
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  background: var(--surface-input);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.72rem;
+}
+
+.morph-formula-math,
+.morph-formula-latex {
+  display: block;
+  margin: 0.25rem 0 1rem;
+  padding: 0.9rem 0.75rem;
+  overflow-x: auto;
+  border: 1px solid color-mix(in srgb, var(--purple) 30%, var(--border));
+  border-radius: 0.65rem;
+  background: color-mix(in srgb, var(--purple) 6%, var(--code-bg));
+  color: var(--text);
+  text-align: center;
+}
+
+.morph-formula-math math {
+  font-size: 1.08rem;
+}
+
+.morph-formula-section {
+  margin-top: 1.1rem;
+}
+
+.morph-formula-section > h4 {
+  margin: 0 0 0.5rem;
+  color: var(--muted);
+  font-size: 0.68rem;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.morph-formula-section h5,
+.morph-formula-section p {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.morph-formula-symbols {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.morph-formula-symbol {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.35rem;
+  min-width: 0;
+  padding: 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 0.55rem;
+  background: color-mix(in srgb, var(--bg-elevated) 84%, var(--bg));
+}
+
+.morph-formula-symbol-math {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  padding: 0.35rem 0.45rem;
+  overflow-x: auto;
+  border-radius: 0.35rem;
+  background: var(--code-bg);
+  color: var(--purple);
+  font-size: 0.88rem;
+  text-align: left;
+}
+
+.morph-formula-symbol-math math {
+  min-width: max-content;
+}
+
+.morph-formula-symbol p {
+  margin: 0;
+}
+
+.morph-formula-domain {
+  color: var(--muted);
+  font-size: 0.7rem !important;
+}
+
+.morph-formula-parts,
+.morph-formula-steps {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.morph-formula-parts li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.4rem;
+  min-width: 0;
+  padding: 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, var(--bg-elevated) 84%, var(--bg));
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.morph-formula-parts p {
+  margin: 0;
+}
+
+.morph-formula-snippet-latex,
+.morph-formula-snippet-text {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0.35rem 0.45rem;
+  overflow-x: auto;
+  border-radius: 0.35rem;
+  background: var(--code-bg);
+  color: var(--purple);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.73rem;
+  line-height: 1.45;
+  white-space: nowrap;
+}
+
+.morph-formula-snippet-text {
+  color: var(--text);
+  white-space: normal;
+}
+
+.morph-formula-snippet-math {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  padding: 0.45rem;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 0.45rem;
+  background: color-mix(in srgb, var(--purple) 6%, var(--code-bg));
+  text-align: center;
+}
+
+.morph-formula-snippet-math math {
+  min-width: max-content;
+  font-size: 0.88rem;
+}
+
+.morph-formula-steps li {
+  display: grid;
+  grid-template-columns: 1.35rem 1fr;
+  gap: 0.5rem;
+}
+
+.morph-formula-steps li > div {
+  min-width: 0;
+}
+
+.morph-formula-steps li > span {
+  display: grid;
+  place-items: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--cyan) 16%, var(--bg-elevated));
+  color: var(--cyan);
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.morph-formula-steps p {
+  margin: 0.12rem 0 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.morph-formula-result {
+  margin-top: 0.65rem !important;
+  padding: 0.55rem;
+  border-left: 2px solid var(--cyan);
+  background: color-mix(in srgb, var(--cyan) 7%, transparent);
+}
+
+.morph-formula-plot {
+  margin-top: 0.6rem;
+  padding: 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+}
+
+.morph-formula-plot h4 {
+  margin: 0 0 0.35rem;
+  font-size: 0.76rem;
+}
+
+.morph-formula-plot svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  color: var(--text);
+}
+
+.morph-formula-axis {
+  stroke: var(--muted);
+  stroke-width: 1;
+}
+
+.morph-formula-axis-label,
+.morph-formula-tick {
+  fill: var(--muted);
+  font: 22px Outfit, sans-serif;
+}
+
+.morph-formula-tick {
+  font-size: 18px;
+}
+
+.morph-formula-series {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.morph-formula-series.series-0 { stroke: var(--cyan); }
+.morph-formula-series.series-1 { stroke: var(--purple); }
+.morph-formula-series.series-2 { stroke: var(--orange); }
+.morph-formula-series.series-3 { stroke: var(--lime); }
+.morph-formula-series.series-4 { stroke: var(--pink); }
+.morph-formula-series.series-5 { stroke: var(--peach); }
+
+.morph-formula-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin: 0.35rem 0;
+}
+
+.morph-formula-legend-item {
+  font-size: 0.68rem;
+}
+
+.morph-formula-legend-item::before {
+  display: inline-block;
+  width: 0.65rem;
+  height: 0.18rem;
+  margin-right: 0.25rem;
+  border-radius: 99px;
+  background: currentColor;
+  content: "";
+  vertical-align: middle;
+}
+
+.morph-formula-legend-item.series-0 { color: var(--cyan); }
+.morph-formula-legend-item.series-1 { color: var(--purple); }
+.morph-formula-legend-item.series-2 { color: var(--orange); }
+.morph-formula-legend-item.series-3 { color: var(--lime); }
+.morph-formula-legend-item.series-4 { color: var(--pink); }
+.morph-formula-legend-item.series-5 { color: var(--peach); }
+
+.morph-formula-fixed {
+  color: var(--muted);
+  font-size: 0.7rem !important;
+}
+
+.morph-formula-nodes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.morph-formula-node {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  color: var(--cyan);
+  font: 700 0.68rem Outfit, sans-serif;
+  cursor: pointer;
+}
+
+.morph-formula-nav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+  margin-top: 1.25rem;
+}
+
+.morph-formula-nav .btn {
+  white-space: normal;
+}
+
+.morph-formula-empty {
+  color: var(--muted);
+  font-size: 0.8rem;
 }
 
 .morph-inspector-empty p {
@@ -14677,14 +15267,832 @@ button.kb-doc {
   margin-top: 1rem;
 }
 
+/* ---- presentation */
+
+.morph-presentation-modal {
+  padding: 0.75rem;
+}
+
+.morph-presentation-panel {
+  display: flex;
+  flex-direction: column;
+  width: min(96vw, 1500px);
+  max-width: none;
+  height: min(94vh, 940px);
+  max-height: none;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 1rem;
+  background:
+    radial-gradient(circle at 18% 12%, color-mix(in srgb, var(--purple) 11%, transparent), transparent 30%),
+    radial-gradient(circle at 85% 84%, color-mix(in srgb, var(--cyan) 8%, transparent), transparent 28%),
+    var(--surface-modal);
+}
+
+.morph-presentation-panel:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  max-width: none;
+  max-height: none;
+  border: 0;
+  border-radius: 0;
+}
+
+.morph-presentation-panel::before {
+  height: 2px;
+}
+
+.morph-presentation-toolbar {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 0 0 auto;
+  min-height: 3.25rem;
+  padding: 0.55rem 0.8rem 0.55rem 1rem;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-elevated) 78%, transparent);
+}
+
+.morph-presentation-toolbar-brand {
+  font-family: "Syne", system-ui, sans-serif;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.morph-presentation-counter {
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.morph-presentation-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.morph-presentation-language {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--muted);
+  font-size: 0.66rem;
+  white-space: nowrap;
+}
+
+.morph-presentation-language select {
+  min-height: 2rem;
+  padding: 0.25rem 1.7rem 0.25rem 0.55rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--surface-muted-btn);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+}
+
+.morph-presentation-language select:focus-visible {
+  outline: 2px solid var(--cyan);
+  outline-offset: 1px;
+}
+
+.morph-presentation-close {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 0.55rem;
+  background: var(--surface-muted-btn);
+  color: var(--text);
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.morph-presentation-close:hover {
+  border-color: color-mix(in srgb, var(--pink) 60%, var(--border));
+  color: var(--pink);
+}
+
+.morph-presentation-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.morph-presentation-panel.has-sources .morph-presentation-workspace {
+  grid-template-columns: minmax(0, 1fr) minmax(18rem, 25%);
+}
+
+.morph-presentation-stage-shell {
+  display: grid;
+  place-items: center;
+  container-type: size;
+  min-width: 0;
+  min-height: 0;
+  padding: clamp(0.6rem, 2vw, 1.5rem);
+  overflow: hidden;
+}
+
+.morph-presentation-stage {
+  width: min(100cqw, calc(100cqh * 16 / 9));
+  aspect-ratio: 16 / 9;
+  border: 1px solid color-mix(in srgb, var(--border) 88%, var(--cyan) 12%);
+  border-radius: clamp(0.6rem, 1.2vw, 1rem);
+  background:
+    linear-gradient(145deg, color-mix(in srgb, var(--bg-elevated) 94%, var(--purple) 6%), var(--bg-elevated));
+  box-shadow:
+    0 24px 70px color-mix(in srgb, var(--shadow-heavy) 75%, transparent),
+    inset 0 1px 0 color-mix(in srgb, white 5%, transparent);
+  overflow: hidden;
+}
+
+.morph-presentation-slide {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  padding: clamp(1.4rem, 4.5vw, 4.5rem);
+  overflow: clip;
+  color: var(--text);
+  contain: layout paint;
+  isolation: isolate;
+}
+
+.morph-presentation-slide::after {
+  content: "";
+  position: absolute;
+  right: -12%;
+  bottom: -35%;
+  z-index: -1;
+  width: 48%;
+  aspect-ratio: 1;
+  border: 1px solid color-mix(in srgb, var(--cyan) 20%, transparent);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 4vw color-mix(in srgb, var(--purple) 4%, transparent),
+    0 0 0 9vw color-mix(in srgb, var(--cyan) 3%, transparent);
+}
+
+.morph-presentation-slide.is-cover {
+  justify-content: space-between;
+  background:
+    linear-gradient(120deg, color-mix(in srgb, var(--purple) 13%, transparent), transparent 45%),
+    linear-gradient(320deg, color-mix(in srgb, var(--cyan) 10%, transparent), transparent 40%);
+}
+
+.morph-presentation-brand {
+  align-self: flex-start;
+  font-family: "Syne", system-ui, sans-serif;
+  font-size: clamp(0.7rem, 1.2vw, 1rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.morph-presentation-cover-copy {
+  position: relative;
+  z-index: 1;
+  width: min(78%, 64rem);
+  margin-block: auto;
+}
+
+.morph-presentation-eyebrow {
+  margin: 0 0 clamp(0.45rem, 1vw, 0.9rem);
+  font-size: clamp(0.58rem, 0.9vw, 0.82rem);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--cyan);
+}
+
+.morph-presentation-slide h2 {
+  margin: 0;
+  padding: 0;
+  font-family: "Syne", system-ui, sans-serif;
+  font-size: clamp(1.35rem, 3.5vw, 3.8rem);
+  font-weight: 700;
+  line-height: 1.03;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+  color: var(--text);
+}
+
+.morph-presentation-cover-copy h2 {
+  font-size: clamp(1.65rem, 4.4vw, 5rem);
+}
+
+.morph-presentation-cover-meta {
+  margin: clamp(0.8rem, 2vw, 1.7rem) 0 0;
+  font-size: clamp(0.72rem, 1.2vw, 1.05rem);
+  color: var(--muted);
+}
+
+.morph-presentation-cover-link {
+  display: inline-block;
+  margin-top: 0.45rem;
+  font-size: clamp(0.62rem, 0.9vw, 0.82rem);
+  color: var(--cyan);
+  text-decoration: none;
+}
+
+.morph-presentation-cover-link:hover {
+  text-decoration: underline;
+}
+
+.morph-presentation-orbit {
+  position: absolute;
+  right: 7%;
+  top: 17%;
+  width: 25%;
+  aspect-ratio: 1;
+  border: 1px solid color-mix(in srgb, var(--cyan) 34%, transparent);
+  border-radius: 50%;
+  transform: rotate(-18deg);
+}
+
+.morph-presentation-orbit::before,
+.morph-presentation-orbit::after {
+  content: "";
+  position: absolute;
+  inset: 14%;
+  border: 1px solid color-mix(in srgb, var(--purple) 38%, transparent);
+  border-radius: 50%;
+  transform: rotate(56deg) scaleY(0.52);
+}
+
+.morph-presentation-orbit::after {
+  inset: 31%;
+  border-color: color-mix(in srgb, var(--pink) 45%, transparent);
+  transform: none;
+  background: color-mix(in srgb, var(--pink) 8%, transparent);
+  box-shadow: var(--glow-purple);
+}
+
+.morph-presentation-orbit span {
+  position: absolute;
+  width: 0.65rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: var(--glow-cyan);
+}
+
+.morph-presentation-orbit span:nth-child(1) {
+  left: 5%;
+  top: 42%;
+}
+
+.morph-presentation-orbit span:nth-child(2) {
+  right: 13%;
+  top: 12%;
+  background: var(--pink);
+  box-shadow: var(--glow-pink);
+}
+
+.morph-presentation-orbit span:nth-child(3) {
+  right: 5%;
+  bottom: 25%;
+  background: var(--lime);
+  box-shadow: none;
+}
+
+.morph-presentation-slide-head {
+  flex: 0 0 auto;
+}
+
+.morph-presentation-slide-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(14rem, 0.85fr);
+  align-items: center;
+  gap: clamp(1.2rem, 4vw, 4rem);
+  flex: 1;
+  min-height: 0;
+  padding-top: clamp(0.7rem, 2vw, 2rem);
+}
+
+.morph-presentation-slide-grid.is-text {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.morph-presentation-slide.is-figure .morph-presentation-slide-grid,
+.morph-presentation-slide.is-table .morph-presentation-slide-grid,
+.morph-presentation-slide.is-math .morph-presentation-slide-grid,
+.morph-presentation-slide.is-algorithm .morph-presentation-slide-grid {
+  grid-template-columns: minmax(0, 0.72fr) minmax(16rem, 1.28fr);
+}
+
+.morph-presentation-claim {
+  position: relative;
+  max-width: 48rem;
+  padding-left: clamp(1rem, 2vw, 2rem);
+  border-left: 3px solid var(--cyan);
+}
+
+.morph-presentation-quote-mark {
+  position: absolute;
+  left: clamp(0.8rem, 1.5vw, 1.4rem);
+  top: clamp(-2.3rem, -2vw, -1.25rem);
+  font-family: Georgia, serif;
+  font-size: clamp(3rem, 7vw, 7rem);
+  line-height: 1;
+  color: color-mix(in srgb, var(--cyan) 13%, transparent);
+  transform: translateX(-75%);
+  pointer-events: none;
+}
+
+.morph-presentation-claim p {
+  margin: 0;
+  font-family: "Syne", system-ui, sans-serif;
+  font-size: clamp(1rem, 2.25vw, 2.35rem);
+  font-weight: 600;
+  line-height: 1.18;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+  color: var(--text);
+}
+
+.morph-presentation-visual {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(0.6rem, 1.5vw, 1.2rem);
+  min-width: 0;
+}
+
+.morph-presentation-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(0.45rem, 1vw, 0.8rem);
+}
+
+.morph-presentation-metric {
+  padding: clamp(0.4rem, 1vw, 0.75rem) clamp(0.55rem, 1.5vw, 1.1rem);
+  border: 1px solid color-mix(in srgb, var(--lime) 38%, var(--border));
+  border-radius: 0.7rem;
+  background: color-mix(in srgb, var(--lime) 8%, transparent);
+  font-family: "Syne", system-ui, sans-serif;
+  font-size: clamp(1rem, 2.4vw, 2.6rem);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--lime);
+}
+
+.morph-presentation-node-grid {
+  display: grid;
+  gap: clamp(0.35rem, 0.8vw, 0.65rem);
+}
+
+.morph-presentation-node {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  padding: clamp(0.45rem, 1vw, 0.75rem);
+  border: 1px solid var(--border);
+  border-radius: 0.65rem;
+  background: color-mix(in srgb, var(--surface-card) 88%, transparent);
+}
+
+.morph-presentation-node.is-focus {
+  border-color: color-mix(in srgb, var(--cyan) 50%, var(--border));
+  background: color-mix(in srgb, var(--cyan) 8%, var(--surface-card));
+}
+
+.morph-presentation-node-role {
+  padding: 0.16rem 0.42rem;
+  border-radius: 0.35rem;
+  background: color-mix(in srgb, var(--purple) 22%, transparent);
+  font-size: clamp(0.52rem, 0.72vw, 0.68rem);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+.morph-presentation-node-section {
+  justify-self: end;
+  font-size: clamp(0.5rem, 0.7vw, 0.65rem);
+  color: var(--muted);
+}
+
+.morph-presentation-node p {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: clamp(0.58rem, 0.85vw, 0.76rem);
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.morph-presentation-paper-figure {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(8rem, 0.8fr);
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--cyan) 32%, var(--border));
+  border-radius: clamp(0.55rem, 1vw, 0.8rem);
+  background: color-mix(in srgb, var(--surface-card) 92%, transparent);
+}
+
+.morph-presentation-paper-figure-media {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  padding: clamp(0.35rem, 0.8vw, 0.7rem);
+  background: #fff;
+}
+
+.morph-presentation-paper-figure-media img {
+  display: block;
+  width: 100%;
+  max-height: clamp(8rem, 24vw, 19rem);
+  object-fit: contain;
+}
+
+.morph-presentation-paper-figure.is-large {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.morph-presentation-paper-figure.is-large .morph-presentation-paper-figure-media {
+  flex: 1;
+  width: var(--figure-width, 70%);
+  min-width: 55%;
+  margin: 0 auto;
+}
+
+.morph-presentation-paper-figure.is-large img {
+  max-height: min(58vh, 28rem);
+}
+
+.morph-presentation-math-block,
+.morph-presentation-math {
+  display: block;
+  padding: clamp(0.7rem, 1.6vw, 1.1rem);
+  overflow-x: auto;
+  border: 1px solid color-mix(in srgb, var(--purple) 30%, var(--border));
+  border-radius: 0.7rem;
+  background: color-mix(in srgb, var(--purple) 7%, var(--code-bg));
+  color: var(--text);
+  text-align: center;
+}
+
+.morph-presentation-math-block p {
+  margin: 0.65rem 0 0;
+  color: var(--muted);
+  font-size: clamp(0.72rem, 1vw, 0.9rem);
+  line-height: 1.45;
+  text-align: left;
+}
+
+.morph-presentation-steps {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.morph-presentation-steps li {
+  display: grid;
+  grid-template-columns: 1.6rem 1fr;
+  gap: 0.55rem;
+  align-items: start;
+}
+
+.morph-presentation-steps li > span {
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--cyan) 16%, var(--bg-elevated));
+  color: var(--cyan);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.morph-presentation-steps p {
+  margin: 0;
+  font-size: clamp(0.78rem, 1.1vw, 1rem);
+  line-height: 1.4;
+}
+
+.morph-presentation-table {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  min-width: 0;
+  margin: 0;
+}
+
+.morph-presentation-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: clamp(0.72rem, 1.05vw, 0.95rem);
+}
+
+.morph-presentation-table th,
+.morph-presentation-table td {
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+
+.morph-presentation-table td.is-highlight {
+  background: color-mix(in srgb, var(--lime) 18%, transparent);
+  box-shadow: inset 0 -2px 0 var(--lime);
+  font-weight: 700;
+}
+
+.morph-presentation-table figcaption small {
+  display: block;
+  margin-bottom: 0.2rem;
+  color: var(--cyan);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.morph-presentation-table figcaption strong,
+.morph-presentation-table figcaption p {
+  display: block;
+  margin: 0.15rem 0 0;
+  font-size: clamp(0.68rem, 0.95vw, 0.82rem);
+  line-height: 1.4;
+}
+
+.morph-presentation-paper-figure-media span {
+  position: absolute;
+  left: 0.45rem;
+  bottom: 0.4rem;
+  max-width: calc(100% - 0.9rem);
+  padding: 0.18rem 0.38rem;
+  overflow: hidden;
+  border-radius: 0.3rem;
+  background: rgba(6, 6, 10, 0.82);
+  color: #fff;
+  font-size: clamp(0.45rem, 0.65vw, 0.58rem);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.morph-presentation-paper-figure figcaption {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(0.3rem, 0.7vw, 0.55rem);
+  min-width: 0;
+  padding: clamp(0.55rem, 1.2vw, 1rem);
+}
+
+.morph-presentation-paper-figure figcaption strong {
+  font-family: "Syne", system-ui, sans-serif;
+  font-size: clamp(0.7rem, 1.1vw, 1rem);
+  line-height: 1.25;
+  color: var(--text);
+}
+
+.morph-presentation-paper-figure figcaption small {
+  font-size: clamp(0.48rem, 0.65vw, 0.58rem);
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--cyan);
+}
+
+.morph-presentation-paper-figure figcaption p {
+  margin: 0;
+  font-size: clamp(0.58rem, 0.85vw, 0.76rem);
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.morph-presentation-relations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.morph-presentation-relation {
+  padding: 0.18rem 0.42rem;
+  border: 1px solid color-mix(in srgb, var(--cyan) 30%, var(--border));
+  border-radius: 999px;
+  font-size: clamp(0.5rem, 0.7vw, 0.64rem);
+  color: var(--cyan);
+}
+
+.morph-presentation-sources {
+  min-width: 0;
+  min-height: 0;
+  padding: 1rem;
+  overflow-y: auto;
+  border-left: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-elevated) 94%, transparent);
+}
+
+.morph-presentation-sources h2 {
+  margin: 0 0 0.8rem;
+  padding: 0;
+  font-size: 0.9rem;
+}
+
+.morph-presentation-sources-body {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.morph-presentation-source {
+  margin: 0;
+  padding: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.65rem;
+  background: var(--surface-card);
+}
+
+.morph-presentation-source.is-figure {
+  border-color: color-mix(in srgb, var(--cyan) 36%, var(--border));
+}
+
+.morph-presentation-source-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cyan);
+}
+
+.morph-presentation-source blockquote {
+  margin: 0;
+  font-size: 0.73rem;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+.morph-presentation-source figcaption {
+  margin-top: 0.45rem;
+  font-size: 0.62rem;
+  color: var(--muted);
+}
+
+.morph-presentation-sources-empty {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.morph-presentation-nav {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.7rem;
+  flex: 0 0 auto;
+  min-height: 3.5rem;
+  padding: 0.55rem 0.85rem;
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-elevated) 78%, transparent);
+}
+
+.morph-presentation-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  justify-self: start;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 0.55rem;
+  background: var(--surface-muted-btn);
+  color: var(--text);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.morph-presentation-nav-btn:last-child {
+  justify-self: end;
+}
+
+.morph-presentation-nav-btn:hover:not(:disabled) {
+  border-color: var(--cyan);
+}
+
+.morph-presentation-nav-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.morph-presentation-key-hint {
+  font-size: 0.68rem;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+}
+
 @media (max-width: 1200px) {
   .morph-page {
     grid-template-columns: 16rem minmax(0, 1fr);
     grid-template-rows: 1fr auto;
   }
 
+  .morph-inspector-resizer {
+    display: none;
+  }
+
   .morph-inspector {
     grid-column: 1 / -1;
-    max-height: 20rem;
+    max-height: min(70vh, 36rem);
+  }
+
+  .morph-inspector-expand {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .morph-presentation-modal {
+    padding: 0;
+  }
+
+  .morph-presentation-panel {
+    width: 100vw;
+    height: 100dvh;
+    max-height: none;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .morph-presentation-toolbar {
+    grid-template-columns: auto 1fr;
+  }
+
+  .morph-presentation-counter {
+    display: none;
+  }
+
+  .morph-presentation-actions .btn {
+    padding-inline: 0.45rem;
+    font-size: 0.64rem;
+  }
+
+  .morph-presentation-language > span {
+    display: none;
+  }
+
+  .morph-presentation-language select {
+    padding-right: 1.35rem;
+  }
+
+  .morph-presentation-panel.has-sources .morph-presentation-workspace {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(10rem, 38%);
+  }
+
+  .morph-presentation-sources {
+    border-top: 1px solid var(--border);
+    border-left: 0;
+  }
+
+  .morph-presentation-slide-grid {
+    grid-template-columns: minmax(0, 1fr);
+    align-content: center;
+  }
+
+  .morph-presentation-orbit {
+    opacity: 0.55;
+  }
+
+  .morph-presentation-nav-btn span:not([aria-hidden="true"]) {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .morph-presentation-panel *,
+  .morph-presentation-panel *::before,
+  .morph-presentation-panel *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
   }
 }

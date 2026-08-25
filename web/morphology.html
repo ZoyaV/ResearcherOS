@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20260811e" />
+  <link rel="stylesheet" href="styles.css?v=20260821f" />
   <script>
     (function () {
       var t = localStorage.getItem("koi-theme");
@@ -64,6 +64,7 @@
         <div class="morph-toolbar-actions">
           <span class="morph-status" id="morph-status" aria-live="polite"></span>
           <button type="button" class="btn btn-small morph-article-toggle hidden" id="morph-article-toggle" title="Показать текст статьи рядом с графом">текст</button>
+          <button type="button" class="btn btn-small hidden" id="morph-present">Презентация</button>
           <button type="button" class="btn btn-primary" id="morph-run">Собрать морфологию</button>
         </div>
       </header>
@@ -88,6 +89,16 @@
         </div>
 
         <div class="morph-canvas-wrap hidden" id="morph-canvas-wrap">
+          <div class="morph-prompt-block hidden" id="morph-presentation-prompt-block">
+            <div class="morph-prompt-head">
+              <h3>Задание для презентации</h3>
+              <button type="button" class="btn btn-small" id="morph-presentation-copy">Скопировать снова</button>
+            </div>
+            <p class="morph-prompt-hint" id="morph-presentation-prompt-hint">
+              Вставьте текст ниже в чат Cursor. Страница откроет презентацию, когда появятся слайды и проверка читаемости.
+            </p>
+            <pre class="morph-prompt" id="morph-presentation-prompt"></pre>
+          </div>
           <div class="morph-graph-pane">
             <div class="morph-legend" id="morph-legend"></div>
             <svg class="morph-canvas" id="morph-canvas" role="img" aria-label="Граф логических переходов"></svg>
@@ -133,14 +144,98 @@
       </div>
     </section>
 
-    <aside class="morph-inspector" aria-label="Узел">
-      <div class="morph-inspector-empty" id="morph-inspector-empty">
-        <p>Выберите узел на графе, чтобы увидеть цитаты и якоря на секции.</p>
+    <aside class="morph-inspector" aria-label="Утверждение или формула">
+      <div
+        class="morph-inspector-resizer"
+        id="morph-inspector-resizer"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Потяните, чтобы изменить ширину панели"
+        title="Потяните, чтобы изменить ширину панели"
+        tabindex="0"
+      ></div>
+      <div class="morph-inspector-tabs" role="tablist">
+        <button type="button" class="morph-inspector-tab is-active" id="morph-inspector-node-tab" role="tab" aria-selected="true">
+          Утверждение
+        </button>
+        <button type="button" class="morph-inspector-tab hidden" id="morph-inspector-formula-tab" role="tab" aria-selected="false">
+          Формула
+        </button>
+        <button type="button" class="morph-inspector-expand" id="morph-inspector-expand" aria-pressed="false">
+          Шире
+        </button>
       </div>
-      <div class="morph-inspector-body hidden" id="morph-inspector-body"></div>
+      <div class="morph-inspector-node" id="morph-inspector-node">
+        <div class="morph-inspector-empty" id="morph-inspector-empty">
+          <p>Выберите узел на графе, чтобы увидеть цитаты и якоря на секции.</p>
+        </div>
+        <div class="morph-inspector-body hidden" id="morph-inspector-body"></div>
+      </div>
+      <div class="morph-formula-panel hidden" id="morph-formula-panel"></div>
     </aside>
   </main>
 
-  <script type="module" src="morphology.js?v=20260811f"></script>
+  <div id="morph-presentation-modal" class="modal morph-presentation-modal hidden" aria-hidden="true">
+    <div class="modal-backdrop" data-close="morph-presentation-modal"></div>
+    <section
+      id="morph-presentation-panel"
+      class="modal-panel morph-presentation-panel"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Презентация статьи"
+      tabindex="-1"
+    >
+      <header class="morph-presentation-toolbar">
+        <span class="morph-presentation-toolbar-brand">ResearchOS</span>
+        <span id="morph-presentation-counter" class="morph-presentation-counter" aria-live="polite"></span>
+        <div class="morph-presentation-actions">
+          <label class="morph-presentation-language">
+            <span id="morph-presentation-language-label">Язык презентации</span>
+            <select id="morph-presentation-language">
+              <option value="ru">Русский</option>
+              <option value="en">English</option>
+            </select>
+          </label>
+          <button
+            type="button"
+            class="btn btn-small"
+            id="morph-presentation-source-toggle"
+            aria-expanded="false"
+          >Показать источники</button>
+          <button type="button" class="btn btn-small" id="morph-presentation-fullscreen">На весь экран</button>
+          <button
+            type="button"
+            class="morph-presentation-close"
+            data-close="morph-presentation-modal"
+            aria-label="Закрыть презентацию"
+          >×</button>
+        </div>
+      </header>
+
+      <div class="morph-presentation-workspace">
+        <div class="morph-presentation-stage-shell">
+          <div id="morph-presentation-stage" class="morph-presentation-stage"></div>
+        </div>
+        <aside id="morph-presentation-sources" class="morph-presentation-sources hidden" aria-label="Источники">
+          <h2 id="morph-presentation-sources-title">Источники</h2>
+          <div id="morph-presentation-sources-body" class="morph-presentation-sources-body"></div>
+        </aside>
+      </div>
+
+      <footer class="morph-presentation-nav">
+        <button type="button" class="morph-presentation-nav-btn" id="morph-presentation-prev">
+          <span aria-hidden="true">←</span>
+          <span id="morph-presentation-prev-label">Предыдущий слайд</span>
+        </button>
+        <span class="morph-presentation-key-hint">← →</span>
+        <button type="button" class="morph-presentation-nav-btn" id="morph-presentation-next">
+          <span id="morph-presentation-next-label">Следующий слайд</span>
+          <span aria-hidden="true">→</span>
+        </button>
+      </footer>
+    </section>
+  </div>
+
+  <script type="module" src="morphology.js?v=20260821h"></script>
 </body>
 </html>

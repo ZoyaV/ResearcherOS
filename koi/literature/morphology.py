@@ -14,17 +14,21 @@ import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from urllib.parse import urljoin, urlsplit
 
 from koi.adapters.paths import paper_morphology_dir
 from koi.adapters.workspace import get_workspace
+from koi.literature.morphology_math import add_rendered_mathml
 from koi.literature.naming import normalize_spaces
 
 SKILL_PATH = ".cursor/skills/article-morphology/SKILL.md"
 
 #: Files the agent writes; presence of ``morphology.json`` flips a run to ``ready``.
 MORPHOLOGY_FILENAME = "morphology.json"
+MATH_ANALYSIS_FILENAME = "math_analysis.json"
 CLAIMS_FILENAME = "claims.json"
 REPORT_FILENAME = "report.md"
+REQUIRED_ARTIFACTS = (MORPHOLOGY_FILENAME, MATH_ANALYSIS_FILENAME)
 
 #: Preferred article sources for the in-page viewer (first hit wins).
 _ARTICLE_HTML_NAMES = ("article.html", "source.html")
@@ -177,6 +181,8 @@ against the templates in `.cursor/skills/article-morphology/references/templates
 
 ## Write
 - `claims.json` — Pass A, atomic claims with quotes and section anchors, no template in mind
+- `{MATH_ANALYSIS_FILENAME}` — every MathML occurrence grouped into bilingual lessons
+  (validate against `.cursor/skills/article-morphology/references/math-analysis.schema.json`)
 - `{MORPHOLOGY_FILENAME}` — Pass B, nodes + edges + template_fit + style
   (validate against `.cursor/skills/article-morphology/references/morphology.schema.json`)
 - `report.md` — human render for the morphology page
@@ -194,6 +200,16 @@ against the templates in `.cursor/skills/article-morphology/references/templates
 - An unmatched template slot goes to `missing_slots`. Never mint a node to fill a slot.
 - `cue` holds the authors' verbatim connective for a transition, or `null` when implicit.
 - Report every template with a score, not only the best-fitting one.
+- Do not write a slide deck here. Presentation is a later run that reads this graph.
+- For saved HTML, enumerate every `<math id=... alttext=...>` occurrence. Group repeated
+  expressions by normalized TeX, but preserve every DOM id in `occurrences`.
+- Give isolated symbols a glossary lesson. Give every compound inline or display expression
+  a full RU/EN lesson: all symbols, expression parts, and a worked example.
+- Optional plots contain precomputed finite x/y arrays only. Add one only when the formula
+  and paper text justify the relationship; otherwise keep `plots` empty.
+- Run `koi.literature.morphology_math.validate_math_analysis` against the saved HTML and
+  graph. Fix every error. Write `{MORPHOLOGY_FILENAME}` last so the page never sees a
+  partially completed required artifact set.
 
 When finished, leave `{MORPHOLOGY_FILENAME}` ready for the morphology page to poll.
 """.strip()
@@ -215,6 +231,7 @@ def stage_paper_morphology(project_id: str, paper: dict[str, object]) -> dict[st
             "paper_key": key,
             "created_at": created_at,
             "status": "staged",
+            "required_artifacts": list(REQUIRED_ARTIFACTS),
             "paper": row,
         },
     )
@@ -246,8 +263,22 @@ def stage_paper_morphology(project_id: str, paper: dict[str, object]) -> dict[st
     }
 
 
+def _required_artifacts(run_dir: Path) -> tuple[str, ...]:
+    staged = _read_json(run_dir / "input.json")
+    raw = staged.get("required_artifacts") if isinstance(staged, dict) else None
+    if not isinstance(raw, list):
+        return (MORPHOLOGY_FILENAME,)
+    names = tuple(
+        str(name)
+        for name in raw
+        if isinstance(name, str) and name and Path(name).name == name
+    )
+    return names or (MORPHOLOGY_FILENAME,)
+
+
 def _run_status(run_dir: Path) -> str:
-    return "ready" if (run_dir / MORPHOLOGY_FILENAME).exists() else "staged"
+    required = _required_artifacts(run_dir)
+    return "ready" if all((run_dir / name).is_file() for name in required) else "staged"
 
 
 def list_morphology_runs(
@@ -313,6 +344,10 @@ def load_morphology_run(project_id: str, run_id: str) -> dict[str, object] | Non
     critique = _read_json(run_dir / "critique.json")
     if isinstance(critique, dict):
         payload["critique"] = critique
+
+    math_analysis = _read_json(run_dir / MATH_ANALYSIS_FILENAME)
+    if isinstance(math_analysis, dict):
+        payload["math_analysis"] = add_rendered_mathml(math_analysis)
 
     prompt_path = run_dir / "PROMPT.md"
     if prompt_path.exists():
@@ -533,6 +568,50 @@ def _strip_html_scripts(html: str) -> str:
     return cleaned
 
 
+def _extract_article_document(html: str) -> str:
+    """Drop source-site chrome and keep the LaTeXML paper document."""
+    article = re.search(
+        r"(?is)<article\b(?=[^>]*\bltx_document\b)[^>]*>.*?</article>",
+        html,
+    )
+    if article:
+        return article.group(0)
+    body = re.search(r"(?is)<body\b[^>]*>(.*?)</body>", html)
+    return body.group(1) if body else html
+
+
+def _article_asset_base(raw: str, paper_url: str) -> str:
+    og_url = re.search(
+        r"""(?is)<meta\b[^>]*property=["']og:url["'][^>]*content=["']([^"']+)["']""",
+        raw,
+    )
+    if og_url:
+        return og_url.group(1)
+    if "arxiv-html-papers" in raw:
+        return "https://arxiv.org/html/"
+    parsed = urlsplit(paper_url)
+    if parsed.netloc.lower().endswith("arxiv.org"):
+        return "https://arxiv.org/html/"
+    return paper_url
+
+
+def _resolve_article_images(html: str, base_url: str) -> str:
+    if not base_url:
+        return html
+
+    def replace(match: re.Match[str]) -> str:
+        prefix, quote, value = match.groups()
+        if value.startswith(("data:", "blob:", "#")):
+            return match.group(0)
+        return f"{prefix}{quote}{urljoin(base_url, value)}{quote}"
+
+    return re.sub(
+        r"""(?i)(\bsrc\s*=\s*)(["'])([^"']+)\2""",
+        replace,
+        html,
+    )
+
+
 def build_morphology_article(project_id: str, run_id: str) -> dict[str, object] | None:
     """Build a highlightable article view for a morphology run.
 
@@ -559,7 +638,18 @@ def build_morphology_article(project_id: str, run_id: str) -> dict[str, object] 
     kind = str(source["kind"])
 
     if kind == "html":
-        html_body = _strip_html_scripts(raw)
+        staged = _read_json(run_dir / "input.json")
+        staged_paper = staged.get("paper") if isinstance(staged, dict) else {}
+        paper_url = (
+            str(staged_paper.get("url") or "")
+            if isinstance(staged_paper, dict)
+            else ""
+        )
+        html_body = _extract_article_document(_strip_html_scripts(raw))
+        html_body = _resolve_article_images(
+            html_body,
+            _article_asset_base(raw, paper_url),
+        )
         # Client injects marks into HTML; server still reports which quotes exist.
         matched = []
         plain = re.sub(r"(?is)<[^>]+>", " ", html_body)
