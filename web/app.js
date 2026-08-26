@@ -9194,6 +9194,38 @@ function paperProgressMetricHtml(label, current, target) {
   </span>`;
 }
 
+const PAPER_RELAY_FRAME_LIMIT = 32 * 1024;
+
+function paperTexByteLength() {
+  const text = paperState.texText ?? paperEls().texInput?.value ?? "";
+  return new TextEncoder().encode(String(text)).length;
+}
+
+function formatPaperKb(bytes) {
+  const kb = Number(bytes) / 1024;
+  if (!Number.isFinite(kb) || kb <= 0) return "0";
+  if (kb < 10) return kb.toFixed(1).replace(/\.0$/, "");
+  return String(Math.round(kb));
+}
+
+function paperRelayLimitMetricHtml() {
+  const bytes = paperTexByteLength();
+  const limit = PAPER_RELAY_FRAME_LIMIT;
+  const currentKb = formatPaperKb(bytes);
+  const limitKb = formatPaperKb(limit);
+  const over = bytes > limit;
+  const stateClass = paperProgressChipClass(bytes, limit);
+  const fill = paperProgressFillPercent(bytes, limit);
+  const title = over
+    ? `main.tex ${currentKb} КБ — больше кадра шлюза (${limitKb} КБ). Полный снимок может не дойти до второго компьютера.`
+    : `main.tex ${currentKb} КБ из ${limitKb} КБ кадра шлюза. Мелкие правки проходят и сверх лимита.`;
+  return `<span class="paper-progress-metric ${stateClass}" title="${escapeHtml(title)}">
+    <span class="paper-progress-metric__label">Синк</span>
+    <span class="paper-progress-metric__value">${escapeHtml(currentKb)}/${escapeHtml(limitKb)} КБ</span>
+    <span class="paper-progress-metric__bar" aria-hidden="true"><span class="paper-progress-metric__fill" style="width:${fill}%"></span></span>
+  </span>`;
+}
+
 function paperProgressDeadlineIconHtml() {
   return `<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 5.8v4.4l2.6 1.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`;
 }
@@ -9290,7 +9322,7 @@ function renderPaperProgress(entry) {
   const hasCounts = Boolean(counts && counts.total > 0);
 
   els.progressWrap.classList.remove("hidden");
-  const metrics = [];
+  const metrics = [paperRelayLimitMetricHtml()];
 
   if (hasCounts || hasConfig || progress.main_pages != null) {
     metrics.push(paperProgressMetricHtml("Главный", counts?.main ?? 0, progress.main_pages));
@@ -9306,10 +9338,6 @@ function renderPaperProgress(entry) {
     metrics.push(
       paperProgressMetricHtml("Апп.", counts?.appendix ?? 0, progress.appendix_pages)
     );
-  }
-
-  if (!metrics.length) {
-    metrics.push(`<span class="paper-progress__empty">PDF не собран</span>`);
   }
 
   els.progressSummary.innerHTML = metrics.join("");
@@ -10154,6 +10182,12 @@ function syncTexFromInput(event) {
   paperState.texLines = ta.value.split("\n");
   paperState.texDirty = true;
   updatePaperSaveUi();
+  if (!paperState._relayMetricTimer) {
+    paperState._relayMetricTimer = setTimeout(() => {
+      paperState._relayMetricTimer = null;
+      renderPaperProgress(activePaperEntry());
+    }, 300);
+  }
   if (!paperState.collabApplying && paperCollab.isActive()) {
     paperEls().texCollab?.classList.remove("is-conflict");
     paperCollab.queueInput(ta, event);
@@ -10200,6 +10234,7 @@ function setTexEditorContent(text, { markClean = true } = {}) {
   if (els.texInput && els.texInput.value !== text) els.texInput.value = text;
   if (markClean) paperState.texDirty = false;
   updatePaperSaveUi();
+  renderPaperProgress(activePaperEntry());
   syncPaperTexEditorHeight();
   void renderPaperTexEditor();
 }
