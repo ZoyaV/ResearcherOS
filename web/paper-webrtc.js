@@ -88,6 +88,8 @@ export function createPaperWebRtcMesh({
       const channelOpen = entry?.channel?.readyState === "open";
       const state = entry?.pc?.connectionState || "new";
       if (channelOpen || ["connected", "connecting"].includes(state)) return;
+      const pc = entry?.pc;
+      if (pc?.localDescription || pc?.remoteDescription) return;
       void offer(remotePeerId).catch((error) =>
         setError(error?.message || "WebRTC offer failed")
       );
@@ -308,6 +310,7 @@ export function createPaperWebRtcMesh({
         if (validatePeer(peer)) {
           try {
             await offer(peer.peer_id);
+            schedulePeerOffer(peer.peer_id);
           } catch (error) {
             setError(error?.message || "WebRTC offer failed");
           }
@@ -320,7 +323,7 @@ export function createPaperWebRtcMesh({
       authorityPeerId = String(message.authority_peer_id || authorityPeerId);
       const peer = message.peer || {};
       remoteMetadata.set(peer.peer_id, peer);
-      if (validatePeer(peer)) schedulePeerOffer(peer.peer_id);
+      validatePeer(peer);
       emitStatus();
       return;
     }

@@ -144,9 +144,23 @@ class GitDocumentState:
     relative_path: str
 
 
+def _git_root_for_document(tex_path: Path, fallback: Path) -> Path:
+    """Use the checkout that contains the paper, not the project's code clone.
+
+    KOI often mounts ``repo_root`` on ``main`` and the paper in a ``tree/``
+    worktree. ``HEAD`` of those two directories can differ.
+    """
+    start = tex_path if tex_path.is_dir() else tex_path.parent
+    if not start.exists():
+        return fallback
+    toplevel = _run_git(start, "rev-parse", "--show-toplevel")
+    return Path(toplevel) if toplevel else fallback
+
+
 def git_document_state(project_id: str, tex_path: Path) -> GitDocumentState:
     """Describe the durable Git base without treating the working tree as authoritative."""
-    root = repo_root(project_id)
+    fallback = repo_root(project_id)
+    root = _git_root_for_document(tex_path, fallback)
     resolved = tex_path.resolve()
     try:
         relative = resolved.relative_to(root.resolve()).as_posix()

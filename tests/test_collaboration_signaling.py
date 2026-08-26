@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import subprocess
 from pathlib import Path
 
 import pytest
 
-from koi.paper.collaboration.network import issue_room_token, verify_room_token
+from koi.paper.collaboration.network import git_document_state, issue_room_token, verify_room_token
 from koi.paper.collaboration.session import CollabSession
 from koi.paper.collaboration.signaling_service import SignalPeer, SignalRooms, _send_many, rooms
 
@@ -138,3 +139,46 @@ def test_adopting_remote_state_checks_claimed_hash(tmp_path: Path) -> None:
     finally:
         remote.close()
         local.close()
+
+
+def _git(cwd: Path, *args: str) -> str:
+    result = subprocess.run(
+        ["git", "-c", "user.name=test", "-c", "user.email=test@example.test", *args],
+        cwd=cwd,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.strip()
+
+
+def test_git_document_state_uses_tex_checkout_not_repo_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init", "-q")
+    (repo / "README").write_text("code clone\n", encoding="utf-8")
+    _git(repo, "add", "README")
+    _git(repo, "commit", "-qm", "Initial commit")
+    _git(repo, "branch", "-M", "main")
+    code_commit = _git(repo, "rev-parse", "HEAD")
+
+    worktree = tmp_path / "tree" / "paper"
+    _git(repo, "worktree", "add", "-B", "ResearcherOS", str(worktree))
+    tex = worktree / "koi-structure" / "paper" / "neurips" / "main.tex"
+    tex.parent.mkdir(parents=True)
+    tex.write_text("paper body\n", encoding="utf-8")
+    _git(worktree, "add", "koi-structure/paper/neurips/main.tex")
+    _git(worktree, "commit", "-qm", "Add paper")
+    paper_commit = _git(worktree, "rev-parse", "HEAD")
+    assert paper_commit != code_commit
+
+    monkeypatch.setattr(
+        "koi.paper.collaboration.network.repo_root",
+        lambda _project_id: repo,
+    )
+    state = git_document_state("demo", tex)
+    assert state.commit == paper_commit
+    assert state.relative_path == "koi-structure/paper/neurips/main.tex"
+    assert state.base_document_hash
