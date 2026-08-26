@@ -47,10 +47,52 @@ export function createPaperWebRtcMesh({
   let reconnectTimer = null;
   const connections = new Map();
   const remoteMetadata = new Map();
+  const pendingIceCandidates = new Map();
   const seenUpdates = new Set();
   const queuedUpdates = [];
   let adoptingEpoch = "";
   let networkError = "";
+
+  async function flushIceCandidates(remotePeerId, pc) {
+    const queued = pendingIceCandidates.get(remotePeerId) || [];
+    pendingIceCandidates.delete(remotePeerId);
+    for (const candidate of queued) {
+      try {
+        await pc.addIceCandidate(candidate);
+      } catch (error) {
+        setError(error?.message || "WebRTC ICE candidate rejected");
+      }
+    }
+  }
+
+  async function addRemoteIceCandidate(remotePeerId, candidate) {
+    const entry = connections.get(remotePeerId);
+    const pc = entry?.pc || createConnection(remotePeerId, false);
+    if (!pc.remoteDescription) {
+      const queued = pendingIceCandidates.get(remotePeerId) || [];
+      queued.push(candidate);
+      pendingIceCandidates.set(remotePeerId, queued);
+      return;
+    }
+    try {
+      await pc.addIceCandidate(candidate);
+    } catch (error) {
+      setError(error?.message || "WebRTC ICE candidate rejected");
+    }
+  }
+
+  function schedulePeerOffer(remotePeerId) {
+    setTimeout(() => {
+      if (closing) return;
+      const entry = connections.get(remotePeerId);
+      const channelOpen = entry?.channel?.readyState === "open";
+      const state = entry?.pc?.connectionState || "new";
+      if (channelOpen || ["connected", "connecting"].includes(state)) return;
+      void offer(remotePeerId).catch((error) =>
+        setError(error?.message || "WebRTC offer failed")
+      );
+    }, 1500);
+  }
 
   function emitStatus() {
     const connectedPeers = [...connections.values()].filter(
@@ -263,7 +305,13 @@ export function createPaperWebRtcMesh({
       authorityPeerId = String(message.authority_peer_id || peerId);
       for (const peer of message.peers || []) {
         remoteMetadata.set(peer.peer_id, peer);
-        if (validatePeer(peer)) await offer(peer.peer_id);
+        if (validatePeer(peer)) {
+          try {
+            await offer(peer.peer_id);
+          } catch (error) {
+            setError(error?.message || "WebRTC offer failed");
+          }
+        }
       }
       emitStatus();
       return;
@@ -272,7 +320,7 @@ export function createPaperWebRtcMesh({
       authorityPeerId = String(message.authority_peer_id || authorityPeerId);
       const peer = message.peer || {};
       remoteMetadata.set(peer.peer_id, peer);
-      validatePeer(peer);
+      if (validatePeer(peer)) schedulePeerOffer(peer.peer_id);
       emitStatus();
       return;
     }
@@ -290,6 +338,7 @@ export function createPaperWebRtcMesh({
       if (remote && !validatePeer(remote)) return;
       const pc = createConnection(remotePeerId, false);
       await pc.setRemoteDescription(message.payload?.sdp);
+      await flushIceCandidates(remotePeerId, pc);
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       sendSignal({
@@ -300,14 +349,18 @@ export function createPaperWebRtcMesh({
       return;
     }
     if (message.type === "answer") {
-      await connections.get(String(message.from || ""))?.pc?.setRemoteDescription(
-        message.payload?.sdp
-      );
+      const remotePeerId = String(message.from || "");
+      const pc = connections.get(remotePeerId)?.pc;
+      if (!pc) return;
+      await pc.setRemoteDescription(message.payload?.sdp);
+      await flushIceCandidates(remotePeerId, pc);
       return;
     }
     if (message.type === "ice_candidate") {
-      const pc = createConnection(String(message.from || ""), false);
-      await pc.addIceCandidate(message.payload?.candidate);
+      await addRemoteIceCandidate(
+        String(message.from || ""),
+        message.payload?.candidate
+      );
       return;
     }
     if (message.type === "error") {
@@ -369,6 +422,7 @@ export function createPaperWebRtcMesh({
     }
     connections.clear();
     remoteMetadata.clear();
+    pendingIceCandidates.clear();
     queuedUpdates.length = 0;
     adoptingEpoch = "";
     if (signal?.readyState === WebSocket.OPEN) sendSignal({ type: "leave" });
