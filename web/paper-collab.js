@@ -7,7 +7,7 @@
 
 import { KoiApi } from "./api.js?v=20260815e";
 import * as Y from "./vendor/yjs.mjs?v=13.6.27";
-import { createPaperWebRtcMesh } from "./paper-webrtc.js?v=20260826b";
+import { createPaperWebRtcMesh } from "./paper-webrtc.js?v=20260826c";
 
 const NAME_KEY = "koi-collab-name";
 const LOCAL_ORIGIN = Symbol("paper-collab-local");
@@ -145,6 +145,8 @@ export function createPaperCollabClient({
     enabled: false,
     signaling: false,
     remotePeerCount: 0,
+    roomId: "",
+    gitCommit: "",
     error: "",
   };
 
@@ -220,6 +222,13 @@ export function createPaperCollabClient({
     try {
       const config = await KoiApi.getPaperCollabNetwork(projectId, slug, peerId);
       crdtEpoch = String(config.crdt_epoch || crdtEpoch);
+      networkStatus = {
+        ...networkStatus,
+        enabled: Boolean(config.enabled),
+        roomId: String(config.room_id || ""),
+        gitCommit: String(config.git_commit || ""),
+      };
+      emitStatus();
       await mesh.connect(config);
     } catch (error) {
       networkStatus = {

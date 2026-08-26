@@ -105,6 +105,8 @@ export function createPaperWebRtcMesh({
       signaling: signal?.readyState === WebSocket.OPEN,
       remotePeerCount: connectedPeers,
       authorityPeerId,
+      roomId: String(config?.room_id || ""),
+      gitCommit: String(config?.git_commit || ""),
       error: networkError,
     });
   }

@@ -12,7 +12,7 @@ import {
   mergeComputeCost,
 } from "./compute-cost.js";
 import { KoiApi } from "./api.js?v=20260815e";
-import { createPaperCollabClient } from "./paper-collab.js?v=20260826b";
+import { createPaperCollabClient } from "./paper-collab.js?v=20260826c";
 import { destroyKanbanDagView, fitKanbanDagView, refreshKanbanDagView } from "./kanban-dag.js?v=20260715a";
 import { clearKanbanMilestones, clearMilestoneBoardFilter, refreshKanbanMilestones } from "./milestones.js?v=20260807e";
 import {
@@ -8796,6 +8796,21 @@ const paperCollab = createPaperCollabClient({
   },
 });
 
+function paperCollabRoomLabel(network) {
+  const room = String(network?.roomId || "").trim();
+  return room ? ` · ${room}` : "";
+}
+
+function paperCollabDebugTitle(network, peerId = "") {
+  const parts = [];
+  if (network?.roomId) parts.push(`room ${network.roomId}`);
+  if (network?.gitCommit) parts.push(`git ${String(network.gitCommit).slice(0, 8)}`);
+  if (peerId) parts.push(`peer ${peerId}`);
+  if (network?.signaling != null) parts.push(`signaling ${network.signaling ? "on" : "off"}`);
+  if (network?.remotePeerCount != null) parts.push(`p2p ${network.remotePeerCount}`);
+  return parts.join(" · ");
+}
+
 function updatePaperCollabUi() {
   const el = paperEls().texCollab;
   if (!el) return;
@@ -8803,13 +8818,16 @@ function updatePaperCollabUi() {
     el.classList.add("hidden");
     el.classList.remove("is-conflict");
     delete el.dataset.collabConflict;
+    el.removeAttribute("title");
     return;
   }
   el.classList.remove("hidden");
   if (el.dataset.collabConflict === "true") return;
   const network = paperState.collabNetwork;
+  const roomLabel = paperCollabRoomLabel(network);
+  el.title = paperCollabDebugTitle(network, paperCollab.peerId);
   if (network?.error) {
-    el.textContent = network.error;
+    el.textContent = `${network.error}${roomLabel}`;
     el.classList.add("is-conflict");
     return;
   }
@@ -8818,11 +8836,11 @@ function updatePaperCollabUi() {
   const remoteCount = Number(network?.remotePeerCount) || 0;
   const count = Math.max(1, others.length + remoteCount);
   if (remoteCount > 0) {
-    el.textContent = `P2P · ${count}`;
+    el.textContent = `P2P · ${count}${roomLabel}`;
   } else if (network?.enabled && network?.signaling) {
-    el.textContent = "P2P · ожидание";
+    el.textContent = `P2P · ожидание${roomLabel}`;
   } else {
-    el.textContent = count > 1 ? `live · ${count}` : "live";
+    el.textContent = (count > 1 ? `live · ${count}` : "live") + roomLabel;
   }
 }
 
