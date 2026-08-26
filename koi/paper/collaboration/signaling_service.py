@@ -17,7 +17,10 @@ from typing import Any
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
+from koi.adapters.settings_store import load_env_file
 from koi.paper.collaboration.network import verify_room_token
+
+load_env_file()
 
 MAX_ROOM_PEERS = 5
 PEER_TTL_S = 45
