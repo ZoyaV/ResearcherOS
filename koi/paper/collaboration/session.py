@@ -418,8 +418,25 @@ class CollabSession:
                 }
             return event
 
+    def _reseed_from_disk_if_blank_locked(self) -> None:
+        if self.document.to_string():
+            return
+        if not self.tex_path.is_file():
+            return
+        disk = self.tex_path.read_text(encoding="utf-8")
+        if not disk:
+            return
+        self.document.replace_with(disk)
+
+    def reseed_from_disk_if_blank(self) -> bool:
+        with self._lock:
+            before = self.document.to_string()
+            self._reseed_from_disk_if_blank_locked()
+            return bool(self.document.to_string()) and not before
+
     def sync_event(self) -> dict[str, Any]:
         with self._lock:
+            self._reseed_from_disk_if_blank_locked()
             return {
                 "type": "sync",
                 "update": base64.b64encode(self.document.get_update()).decode("ascii"),
@@ -984,6 +1001,7 @@ def live_text(project_id: str, slug: str) -> str | None:
     session = get_session(project_id, slug)
     if session is None or session.closed:
         return None
+    session.reseed_from_disk_if_blank()
     text = session.document.to_string()
     if not text:
         return None

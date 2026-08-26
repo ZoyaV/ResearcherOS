@@ -81,6 +81,7 @@ export function createPaperWebRtcMesh({
   const relayPeers = new Set();
   const lastTexSeq = new Map();
   const resyncAt = new Map();
+  const lastTexSent = new Map();
   let localTexSeq = 0;
 
   async function flushIceCandidates(remotePeerId, pc) {
@@ -276,6 +277,9 @@ export function createPaperWebRtcMesh({
   function sendTexTo(remotePeerId) {
     const frame = texFrame();
     if (!frame.text) return;
+    const now = Date.now();
+    if (now - (lastTexSent.get(remotePeerId) || 0) < 1500) return;
+    lastTexSent.set(remotePeerId, now);
     const channel = connections.get(remotePeerId)?.channel;
     if (channel?.readyState === "open") {
       sendChannel(channel, frame);
@@ -298,6 +302,10 @@ export function createPaperWebRtcMesh({
     const frame = texFrame();
     if (!frame.text) return;
     for (const remotePeerId of relayPeers) sendRelay(remotePeerId, frame);
+  }
+
+  function requestTexFromPeers() {
+    for (const remotePeerId of relayPeers) requestResync(remotePeerId);
   }
 
   function broadcastTexSpan(span) {
@@ -357,6 +365,7 @@ export function createPaperWebRtcMesh({
       });
     }
     sendCommentsTo(remotePeerId);
+    sendTexTo(remotePeerId);
     emitStatus();
   }
 
@@ -777,6 +786,7 @@ export function createPaperWebRtcMesh({
     relayPeers.clear();
     lastTexSeq.clear();
     resyncAt.clear();
+    lastTexSent.clear();
     localTexSeq = 0;
     if (signal?.readyState === WebSocket.OPEN) sendSignal({ type: "leave" });
     signal?.close();
@@ -824,6 +834,7 @@ export function createPaperWebRtcMesh({
     disconnect,
     broadcastUpdate,
     broadcastTex,
+    requestTexFromPeers,
     broadcastTexSpan,
     broadcastPresence,
     broadcastComments,
