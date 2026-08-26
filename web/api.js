@@ -368,22 +368,8 @@ export const KoiApi = {
     `${apiBase()}/projects/${projectId}/papers/${encodeURIComponent(slug)}/pdf`,
   paperTexUrl: (projectId, slug = "default") =>
     `${apiBase()}/projects/${projectId}/papers/${encodeURIComponent(slug)}/tex`,
-  getPaperTex: (projectId, slug = "default", at = "") =>
-    apiText(
-      `/projects/${projectId}/papers/${encodeURIComponent(slug)}/tex${
-        at ? `?at=${encodeURIComponent(at)}` : ""
-      }`
-    ),
-  getPaperVersions: (projectId, slug = "default") =>
-    api(`/projects/${projectId}/papers/${encodeURIComponent(slug)}/versions`),
-  pullPaperVersions: (projectId, slug = "default") =>
-    api(`/projects/${projectId}/papers/${encodeURIComponent(slug)}/versions/pull`, {
-      method: "POST",
-    }),
-  pushPaperVersions: (projectId, slug = "default") =>
-    api(`/projects/${projectId}/papers/${encodeURIComponent(slug)}/versions/push`, {
-      method: "POST",
-    }),
+  getPaperTex: (projectId, slug = "default") =>
+    apiText(`/projects/${projectId}/papers/${encodeURIComponent(slug)}/tex`),
   getPaperTexMeta: (projectId, slug = "default") =>
     api(`/projects/${projectId}/papers/${encodeURIComponent(slug)}/tex/meta`),
   savePaperTex: (projectId, slug, content) =>

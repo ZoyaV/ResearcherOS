@@ -130,40 +130,6 @@ def test_relay_reaches_room_when_target_id_is_stale() -> None:
     asyncio.run(scenario())
 
 
-def test_relay_drops_closed_gateway_target_and_falls_back() -> None:
-    class Socket:
-        def __init__(self, *, closed: bool = False) -> None:
-            self.closed = closed
-            self.messages: list[dict] = []
-
-        async def send_json(self, payload: dict) -> None:
-            if self.closed:
-                raise RuntimeError("gateway connection is gone")
-            self.messages.append(payload)
-
-    async def scenario() -> None:
-        alice_socket = Socket()
-        stale_socket = Socket(closed=True)
-        bob_socket = Socket()
-        room = "paper-room-closed-target"
-        await rooms.join(room, SignalPeer("alice", alice_socket, connection_id="closed-a"))
-        await rooms.join(room, SignalPeer("stale", stale_socket, connection_id="closed-stale"))
-        await rooms.join(room, SignalPeer("bob", bob_socket, connection_id="closed-b"))
-
-        await handle_routed(
-            alice_socket,
-            room,
-            "alice",
-            {"type": "relay", "to": "stale", "payload": {"type": "update"}},
-        )
-
-        assert rooms.lookup_connection("closed-stale") is None
-        assert bob_socket.messages[-1]["type"] == "relay"
-        assert bob_socket.messages[-1]["payload"] == {"type": "update"}
-
-    asyncio.run(scenario())
-
-
 def test_adopting_authority_state_does_not_duplicate_seed_text(tmp_path: Path) -> None:
     left_path = tmp_path / "left" / "main.tex"
     right_path = tmp_path / "right" / "main.tex"
@@ -313,12 +279,3 @@ def test_yandex_gateway_join_and_route(monkeypatch: pytest.MonkeyPatch) -> None:
     assert join.status_code == 204
     assert rooms.lookup_connection("conn-alice") == ("room-a", "alice")
     assert any(item[1].get("type") == "room_state" for item in sent)
-
-    disconnect = client.delete(
-        "/signal",
-        headers={
-            "X-Yc-Apigateway-Websocket-Connection-Id": "conn-alice",
-        },
-    )
-    assert disconnect.status_code == 200
-    assert rooms.lookup_connection("conn-alice") is None

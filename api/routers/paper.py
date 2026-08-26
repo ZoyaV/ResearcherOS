@@ -26,12 +26,6 @@ from koi.paper.generator import (
     paper_status,
 )
 from koi.paper.runner import submit_paper_request
-from koi.paper.versions import (
-    commit_and_push_paper,
-    list_paper_versions,
-    paper_tex_at_commit,
-    pull_paper_versions,
-)
 from koi.paper.comments import (
     add_reply,
     apply_comment_merge,
@@ -222,67 +216,14 @@ def get_project_paper_tex_meta(project_id: str, slug: str) -> dict:
     return {"tex_exists": True, "tex_mtime": stat.st_mtime, "size": stat.st_size}
 
 
-@router.get("/projects/{project_id}/papers/{slug}/versions")
-def get_project_paper_versions(project_id: str, slug: str) -> dict:
-    normalized, slot_dir = _require_paper_slot(project_id, slug)
-    path = slot_dir / TEX_NAME
-    if not path.is_file():
-        raise HTTPException(404, "main.tex ещё не сгенерирован")
-    return list_paper_versions(project_id, path)
-
-
-@router.post("/projects/{project_id}/papers/{slug}/versions/pull")
-def post_project_paper_versions_pull(project_id: str, slug: str) -> dict:
-    normalized, slot_dir = _require_paper_slot(project_id, slug)
-    path = slot_dir / TEX_NAME
-    if not path.is_file():
-        raise HTTPException(404, "main.tex ещё не сгенерирован")
-    try:
-        versions = pull_paper_versions(project_id, path)
-    except RuntimeError as exc:
-        raise HTTPException(409, str(exc)) from exc
-    from koi.paper.collaboration.session import drop_session
-
-    drop_session(project_id, normalized)
-    return {"ok": True, **versions}
-
-
-@router.post("/projects/{project_id}/papers/{slug}/versions/push")
-def post_project_paper_versions_push(project_id: str, slug: str) -> dict:
-    normalized, slot_dir = _require_paper_slot(project_id, slug)
-    path = slot_dir / TEX_NAME
-    if not path.is_file():
-        raise HTTPException(404, "main.tex ещё не сгенерирован")
-    try:
-        return commit_and_push_paper(project_id, path, slug=normalized)
-    except RuntimeError as exc:
-        raise HTTPException(409, str(exc)) from exc
-
-
 @router.get("/projects/{project_id}/papers/{slug}/tex")
-def get_project_paper_tex(
-    project_id: str,
-    slug: str,
-    at: str | None = Query(default=None),
-):
+def get_project_paper_tex(project_id: str, slug: str):
     parse_project(project_id)
     normalized = normalize_paper_slug(slug)
     slot_dir = get_paper_slot_dir(project_id, normalized)
     if slot_dir is None:
         raise HTTPException(404, f"Статья «{normalized}» не найдена")
     path = slot_dir / TEX_NAME
-    if at:
-        try:
-            text = paper_tex_at_commit(project_id, path, at)
-        except ValueError as exc:
-            raise HTTPException(400, str(exc)) from exc
-        except FileNotFoundError as exc:
-            raise HTTPException(404, str(exc)) from exc
-        return PlainTextResponse(
-            text,
-            media_type="text/plain; charset=utf-8",
-            headers={"Cache-Control": "no-store"},
-        )
     if not path.is_file():
         raise HTTPException(404, "main.tex ещё не сгенерирован")
     from koi.paper.collaboration.session import live_text

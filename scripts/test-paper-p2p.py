@@ -337,14 +337,8 @@ def main() -> int:
         secret = "disposable-p2p-test-secret"
         common = {
             "KOI_SCAN_ROOTS": str(temp),
-            "KOI_COLLAB_SIGNALING_URL": os.environ.get(
-                "KOI_P2P_TEST_SIGNALING_URL",
-                f"ws://127.0.0.1:{signal_port}/signal",
-            ),
-            "KOI_COLLAB_TOKEN_SECRET": os.environ.get(
-                "KOI_P2P_TEST_TOKEN_SECRET",
-                secret,
-            ),
+            "KOI_COLLAB_SIGNALING_URL": f"ws://127.0.0.1:{signal_port}/signal",
+            "KOI_COLLAB_TOKEN_SECRET": secret,
         }
         try:
             processes.append(
