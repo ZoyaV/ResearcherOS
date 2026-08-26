@@ -12,7 +12,7 @@ import {
   mergeComputeCost,
 } from "./compute-cost.js";
 import { KoiApi } from "./api.js?v=20260826t";
-import { createPaperCollabClient, localUserName } from "./paper-collab.js?v=20260826x";
+import { createPaperCollabClient, localUserName } from "./paper-collab.js?v=20260826y";
 import { destroyKanbanDagView, fitKanbanDagView, refreshKanbanDagView } from "./kanban-dag.js?v=20260715a";
 import { clearKanbanMilestones, clearMilestoneBoardFilter, refreshKanbanMilestones } from "./milestones.js?v=20260807e";
 import {
@@ -8764,6 +8764,7 @@ const PAPER_INBOX_CONFIGURED_KEY = "koi_paper_inbox_configured";
 const PAPER_TEX_POLL_MS = 3000;
 const PAPER_TEX_SAVE_GRACE_MS = 15000;
 const paperCollab = createPaperCollabClient({
+  getLocalText: () => paperEls().texInput?.value || paperState.texText || "",
   onState: ({ text, applyToEditor = true }) => {
     applyRemoteCollabText(text, { applyToEditor });
   },
@@ -8929,7 +8930,13 @@ async function resolvePaperCollabProposalHunk(hunkId, resolution) {
 }
 
 function applyRemoteCollabText(next, { applyToEditor = true } = {}) {
-  if (paperState.viewedSha) return;
+  if (paperState.viewedSha) {
+    paperState.viewedSha = null;
+    paperState.liveTexBeforeView = "";
+    paperState.texDirtyBeforeView = false;
+    updatePaperEditorLock();
+    renderPaperVersions();
+  }
   const ta = paperEls().texInput;
   const prev = ta?.value ?? paperState.texText ?? "";
   if (!next && prev) return;

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import subprocess
+import time
 from pathlib import Path
 from typing import Any
 
@@ -100,7 +101,15 @@ def _upstream_ref(repo: Path) -> str:
     return ""
 
 
-def _fetch_origin(repo: Path) -> None:
+_LAST_FETCH: dict[str, float] = {}
+
+
+def _fetch_origin(repo: Path, *, force: bool = False, min_interval: float = 45) -> None:
+    key = str(repo.resolve())
+    now = time.monotonic()
+    if not force and now - _LAST_FETCH.get(key, 0.0) < min_interval:
+        return
+    _LAST_FETCH[key] = now
     _run_git(repo, "fetch", "--quiet", "origin", timeout=20)
 
 
@@ -134,7 +143,7 @@ def list_paper_versions(project_id: str, tex_path: Path, *, limit: int = 40) -> 
 
 def pull_paper_versions(project_id: str, tex_path: Path) -> dict[str, Any]:
     repo = _repo_root(tex_path)
-    _fetch_origin(repo)
+    _fetch_origin(repo, force=True)
     pulled = _run_git(repo, "pull", "--ff-only", "--quiet", timeout=30)
     if pulled.returncode != 0:
         fallback = _run_git(repo, "pull", "--quiet", timeout=30)

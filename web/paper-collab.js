@@ -7,7 +7,7 @@
 
 import { KoiApi } from "./api.js?v=20260826t";
 import * as Y from "./vendor/yjs.mjs?v=13.6.27";
-import { createPaperWebRtcMesh } from "./paper-webrtc.js?v=20260826x";
+import { createPaperWebRtcMesh } from "./paper-webrtc.js?v=20260826y";
 
 const NAME_KEY = "koi-collab-name";
 const LOCAL_ORIGIN = Symbol("paper-collab-local");
@@ -129,6 +129,7 @@ export function createPaperCollabClient({
   onStatus,
   onMaterialized,
   getComments,
+  getLocalText,
 } = {}) {
   const peerId = localPeerId();
   let socket = null;
@@ -163,7 +164,7 @@ export function createPaperCollabClient({
     getDocumentUpdate: () => (ydoc ? Y.encodeStateAsUpdate(ydoc) : null),
     getComments: () => getComments?.() || [],
     onComments: (payload) => onComments?.(payload),
-    getText: () => ytext?.toString() ?? "",
+    getText: () => ytext?.toString() || getLocalText?.() || "",
     applyRemoteText: (text) => replaceText(text, P2P_ORIGIN),
     applyRemoteSpan: (span) => applySpan(span, P2P_ORIGIN),
     applyRemoteUpdate: (update) => {
@@ -331,8 +332,12 @@ export function createPaperCollabClient({
         gitCommit: String(config.git_commit || ""),
       };
       emitStatus();
+      const local = getLocalText?.() || "";
+      if (local && ytext && ytext.toString() !== local) {
+        replaceText(local, RESET_ORIGIN);
+      }
       await mesh.connect(config);
-      if (ytext?.toString()) mesh.broadcastTex();
+      if (ytext?.toString() || local) mesh.broadcastTex();
       else mesh.requestTexFromPeers();
     } catch (error) {
       networkStatus = {
@@ -568,6 +573,11 @@ export function createPaperCollabClient({
     };
     if (!span || (!span.delete_len && !span.new_text)) return;
     mesh.markLocalDirty();
+    if (!ytext.toString() && after) {
+      replaceText(after, LOCAL_ORIGIN);
+      mesh.broadcastTex();
+      return;
+    }
     if (ytext.toString() !== before) {
       replaceText(after, LOCAL_ORIGIN);
       mesh.broadcastTex();
