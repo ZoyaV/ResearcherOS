@@ -225,8 +225,18 @@ async def handle_routed(sender: Any, room: str, peer_id: str, message: dict[str,
         "payload": message.get("payload") or {},
     }
     if target is not None:
-        await target.websocket.send_json(routed)
-        return
+        try:
+            await target.websocket.send_json(routed)
+            return
+        except Exception:
+            # API Gateway returns 404 when a connection has already closed.
+            # Remove it immediately instead of keeping a phantom peer forever.
+            await rooms.leave(
+                room,
+                target.peer_id,
+                target.websocket,
+                connection_id=target.connection_id or None,
+            )
     # Stale `to` after a reconnect: still deliver paper relay to whoever is left.
     if kind == "relay":
         others = await rooms.peers(room, exclude=peer_id)
@@ -272,8 +282,8 @@ async def signal(websocket: WebSocket) -> None:
             )
 
 
-@app.api_route("/signal", methods=["GET", "POST"])
-@app.api_route("/yc/ws", methods=["GET", "POST"])
+@app.api_route("/signal", methods=["GET", "POST", "DELETE"])
+@app.api_route("/yc/ws", methods=["GET", "POST", "DELETE"])
 async def yandex_websocket_event(request: Request) -> Response:
     """API Gateway WebSocket → HTTP. Rooms stay in this process (one replica).
 
@@ -284,7 +294,12 @@ async def yandex_websocket_event(request: Request) -> Response:
     event = (request.headers.get("X-Yc-Apigateway-Websocket-Event-Type") or "").upper()
     connection_id = request.headers.get("X-Yc-Apigateway-Websocket-Connection-Id") or ""
     if not event:
-        event = "CONNECT" if request.method == "GET" else "MESSAGE"
+        if request.method == "GET":
+            event = "CONNECT"
+        elif request.method == "DELETE":
+            event = "DISCONNECT"
+        else:
+            event = "MESSAGE"
     if event == "CONNECT":
         return JSONResponse({"ok": True})
     if event == "DISCONNECT":
