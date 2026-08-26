@@ -12,7 +12,7 @@ import {
   mergeComputeCost,
 } from "./compute-cost.js";
 import { KoiApi } from "./api.js?v=20260826t";
-import { createPaperCollabClient, localUserName } from "./paper-collab.js?v=20260826v";
+import { createPaperCollabClient, localUserName } from "./paper-collab.js?v=20260826x";
 import { destroyKanbanDagView, fitKanbanDagView, refreshKanbanDagView } from "./kanban-dag.js?v=20260715a";
 import { clearKanbanMilestones, clearMilestoneBoardFilter, refreshKanbanMilestones } from "./milestones.js?v=20260807e";
 import {
@@ -8802,9 +8802,12 @@ const paperCollab = createPaperCollabClient({
   },
   onMaterialized: (event) => {
     paperState.texDirty = false;
+    paperState.paperVersionsDirty = true;
     if (event?.tex_mtime != null) paperState.lastRemoteTexMtime = event.tex_mtime;
     paperState.texSavedAt = Date.now();
     updatePaperSaveUi();
+    const entry = activePaperEntry();
+    if (entry) void loadPaperVersions(entry.project_id, entry.slug);
   },
 });
 
@@ -10401,6 +10404,7 @@ async function savePaperTex({ quiet = false } = {}) {
       ? await KoiApi.flushPaperCollab(entry.project_id, entry.slug)
       : await KoiApi.savePaperTex(entry.project_id, entry.slug, content);
     paperState.texDirty = false;
+    paperState.paperVersionsDirty = true;
     paperState.texText = content;
     paperState.texLines = content.split("\n");
     if (res?.tex_mtime != null) {
@@ -10419,6 +10423,7 @@ async function savePaperTex({ quiet = false } = {}) {
       }, 5000);
     }
     if (!quiet) showPaperToast(`main.tex сохранён · ${label}`);
+    void loadPaperVersions(entry.project_id, entry.slug);
     return true;
   } catch (err) {
     if (els.status) els.status.textContent = `Не удалось сохранить main.tex: ${err.message}`;

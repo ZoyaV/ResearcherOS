@@ -83,7 +83,9 @@ export function createPaperWebRtcMesh({
   const resyncAt = new Map();
   const lastTexSent = new Map();
   const forcedResync = new Set();
+  const texChunks = new Map();
   let localTexSeq = 0;
+  const RELAY_LIMIT = 100000;
 
   async function flushIceCandidates(remotePeerId, pc) {
     const queued = pendingIceCandidates.get(remotePeerId) || [];
@@ -276,11 +278,11 @@ export function createPaperWebRtcMesh({
     sendRelay(fromPeer, { type: "tex_resync" });
   }
 
-  function sendTexTo(remotePeerId) {
+  function sendTexTo(remotePeerId, { force = false } = {}) {
     const frame = texFrame();
     if (!frame.text) return;
     const now = Date.now();
-    if (now - (lastTexSent.get(remotePeerId) || 0) < 1500) return;
+    if (!force && now - (lastTexSent.get(remotePeerId) || 0) < 1500) return;
     lastTexSent.set(remotePeerId, now);
     const channel = connections.get(remotePeerId)?.channel;
     if (channel?.readyState === "open") {
@@ -306,9 +308,8 @@ export function createPaperWebRtcMesh({
   }
 
   function broadcastTex() {
-    const frame = texFrame();
-    if (!frame.text) return;
-    for (const remotePeerId of relayPeers) sendRelay(remotePeerId, frame);
+    localTexSeq += 1;
+    for (const remotePeerId of relayPeers) sendTexTo(remotePeerId, { force: true });
   }
 
   function requestTexFromPeers() {
@@ -337,19 +338,72 @@ export function createPaperWebRtcMesh({
     for (const remotePeerId of relayPeers) sendRelay(remotePeerId, frame);
   }
 
+  function relayEnvelope(remotePeerId, payload) {
+    return { type: "relay", to: remotePeerId, payload };
+  }
+
+  function sendChunkedTex(remotePeerId, payload) {
+    const text = String(payload.text || "");
+    if (!text) return false;
+    const id = `${peerId}-${payload.seq ?? localTexSeq}-${Date.now()}`;
+    let size = 24000;
+    while (size >= 2000) {
+      const n = Math.ceil(text.length / size);
+      const frames = [];
+      let tooBig = false;
+      for (let i = 0; i < n; i += 1) {
+        const piece = {
+          type: "tex_chunk",
+          id,
+          i,
+          n,
+          seq: payload.seq,
+          dirty: payload.dirty,
+          text: text.slice(i * size, i * size + size),
+        };
+        if (JSON.stringify(relayEnvelope(remotePeerId, piece)).length > RELAY_LIMIT) {
+          tooBig = true;
+          break;
+        }
+        frames.push(piece);
+      }
+      if (!tooBig) {
+        return frames.every((piece) => sendSignal(relayEnvelope(remotePeerId, piece)));
+      }
+      size = Math.floor(size / 2);
+    }
+    return false;
+  }
+
   function sendRelay(remotePeerId, payload) {
-    const body = JSON.stringify({
-      type: "relay",
-      to: remotePeerId,
-      payload,
-    });
+    const envelope = relayEnvelope(remotePeerId, payload);
+    const body = JSON.stringify(envelope);
     // API Gateway drops the socket on frames above 128 KB.
-    if (body.length > 100000) return false;
-    return sendSignal({
-      type: "relay",
-      to: remotePeerId,
-      payload,
-    });
+    if (body.length > RELAY_LIMIT) {
+      if (payload?.type === "tex" && payload.text) return sendChunkedTex(remotePeerId, payload);
+      if (payload?.type === "hello" && payload.text) {
+        const { text, tex_dirty, seq, ...rest } = payload;
+        sendRelay(remotePeerId, rest);
+        return sendChunkedTex(remotePeerId, { type: "tex", text, dirty: tex_dirty, seq });
+      }
+      return false;
+    }
+    return sendSignal(envelope);
+  }
+
+  function adoptChunk(fromPeer, message) {
+    const id = String(message.id || "");
+    if (!id) return;
+    const key = `${fromPeer}:${id}`;
+    const n = Number(message.n) || 0;
+    const i = Number(message.i);
+    if (!n || !Number.isFinite(i) || i < 0 || i >= n) return;
+    const rec = texChunks.get(key) || { parts: Array(n).fill(null), n, seq: message.seq };
+    rec.parts[i] = String(message.text || "");
+    texChunks.set(key, rec);
+    if (rec.parts.some((part) => part == null)) return;
+    texChunks.delete(key);
+    adoptRemoteText(rec.parts.join(""), fromPeer, rec.seq);
   }
 
   function startRelay(remotePeerId) {
@@ -360,19 +414,15 @@ export function createPaperWebRtcMesh({
     networkError = "";
     if (!already) {
       const snapshot = commentsFrame();
-      const tex = texFrame();
       sendRelay(remotePeerId, {
         type: "hello",
         metadata: publicMetadata(),
         comments: snapshot.comments,
         deleted_ids: snapshot.deleted_ids,
-        ...(tex.text
-          ? { text: tex.text, tex_dirty: tex.dirty, seq: tex.seq }
-          : {}),
       });
     }
     sendCommentsTo(remotePeerId);
-    sendTexTo(remotePeerId);
+    sendTexTo(remotePeerId, { force: true });
     emitStatus();
   }
 
@@ -541,6 +591,9 @@ export function createPaperWebRtcMesh({
     if (message.type === "tex") {
       adoptRemoteText(message.text, fromPeer, message.seq);
     }
+    if (message.type === "tex_chunk") {
+      adoptChunk(fromPeer, message);
+    }
     if (message.type === "tex_span") {
       if (isStaleTex(fromPeer, message.seq)) return;
       const expected = Number(message.base_len);
@@ -562,7 +615,7 @@ export function createPaperWebRtcMesh({
       noteRemoteSeq(fromPeer, message.seq);
     }
     if (message.type === "tex_resync") {
-      sendTexTo(fromPeer);
+      sendTexTo(fromPeer, { force: true });
     }
   }
 
@@ -656,6 +709,9 @@ export function createPaperWebRtcMesh({
       resyncAt.delete(remotePeerId);
       lastTexSent.delete(remotePeerId);
       forcedResync.delete(remotePeerId);
+      for (const key of [...texChunks.keys()]) {
+        if (key.startsWith(`${remotePeerId}:`)) texChunks.delete(key);
+      }
       emitStatus();
       return;
     }
@@ -797,6 +853,7 @@ export function createPaperWebRtcMesh({
     resyncAt.clear();
     lastTexSent.clear();
     forcedResync.clear();
+    texChunks.clear();
     localTexSeq = 0;
     if (signal?.readyState === WebSocket.OPEN) sendSignal({ type: "leave" });
     signal?.close();
