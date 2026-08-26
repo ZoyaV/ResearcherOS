@@ -984,7 +984,10 @@ def live_text(project_id: str, slug: str) -> str | None:
     session = get_session(project_id, slug)
     if session is None or session.closed:
         return None
-    return session.document.to_string()
+    text = session.document.to_string()
+    if not text:
+        return None
+    return text
 
 
 def register_agent_task(project_id: str, slug: str, tex_path: Path, task_id: str | None = None) -> AgentTask:

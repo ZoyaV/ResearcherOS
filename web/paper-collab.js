@@ -7,7 +7,7 @@
 
 import { KoiApi } from "./api.js?v=20260826e";
 import * as Y from "./vendor/yjs.mjs?v=13.6.27";
-import { createPaperWebRtcMesh } from "./paper-webrtc.js?v=20260826o";
+import { createPaperWebRtcMesh } from "./paper-webrtc.js?v=20260826p";
 
 const NAME_KEY = "koi-collab-name";
 const LOCAL_ORIGIN = Symbol("paper-collab-local");

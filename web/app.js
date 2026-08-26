@@ -12,7 +12,7 @@ import {
   mergeComputeCost,
 } from "./compute-cost.js";
 import { KoiApi } from "./api.js?v=20260826e";
-import { createPaperCollabClient, localUserName } from "./paper-collab.js?v=20260826o";
+import { createPaperCollabClient, localUserName } from "./paper-collab.js?v=20260826p";
 import { destroyKanbanDagView, fitKanbanDagView, refreshKanbanDagView } from "./kanban-dag.js?v=20260715a";
 import { clearKanbanMilestones, clearMilestoneBoardFilter, refreshKanbanMilestones } from "./milestones.js?v=20260807e";
 import {
@@ -8920,6 +8920,7 @@ async function resolvePaperCollabProposalHunk(hunkId, resolution) {
 function applyRemoteCollabText(next, { applyToEditor = true } = {}) {
   const ta = paperEls().texInput;
   const prev = ta?.value ?? paperState.texText ?? "";
+  if (!next && prev) return;
   if (prev === next || !applyToEditor) {
     paperState.texText = prev === next ? next : paperState.texText;
     if (prev === next) paperState.texLines = next.split("\n");
@@ -10561,7 +10562,14 @@ async function loadPaperComments(projectId, slug) {
 
 async function loadPaperTex(projectId, slug, { force = false } = {}) {
   const key = paperViewerKey(projectId, slug);
-  if (!force && paperState.lastTexKey === key && paperEls().texInput && !paperState.texDirty) {
+  const shown = paperEls().texInput?.value ?? paperState.texText ?? "";
+  if (
+    !force &&
+    paperState.lastTexKey === key &&
+    paperEls().texInput &&
+    !paperState.texDirty &&
+    shown
+  ) {
     await renderPaperTexEditor();
     return;
   }
