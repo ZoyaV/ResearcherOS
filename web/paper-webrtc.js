@@ -251,7 +251,7 @@ export function createPaperWebRtcMesh({
     return {
       type: "tex",
       text: getText?.() || "",
-      dirty: Boolean(config?.local_dirty),
+      dirty: Boolean(config?.publish_snapshot || config?.local_dirty),
       seq: localTexSeq,
     };
   }
@@ -292,7 +292,7 @@ export function createPaperWebRtcMesh({
     sendRelay(remotePeerId, frame);
   }
 
-  function adoptRemoteText(text, fromPeer, seq) {
+  function adoptRemoteText(text, fromPeer, seq, meta = {}) {
     if (typeof text !== "string" || !text) return;
     const local = getText?.() || "";
     if (local === text) {
@@ -301,7 +301,8 @@ export function createPaperWebRtcMesh({
       return;
     }
     const force = forcedResync.delete(fromPeer);
-    if (config?.local_dirty && local && !force) return;
+    const remoteDirty = Boolean(meta.dirty || meta.tex_dirty);
+    if (!force && local && !remoteDirty) return;
     if (!force && local && text.length < Math.min(32, local.length)) return;
     applyRemoteText?.(text);
     noteRemoteSeq(fromPeer, seq);
@@ -398,12 +399,13 @@ export function createPaperWebRtcMesh({
     const n = Number(message.n) || 0;
     const i = Number(message.i);
     if (!n || !Number.isFinite(i) || i < 0 || i >= n) return;
-    const rec = texChunks.get(key) || { parts: Array(n).fill(null), n, seq: message.seq };
+    const rec = texChunks.get(key) || { parts: Array(n).fill(null), n, seq: message.seq, dirty: false };
     rec.parts[i] = String(message.text || "");
+    rec.dirty = rec.dirty || Boolean(message.dirty || message.tex_dirty);
     texChunks.set(key, rec);
     if (rec.parts.some((part) => part == null)) return;
     texChunks.delete(key);
-    adoptRemoteText(rec.parts.join(""), fromPeer, rec.seq);
+    adoptRemoteText(rec.parts.join(""), fromPeer, rec.seq, rec);
   }
 
   function startRelay(remotePeerId) {
@@ -422,7 +424,7 @@ export function createPaperWebRtcMesh({
       });
     }
     sendCommentsTo(remotePeerId);
-    sendTexTo(remotePeerId, { force: true });
+    if (!config?.publish_snapshot) requestResync(remotePeerId);
     emitStatus();
   }
 
@@ -560,10 +562,10 @@ export function createPaperWebRtcMesh({
         });
       }
       if (typeof message.text === "string") {
-        adoptRemoteText(message.text, fromPeer, message.seq);
+        adoptRemoteText(message.text, fromPeer, message.seq, message);
       }
       sendCommentsTo(fromPeer);
-      sendTexTo(fromPeer);
+      if (!config?.publish_snapshot) requestResync(fromPeer);
       if (relayPeers.has(fromPeer)) return;
       if (config?.crdt_epoch === message.metadata?.crdt_epoch || peerId === authorityPeerId) {
         sendSync(connections.get(fromPeer)?.channel);
@@ -589,7 +591,7 @@ export function createPaperWebRtcMesh({
       });
     }
     if (message.type === "tex") {
-      adoptRemoteText(message.text, fromPeer, message.seq);
+      adoptRemoteText(message.text, fromPeer, message.seq, message);
     }
     if (message.type === "tex_chunk") {
       adoptChunk(fromPeer, message);
@@ -615,7 +617,7 @@ export function createPaperWebRtcMesh({
       noteRemoteSeq(fromPeer, message.seq);
     }
     if (message.type === "tex_resync") {
-      sendTexTo(fromPeer, { force: true });
+      if (config?.publish_snapshot) sendTexTo(fromPeer, { force: true });
     }
   }
 
@@ -908,6 +910,9 @@ export function createPaperWebRtcMesh({
     noteLocalState,
     markLocalDirty: () => {
       config = { ...config, local_dirty: true };
+    },
+    markPublishSnapshot: () => {
+      config = { ...config, local_dirty: true, publish_snapshot: true };
     },
   };
 }

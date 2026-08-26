@@ -12,7 +12,7 @@ import {
   mergeComputeCost,
 } from "./compute-cost.js";
 import { KoiApi } from "./api.js?v=20260826t";
-import { createPaperCollabClient, localUserName } from "./paper-collab.js?v=20260826y";
+import { createPaperCollabClient, localUserName } from "./paper-collab.js?v=20260827a";
 import { destroyKanbanDagView, fitKanbanDagView, refreshKanbanDagView } from "./kanban-dag.js?v=20260715a";
 import { clearKanbanMilestones, clearMilestoneBoardFilter, refreshKanbanMilestones } from "./milestones.js?v=20260807e";
 import {
@@ -8765,6 +8765,7 @@ const PAPER_TEX_POLL_MS = 3000;
 const PAPER_TEX_SAVE_GRACE_MS = 15000;
 const paperCollab = createPaperCollabClient({
   getLocalText: () => paperEls().texInput?.value || paperState.texText || "",
+  getLocalDirty: () => Boolean(paperState.texDirty || paperState.paperVersionsDirty),
   onState: ({ text, applyToEditor = true }) => {
     applyRemoteCollabText(text, { applyToEditor });
   },
