@@ -28,6 +28,7 @@ from koi.paper.generator import (
 from koi.paper.runner import submit_paper_request
 from koi.paper.comments import (
     add_reply,
+    apply_comment_merge,
     create_comment,
     delete_comment,
     load_comments,
@@ -58,6 +59,11 @@ class PaperCommentReplyBody(BaseModel):
 
 class PaperCommentResolveBody(BaseModel):
     resolved: bool = True
+
+
+class PaperCommentsMergeBody(BaseModel):
+    comments: list[dict] = Field(default_factory=list)
+    deleted_ids: list[str] = Field(default_factory=list)
 
 
 class PaperTexUpdateBody(BaseModel):
@@ -306,6 +312,12 @@ def _require_paper_slot(project_id: str, slug: str) -> tuple[str, Path]:
 def get_project_paper_comments(project_id: str, slug: str) -> dict:
     _, slot_dir = _require_paper_slot(project_id, slug)
     return load_comments(slot_dir)
+
+
+@router.put("/projects/{project_id}/papers/{slug}/comments")
+def put_project_paper_comments(project_id: str, slug: str, body: PaperCommentsMergeBody) -> dict:
+    _, slot_dir = _require_paper_slot(project_id, slug)
+    return apply_comment_merge(slot_dir, body.comments, body.deleted_ids)
 
 
 @router.post("/projects/{project_id}/papers/{slug}/comments")

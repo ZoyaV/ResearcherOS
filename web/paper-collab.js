@@ -5,15 +5,16 @@
  * Y.Text; server echoes are unnecessary and therefore cannot move the caret.
  */
 
-import { KoiApi } from "./api.js?v=20260815e";
+import { KoiApi } from "./api.js?v=20260826e";
 import * as Y from "./vendor/yjs.mjs?v=13.6.27";
-import { createPaperWebRtcMesh } from "./paper-webrtc.js?v=20260826d";
+import { createPaperWebRtcMesh } from "./paper-webrtc.js?v=20260826i";
 
 const NAME_KEY = "koi-collab-name";
 const LOCAL_ORIGIN = Symbol("paper-collab-local");
 const REMOTE_ORIGIN = Symbol("paper-collab-remote");
 const P2P_ORIGIN = Symbol("paper-collab-p2p");
 const RESET_ORIGIN = Symbol("paper-collab-reset");
+const COMMENTS_SEED = Symbol("paper-collab-comments-seed");
 
 function randomId(prefix) {
   return `${prefix}-${Math.random().toString(16).slice(2, 10)}`;
@@ -121,15 +122,18 @@ function inputSpan(textarea, event, before) {
 export function createPaperCollabClient({
   onState,
   onPresence,
+  onComments,
   onConflict,
   onProposal,
   onStatus,
   onMaterialized,
+  getComments,
 } = {}) {
   const peerId = localPeerId();
   let socket = null;
   let ydoc = null;
   let ytext = null;
+  let ycomments = null;
   let revision = 0;
   let peers = [];
   let connected = false;
@@ -156,6 +160,8 @@ export function createPaperCollabClient({
     refreshConfig: () =>
       projectId && slug ? KoiApi.getPaperCollabNetwork(projectId, slug, peerId) : null,
     getDocumentUpdate: () => (ydoc ? Y.encodeStateAsUpdate(ydoc) : null),
+    getComments: () => getComments?.() || [],
+    onComments: (payload) => onComments?.(payload),
     applyRemoteUpdate: (update) => {
       if (ydoc) Y.applyUpdate(ydoc, update, P2P_ORIGIN);
     },
@@ -201,12 +207,69 @@ export function createPaperCollabClient({
     });
   }
 
+  function commentsFromYjs() {
+    const comments = [];
+    ycomments?.forEach((value) => {
+      try {
+        const item = typeof value === "string" ? JSON.parse(value) : value;
+        if (item?.id) comments.push(item);
+      } catch {
+        /* ignore bad comment payload */
+      }
+    });
+    return comments;
+  }
+
+  function seedComments() {
+    if (!ydoc || !ycomments) return;
+    const list = getComments?.() || [];
+    ydoc.transact(() => {
+      for (const comment of list) {
+        if (comment?.id && !ycomments.has(comment.id)) {
+          ycomments.set(comment.id, JSON.stringify(comment));
+        }
+      }
+    }, COMMENTS_SEED);
+  }
+
+  function writeComments(comments, deletedIds = []) {
+    if (!ydoc || !ycomments) return;
+    ydoc.transact(() => {
+      for (const commentId of deletedIds) {
+        if (commentId) ycomments.delete(String(commentId));
+      }
+      for (const comment of comments || []) {
+        if (comment?.id) ycomments.set(comment.id, JSON.stringify(comment));
+      }
+    }, LOCAL_ORIGIN);
+  }
+
+  function emitCommentsFromYjs() {
+    onComments?.({
+      comments: commentsFromYjs(),
+      deleted_ids: [],
+      replace: true,
+    });
+  }
+
   function createDocument() {
     ydoc?.destroy();
     ydoc = new Y.Doc();
     ytext = ydoc.getText("content");
+    ycomments = ydoc.getMap("comments");
     ytext.observe((_event, transaction) => publishText(transaction.origin));
+    ycomments.observe((_event, transaction) => {
+      if (
+        transaction.origin === LOCAL_ORIGIN ||
+        transaction.origin === COMMENTS_SEED ||
+        transaction.origin === RESET_ORIGIN
+      ) {
+        return;
+      }
+      emitCommentsFromYjs();
+    });
     ydoc.on("update", (update, origin) => {
+      if (origin === COMMENTS_SEED) return;
       if (origin === LOCAL_ORIGIN || origin === P2P_ORIGIN) {
         if (send({ type: "crdt_update", update: bytesToBase64(update) })) {
           pendingUpdates += 1;
@@ -244,6 +307,7 @@ export function createPaperCollabClient({
   function applyReset(message) {
     createDocument();
     Y.applyUpdate(ydoc, base64ToBytes(String(message.update || "")), RESET_ORIGIN);
+    seedComments();
     synced = true;
     revision = Number(message.revision) || 0;
     crdtEpoch = String(message.crdt_epoch || crdtEpoch);
@@ -274,6 +338,7 @@ export function createPaperCollabClient({
       noteServerUpdate(message);
       publishText(REMOTE_ORIGIN);
       emitStatus();
+      seedComments();
       void startNetwork();
       return;
     }
@@ -306,6 +371,13 @@ export function createPaperCollabClient({
       peers = Array.isArray(message.peers) ? message.peers : [];
       onPresence?.(peers);
       emitStatus();
+      return;
+    }
+    if (message.type === "comments") {
+      onComments?.({
+        comments: Array.isArray(message.comments) ? message.comments : [],
+        deleted_ids: Array.isArray(message.deleted_ids) ? message.deleted_ids : [],
+      });
       return;
     }
     if (message.type === "conflict") {
@@ -408,6 +480,7 @@ export function createPaperCollabClient({
     ydoc?.destroy();
     ydoc = null;
     ytext = null;
+    ycomments = null;
     connected = false;
     synced = false;
     pendingUpdates = 0;
@@ -453,6 +526,15 @@ export function createPaperCollabClient({
     sendPresence: (presence) => {
       mesh.broadcastPresence(presence);
       return send({ type: "presence", ...presence });
+    },
+    publishComments: (payload) => {
+      const frame = {
+        comments: payload?.comments || getComments?.() || [],
+        deleted_ids: payload?.deleted_ids || [],
+      };
+      writeComments(frame.comments, frame.deleted_ids);
+      mesh.broadcastComments(frame);
+      return send({ type: "comments", ...frame });
     },
     requestFlush: () => send({ type: "flush" }),
     isActive: () => connected && synced,

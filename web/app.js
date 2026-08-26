@@ -11,8 +11,8 @@ import {
   computeCostChipHtml,
   mergeComputeCost,
 } from "./compute-cost.js";
-import { KoiApi } from "./api.js?v=20260815e";
-import { createPaperCollabClient } from "./paper-collab.js?v=20260826c";
+import { KoiApi } from "./api.js?v=20260826e";
+import { createPaperCollabClient, localUserName } from "./paper-collab.js?v=20260826i";
 import { destroyKanbanDagView, fitKanbanDagView, refreshKanbanDagView } from "./kanban-dag.js?v=20260715a";
 import { clearKanbanMilestones, clearMilestoneBoardFilter, refreshKanbanMilestones } from "./milestones.js?v=20260807e";
 import {
@@ -8762,6 +8762,10 @@ const paperCollab = createPaperCollabClient({
   onPresence: () => {
     updatePaperCollabUi();
   },
+  getComments: () => paperState.comments,
+  onComments: (payload) => {
+    void applyRemotePaperComments(payload);
+  },
   onConflict: (conflict) => {
     const reason = conflict?.reason || "конфликт с правкой на диске";
     showPaperToast(`Collaboration: ${reason}`, { variant: "error" });
@@ -8826,7 +8830,12 @@ function paperCollabDebugTitle(network, peerId = "") {
 function updatePaperCollabUi() {
   const el = paperEls().texCollab;
   if (!el) return;
-  if (!paperCollab.isActive()) {
+  const network = paperState.collabNetwork;
+  const roomLabel = paperCollabRoomLabel(network);
+  const relayCount = Number(network?.relayPeerCount) || 0;
+  const found = Number(network?.signalingPeerCount) || 0;
+  const remoteCount = Number(network?.remotePeerCount) || 0;
+  if (!paperCollab.isActive() && relayCount === 0 && found === 0) {
     el.classList.add("hidden");
     el.classList.remove("is-conflict");
     delete el.dataset.collabConflict;
@@ -8835,26 +8844,17 @@ function updatePaperCollabUi() {
   }
   el.classList.remove("hidden");
   if (el.dataset.collabConflict === "true") return;
-  const network = paperState.collabNetwork;
-  const roomLabel = paperCollabRoomLabel(network);
   el.title = paperCollabDebugTitle(network, paperCollab.peerId);
-  if (network?.error) {
-    el.textContent = `${network.error}${roomLabel}`;
-    el.classList.add("is-conflict");
-    return;
-  }
-  el.classList.remove("is-conflict");
-  const others = (paperState.collabPeers || []).filter((peer) => peer.peer_id);
-  const remoteCount = Number(network?.remotePeerCount) || 0;
-  const count = Math.max(1, others.length + remoteCount);
-  if (remoteCount > 0) {
-    const via = Number(network?.relayPeerCount) > 0 ? "relay" : "P2P";
-    el.textContent = `${via} · ${count}${roomLabel}`;
-  } else if (network?.enabled && network?.signaling) {
-    el.textContent = `P2P · ожидание${paperCollabTransportLabel(network)}${roomLabel}`;
-  } else {
-    el.textContent = (count > 1 ? `live · ${count}` : "live") + roomLabel;
-  }
+  const count = Math.max(1 + found, 1 + relayCount);
+  const transientError = /not_joined|peer_not_found|закрыт/i.test(String(network?.error || ""));
+  let next = "live" + roomLabel;
+  if (relayCount > 0) next = `relay · ${count}${roomLabel}`;
+  else if (remoteCount > 0) next = `P2P · ${count}${roomLabel}`;
+  else if (network?.error && !transientError) next = `${network.error}${roomLabel}`;
+  else if (network?.enabled && (network?.signaling || found)) next = `P2P · ожидание${roomLabel}`;
+  if (el.textContent === next) return;
+  el.textContent = next;
+  el.classList.toggle("is-conflict", Boolean(network?.error && !transientError && relayCount === 0));
 }
 
 function renderPaperCollabProposal() {
@@ -10498,6 +10498,53 @@ function focusPaperComment(commentId, { scroll = true } = {}) {
   });
 }
 
+function publishPaperComments(deletedIds = []) {
+  paperCollab.publishComments({
+    comments: paperState.comments,
+    deleted_ids: deletedIds,
+  });
+}
+
+async function applyRemotePaperComments(payload) {
+  const incoming = Array.isArray(payload?.comments) ? payload.comments : [];
+  let deletedIds = Array.isArray(payload?.deleted_ids) ? payload.deleted_ids : [];
+  if (payload?.replace) {
+    const incomingIds = new Set(incoming.map((item) => item.id));
+    deletedIds = paperState.comments
+      .map((item) => item.id)
+      .filter((id) => id && !incomingIds.has(id));
+  }
+  if (!incoming.length && !deletedIds.length) return;
+  const fingerprint = (list) =>
+    JSON.stringify(
+      [...(list || [])]
+        .map((item) => [item.id, item.resolved, (item.thread || []).map((msg) => msg.id)])
+        .sort()
+    );
+  if (!deletedIds.length && fingerprint(incoming) === fingerprint(paperState.comments)) return;
+  const entry = activePaperEntry();
+  const incomingIds = new Set(incoming.map((item) => item.id));
+  const extras = paperState.comments.filter(
+    (item) => item.id && !incomingIds.has(item.id) && !deletedIds.includes(item.id)
+  );
+  try {
+    if (entry) {
+      const data = await KoiApi.mergePaperComments(entry.project_id, entry.slug, {
+        comments: incoming,
+        deleted_ids: deletedIds,
+      });
+      paperState.comments = Array.isArray(data?.comments) ? data.comments : incoming;
+    } else {
+      paperState.comments = incoming;
+    }
+  } catch {
+    paperState.comments = incoming;
+  }
+  await renderPaperCommentMargin();
+  void renderPaperTexEditor();
+  if (extras.length) publishPaperComments();
+}
+
 async function loadPaperComments(projectId, slug) {
   try {
     const data = await KoiApi.getPaperComments(projectId, slug);
@@ -10616,7 +10663,7 @@ async function savePaperComment() {
       line_start: paperState.selectedLineStart,
       line_end: paperState.selectedLineEnd || paperState.selectedLineStart,
       body,
-      author: "reviewer",
+      author: localUserName() || "reviewer",
     };
     if (paperState.selectedCharStart != null) payload.char_start = paperState.selectedCharStart;
     if (paperState.selectedCharEnd != null) payload.char_end = paperState.selectedCharEnd;
@@ -10627,6 +10674,7 @@ async function savePaperComment() {
       paperState.activeCommentId = res.comment.id;
     }
     paperState.composeOpen = false;
+    publishPaperComments();
     await renderPaperTexEditor();
     void copyPaperCommentLink(paperState.activeCommentId);
   } catch (err) {
@@ -10645,13 +10693,14 @@ async function replyPaperComment(commentId) {
   try {
     const res = await KoiApi.replyPaperComment(entry.project_id, entry.slug, commentId, {
       body,
-      author: "reviewer",
+      author: localUserName() || "reviewer",
     });
     const comment = paperState.comments.find((item) => item.id === commentId);
     if (comment && res?.message) {
       comment.thread = [...(comment.thread || []), res.message];
     }
     if (textarea) textarea.value = "";
+    publishPaperComments();
     await renderPaperCommentMargin();
   } catch (err) {
     if (els.status) els.status.textContent = `Не удалось отправить ответ: ${err.message}`;
@@ -10664,6 +10713,7 @@ async function togglePaperCommentResolved(commentId, resolved) {
     const res = await KoiApi.resolvePaperComment(entry.project_id, entry.slug, commentId, resolved);
     const comment = paperState.comments.find((item) => item.id === commentId);
     if (comment && res?.comment) Object.assign(comment, res.comment);
+    publishPaperComments();
     await renderPaperCommentMargin();
   } catch (err) {
     if (paperEls().status) paperEls().status.textContent = `Не удалось обновить комментарий: ${err.message}`;
@@ -10677,6 +10727,7 @@ async function deletePaperComment(commentId) {
     await KoiApi.deletePaperComment(entry.project_id, entry.slug, commentId);
     paperState.comments = paperState.comments.filter((item) => item.id !== commentId);
     if (paperState.activeCommentId === commentId) paperState.activeCommentId = null;
+    publishPaperComments([commentId]);
     await renderPaperTexEditor();
   } catch (err) {
     if (paperEls().status) paperEls().status.textContent = `Не удалось удалить: ${err.message}`;

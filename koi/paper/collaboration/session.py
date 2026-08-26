@@ -904,6 +904,22 @@ class CollabSession:
             source=source,
         )
 
+    def broadcast_comments(
+        self,
+        comments: list[Any],
+        deleted_ids: list[Any] | None = None,
+        *,
+        exclude: str | None = None,
+    ) -> None:
+        self._broadcast(
+            {
+                "type": "comments",
+                "comments": comments if isinstance(comments, list) else [],
+                "deleted_ids": list(deleted_ids or []),
+            },
+            exclude=exclude,
+        )
+
     def _broadcast_presence(self) -> None:
         with self._lock:
             peers = [

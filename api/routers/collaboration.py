@@ -332,6 +332,12 @@ async def collab_ws(
                 )
             elif kind == "presence":
                 session.update_presence(joined.peer_id, message)
+            elif kind == "comments":
+                session.broadcast_comments(
+                    message.get("comments") or [],
+                    message.get("deleted_ids") or [],
+                    exclude=joined.peer_id,
+                )
             elif kind == "flush":
                 await websocket.send_json(session.flush())
             elif kind == "ping":

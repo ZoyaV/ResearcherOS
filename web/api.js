@@ -452,6 +452,11 @@ export const KoiApi = {
     }),
   getPaperComments: (projectId, slug = "default") =>
     api(`/projects/${projectId}/papers/${encodeURIComponent(slug)}/comments`),
+  mergePaperComments: (projectId, slug, payload) =>
+    api(`/projects/${projectId}/papers/${encodeURIComponent(slug)}/comments`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
   createPaperComment: (projectId, slug, payload) =>
     api(`/projects/${projectId}/papers/${encodeURIComponent(slug)}/comments`, {
       method: "POST",

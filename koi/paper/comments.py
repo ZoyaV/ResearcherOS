@@ -221,3 +221,46 @@ def delete_comment(slot_dir: Path, comment_id: str) -> None:
         raise KeyError(comment_id)
     data["comments"] = filtered
     save_comments(slot_dir, data)
+
+
+def _merge_thread(left: Any, right: Any) -> list[dict[str, Any]]:
+    messages: dict[str, dict[str, Any]] = {}
+    for item in list(left or []) + list(right or []):
+        if isinstance(item, dict) and item.get("id"):
+            messages[str(item["id"])] = item
+    return list(messages.values())
+
+
+def merge_comment_stores(
+    base: list[Any],
+    incoming: list[Any],
+    deleted_ids: list[Any] | None = None,
+) -> list[dict[str, Any]]:
+    """Union comments and threads by id; honour explicit deletes from a peer."""
+    deleted = {str(item) for item in (deleted_ids or []) if item}
+    by_id: dict[str, dict[str, Any]] = {}
+    for item in list(base or []) + list(incoming or []):
+        if not isinstance(item, dict) or not item.get("id"):
+            continue
+        comment_id = str(item["id"])
+        if comment_id in deleted:
+            by_id.pop(comment_id, None)
+            continue
+        existing = by_id.get(comment_id)
+        if existing is None:
+            by_id[comment_id] = dict(item)
+            continue
+        merged = {**existing, **item}
+        merged["thread"] = _merge_thread(existing.get("thread"), item.get("thread"))
+        by_id[comment_id] = merged
+    return list(by_id.values())
+
+
+def apply_comment_merge(
+    slot_dir: Path,
+    incoming: list[Any],
+    deleted_ids: list[Any] | None = None,
+) -> dict[str, Any]:
+    data = load_comments(slot_dir)
+    data["comments"] = merge_comment_stores(data.get("comments") or [], incoming, deleted_ids)
+    return save_comments(slot_dir, data)

@@ -9,10 +9,12 @@ from pathlib import Path
 
 from koi.paper.comments import (
     add_reply,
+    apply_comment_merge,
     compute_content_hash,
     create_comment,
     delete_comment,
     load_comments,
+    merge_comment_stores,
     set_comment_resolved,
 )
 
@@ -84,6 +86,35 @@ class PaperCommentsTests(unittest.TestCase):
             body="narrow note",
         )
         self.assertEqual(comment["anchor"]["selected_text"], "two")
+
+    def test_merge_unions_threads_and_honours_deletes(self) -> None:
+        first = create_comment(self.slot, line_start=1, line_end=1, body="A")
+        add_reply(self.slot, first["id"], body="A2", author="zoya")
+        local = load_comments(self.slot)["comments"]
+        incoming = [
+            {
+                "id": first["id"],
+                "resolved": True,
+                "thread": [{"id": "m_remote", "author": "peer", "body": "B"}],
+            },
+            {
+                "id": "c_other",
+                "resolved": False,
+                "thread": [{"id": "m_1", "author": "peer", "body": "new"}],
+            },
+        ]
+        merged = merge_comment_stores(local, incoming, deleted_ids=[])
+        by_id = {item["id"]: item for item in merged}
+        self.assertIn("c_other", by_id)
+        thread_ids = {item["id"] for item in by_id[first["id"]]["thread"]}
+        self.assertIn("m_remote", thread_ids)
+        self.assertTrue(any(item["body"] == "A2" for item in by_id[first["id"]]["thread"]))
+        self.assertTrue(by_id[first["id"]]["resolved"])
+
+        stored = apply_comment_merge(self.slot, incoming, [first["id"]])
+        ids = {item["id"] for item in stored["comments"]}
+        self.assertNotIn(first["id"], ids)
+        self.assertIn("c_other", ids)
 
 
 if __name__ == "__main__":

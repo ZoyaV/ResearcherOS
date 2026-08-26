@@ -56,6 +56,8 @@ export function createPaperWebRtcMesh({
   applyRemoteUpdate,
   adoptRemoteState,
   refreshConfig,
+  getComments,
+  onComments,
   onPresence,
   onStatus,
 } = {}) {
@@ -124,10 +126,19 @@ export function createPaperWebRtcMesh({
     }, 1500);
   }
 
+  function relayOnly() {
+    const url = String(config?.signaling_url || "");
+    return url.startsWith("wss://") || !signalingLanHint(url);
+  }
+
   async function connectToPeer(remotePeerId, { force = false } = {}) {
     if (!remotePeerId || remotePeerId === peerId) return;
     const remote = remoteMetadata.get(remotePeerId) || {};
     if (!validatePeer(remote)) return;
+    if (relayOnly()) {
+      startRelay(remotePeerId);
+      return;
+    }
     if (!force && !shouldOffer(remotePeerId)) return;
     try {
       await offer(remotePeerId);
@@ -203,6 +214,35 @@ export function createPaperWebRtcMesh({
     }, 8000);
   }
 
+  function commentsFrame(payload = {}) {
+    return {
+      type: "comments",
+      comments: Array.isArray(payload.comments) ? payload.comments : getComments?.() || [],
+      deleted_ids: Array.isArray(payload.deleted_ids) ? payload.deleted_ids : [],
+    };
+  }
+
+  function sendCommentsOn(channel) {
+    sendChannel(channel, commentsFrame());
+  }
+
+  function sendCommentsTo(remotePeerId) {
+    const frame = commentsFrame();
+    if (!frame.comments.length && !frame.deleted_ids.length) return;
+    const channel = connections.get(remotePeerId)?.channel;
+    if (channel?.readyState === "open") {
+      sendChannel(channel, frame);
+      return;
+    }
+    sendRelay(remotePeerId, frame);
+  }
+
+  function broadcastComments(payload) {
+    const frame = commentsFrame(payload);
+    for (const { channel } of connections.values()) sendChannel(channel, frame);
+    for (const remotePeerId of relayPeers) sendRelay(remotePeerId, frame);
+  }
+
   function sendRelay(remotePeerId, payload) {
     const body = JSON.stringify({
       type: "relay",
@@ -225,18 +265,15 @@ export function createPaperWebRtcMesh({
     if (stallTimer) clearTimeout(stallTimer);
     networkError = "";
     if (!already) {
-      sendRelay(remotePeerId, { type: "hello", metadata: publicMetadata() });
-      if (peerId === authorityPeerId || remoteMetadata.size <= 1) {
-        const update = getDocumentUpdate?.();
-        if (update) {
-          sendRelay(remotePeerId, {
-            type: "sync",
-            update: bytesToBase64(update),
-            metadata: publicMetadata(),
-          });
-        }
-      }
+      const snapshot = commentsFrame();
+      sendRelay(remotePeerId, {
+        type: "hello",
+        metadata: publicMetadata(),
+        comments: snapshot.comments,
+        deleted_ids: snapshot.deleted_ids,
+      });
     }
+    sendCommentsTo(remotePeerId);
     emitStatus();
   }
 
@@ -368,19 +405,16 @@ export function createPaperWebRtcMesh({
     if (message.type === "hello") {
       remoteMetadata.set(fromPeer, message.metadata || {});
       if (!validatePeer(message.metadata || {})) return;
+      if (Array.isArray(message.comments) || Array.isArray(message.deleted_ids)) {
+        onComments?.({
+          comments: Array.isArray(message.comments) ? message.comments : [],
+          deleted_ids: Array.isArray(message.deleted_ids) ? message.deleted_ids : [],
+        });
+      }
+      sendCommentsTo(fromPeer);
+      if (relayPeers.has(fromPeer)) return;
       if (config?.crdt_epoch === message.metadata?.crdt_epoch || peerId === authorityPeerId) {
-        if (relayPeers.has(fromPeer)) {
-          const update = getDocumentUpdate?.();
-          if (update) {
-            sendRelay(fromPeer, {
-              type: "sync",
-              update: bytesToBase64(update),
-              metadata: publicMetadata(),
-            });
-          }
-        } else {
-          sendSync(connections.get(fromPeer)?.channel);
-        }
+        sendSync(connections.get(fromPeer)?.channel);
       }
       return;
     }
@@ -396,6 +430,12 @@ export function createPaperWebRtcMesh({
       return;
     }
     if (message.type === "presence") onPresence?.(message.presence || {});
+    if (message.type === "comments") {
+      onComments?.({
+        comments: Array.isArray(message.comments) ? message.comments : [],
+        deleted_ids: Array.isArray(message.deleted_ids) ? message.deleted_ids : [],
+      });
+    }
   }
 
   function attachChannel(remotePeerId, channel) {
@@ -406,6 +446,7 @@ export function createPaperWebRtcMesh({
       if (stallTimer) clearTimeout(stallTimer);
       networkError = "";
       sendChannel(channel, { type: "hello", metadata: publicMetadata() });
+      sendCommentsOn(channel);
       if (peerId === authorityPeerId) sendSync(channel);
       emitStatus();
     });
@@ -487,6 +528,10 @@ export function createPaperWebRtcMesh({
       return;
     }
     if (message.type === "offer") {
+      if (relayOnly()) {
+        startRelay(String(message.from || ""));
+        return;
+      }
       const remotePeerId = String(message.from || "");
       const remote = remoteMetadata.get(remotePeerId);
       if (remote && !validatePeer(remote)) return;
@@ -503,6 +548,7 @@ export function createPaperWebRtcMesh({
       return;
     }
     if (message.type === "answer") {
+      if (relayOnly()) return;
       const remotePeerId = String(message.from || "");
       const pc = connections.get(remotePeerId)?.pc;
       if (!pc) return;
@@ -511,6 +557,7 @@ export function createPaperWebRtcMesh({
       return;
     }
     if (message.type === "ice_candidate") {
+      if (relayOnly()) return;
       await addRemoteIceCandidate(
         String(message.from || ""),
         message.payload?.candidate
@@ -528,20 +575,18 @@ export function createPaperWebRtcMesh({
         return;
       }
       if (code === "peer_not_found") {
-        const gone = String(message.peer_id || "");
-        if (gone) {
-          relayPeers.delete(gone);
-          remoteMetadata.delete(gone);
-        }
-        emitStatus();
         return;
       }
       setError(`Signaling: ${code || "ошибка"}`);
     }
   }
 
+  let joinAt = 0;
   function sendJoin() {
     if (signal?.readyState !== WebSocket.OPEN || !config) return;
+    const now = Date.now();
+    if (now - joinAt < 2000) return;
+    joinAt = now;
     sendSignal({
       type: "join",
       token: config.token,
@@ -580,16 +625,12 @@ export function createPaperWebRtcMesh({
       heartbeat = null;
       signal = null;
       if (!closing) {
-        const detail = event.reason || `код ${event.code}`;
-        setError(
-          event.code === 1008
-            ? `Signaling отклонил join (${detail})`
-            : `Signaling закрыт (${detail})`
-        );
+        if (event.code === 1008) {
+          setError(`Signaling отклонил join (${event.reason || `код ${event.code}`})`);
+        }
         reconnectTimer = setTimeout(() => void openSignal(), 1500);
-      } else {
-        emitStatus();
       }
+      emitStatus();
     });
     ws.addEventListener("error", () => setError("Signaling недоступен"));
   }
@@ -664,6 +705,7 @@ export function createPaperWebRtcMesh({
     disconnect,
     broadcastUpdate,
     broadcastPresence,
+    broadcastComments,
     noteLocalState,
     markLocalDirty: () => {
       config = { ...config, local_dirty: true };
