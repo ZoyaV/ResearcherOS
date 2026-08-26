@@ -141,11 +141,11 @@ export function createPaperWebRtcMesh({
   async function connectToPeer(remotePeerId, { force = false } = {}) {
     if (!remotePeerId || remotePeerId === peerId) return;
     const remote = remoteMetadata.get(remotePeerId) || {};
-    if (!validatePeer(remote)) return;
     if (relayOnly()) {
       startRelay(remotePeerId);
       return;
     }
+    if (!validatePeer(remote)) return;
     if (!force && !shouldOffer(remotePeerId)) return;
     try {
       await offer(remotePeerId);
@@ -290,9 +290,12 @@ export function createPaperWebRtcMesh({
 
   function adoptRemoteText(text, fromPeer, seq) {
     if (typeof text !== "string" || !text) return;
-    if (config?.local_dirty) return;
-    if (isStaleTex(fromPeer, seq)) return;
     const local = getText?.() || "";
+    if (local === text) {
+      noteRemoteSeq(fromPeer, seq);
+      return;
+    }
+    if (config?.local_dirty && local) return;
     if (local && text.length < Math.min(32, local.length)) return;
     applyRemoteText?.(text);
     noteRemoteSeq(fromPeer, seq);
@@ -495,7 +498,7 @@ export function createPaperWebRtcMesh({
     }
     if (message.type === "hello") {
       remoteMetadata.set(fromPeer, message.metadata || {});
-      if (!validatePeer(message.metadata || {})) return;
+      if (!relayOnly() && !validatePeer(message.metadata || {})) return;
       if (Array.isArray(message.comments) || Array.isArray(message.deleted_ids)) {
         onComments?.({
           comments: Array.isArray(message.comments) ? message.comments : [],

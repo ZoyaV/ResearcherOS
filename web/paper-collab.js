@@ -7,7 +7,7 @@
 
 import { KoiApi } from "./api.js?v=20260826e";
 import * as Y from "./vendor/yjs.mjs?v=13.6.27";
-import { createPaperWebRtcMesh } from "./paper-webrtc.js?v=20260826q";
+import { createPaperWebRtcMesh } from "./paper-webrtc.js?v=20260826r";
 
 const NAME_KEY = "koi-collab-name";
 const LOCAL_ORIGIN = Symbol("paper-collab-local");
@@ -558,7 +558,6 @@ export function createPaperCollabClient({
 
   function queueInput(textarea, event) {
     if (!ydoc || !ytext) return;
-    if (!synced && !Number(networkStatus.relayPeerCount)) return;
     const before = caretBefore.value ?? "";
     const after = textarea?.value ?? "";
     const span = inputSpan(textarea, event, caretBefore);

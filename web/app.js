@@ -12,7 +12,7 @@ import {
   mergeComputeCost,
 } from "./compute-cost.js";
 import { KoiApi } from "./api.js?v=20260826e";
-import { createPaperCollabClient, localUserName } from "./paper-collab.js?v=20260826q";
+import { createPaperCollabClient, localUserName } from "./paper-collab.js?v=20260826r";
 import { destroyKanbanDagView, fitKanbanDagView, refreshKanbanDagView } from "./kanban-dag.js?v=20260715a";
 import { clearKanbanMilestones, clearMilestoneBoardFilter, refreshKanbanMilestones } from "./milestones.js?v=20260807e";
 import {
@@ -8930,6 +8930,7 @@ function applyRemoteCollabText(next, { applyToEditor = true } = {}) {
   const end = ta?.selectionEnd ?? 0;
   paperState.collabApplying = true;
   setTexEditorContent(next, { markClean: !paperState.texDirty });
+  requestAnimationFrame(syncPaperLayoutMetrics);
   if (ta) {
     const mappedStart = paperCollab.mapOffset(prev, next, start);
     const mappedEnd = paperCollab.mapOffset(prev, next, end);
