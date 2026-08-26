@@ -12,7 +12,7 @@ import {
   mergeComputeCost,
 } from "./compute-cost.js";
 import { KoiApi } from "./api.js?v=20260826t";
-import { createPaperCollabClient, localUserName } from "./paper-collab.js?v=20260827c";
+import { createPaperCollabClient, localUserName } from "./paper-collab.js?v=20260827d";
 import { destroyKanbanDagView, fitKanbanDagView, refreshKanbanDagView } from "./kanban-dag.js?v=20260715a";
 import { clearKanbanMilestones, clearMilestoneBoardFilter, refreshKanbanMilestones } from "./milestones.js?v=20260807e";
 import {
@@ -8765,7 +8765,9 @@ const PAPER_TEX_POLL_MS = 3000;
 const PAPER_TEX_SAVE_GRACE_MS = 15000;
 const paperCollab = createPaperCollabClient({
   getLocalText: () => paperEls().texInput?.value || paperState.texText || "",
-  getLocalDirty: () => Boolean(paperState.texDirty || paperState.paperVersionsDirty),
+  // Git dirtiness is represented by document_hash/base_document_hash.
+  // It must not turn a committed versions-rail state into a live edit.
+  getLocalDirty: () => Boolean(paperState.texDirty),
   onState: ({ text, applyToEditor = true }) => {
     applyRemoteCollabText(text, { applyToEditor });
   },

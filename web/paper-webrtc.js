@@ -61,6 +61,8 @@ export function createPaperWebRtcMesh({
   getText,
   applyRemoteText,
   applyRemoteSpan,
+  reapplyLocalText,
+  reapplyLocalSpan,
   onPresence,
   onStatus,
 } = {}) {
@@ -75,15 +77,22 @@ export function createPaperWebRtcMesh({
   const pendingIceCandidates = new Map();
   const seenUpdates = new Set();
   const queuedUpdates = [];
+  const queuedLocalSpans = [];
+  let queuedLocalSnapshot = "";
   let adoptingEpoch = "";
+  let adoptingPeerId = "";
   let networkError = "";
   let stallTimer = null;
   const relayPeers = new Set();
+  const crdtPeers = new Set();
+  const crdtPendingPeers = new Set();
   const lastTexSeq = new Map();
   const resyncAt = new Map();
   const lastTexSent = new Map();
   const forcedResync = new Set();
   const texChunks = new Map();
+  const syncChunks = new Map();
+  const updateChunks = new Map();
   let localTexSeq = 0;
   let texBackupTimer = null;
   const RELAY_LIMIT = 100000;
@@ -202,6 +211,8 @@ export function createPaperWebRtcMesh({
       signaling: signal?.readyState === WebSocket.OPEN,
       remotePeerCount: connectedPeers + relayPeers.size,
       relayPeerCount: relayPeers.size,
+      crdtPeerCount: crdtPeers.size,
+      crdtPendingPeerCount: crdtPendingPeers.size,
       authorityPeerId,
       roomId: String(config?.room_id || ""),
       gitCommit: String(config?.git_commit || ""),
@@ -283,7 +294,10 @@ export function createPaperWebRtcMesh({
 
   function scheduleTexBackup() {
     if (texBackupTimer) clearTimeout(texBackupTimer);
-    if (closing || !config?.local_dirty) return;
+    const hasSnapshotPeer = [...relayPeers].some(
+      (peer) => !crdtPeers.has(peer) && !crdtPendingPeers.has(peer)
+    );
+    if (closing || !config?.local_dirty || !hasSnapshotPeer) return;
     texBackupTimer = setTimeout(() => {
       texBackupTimer = null;
       if (closing || !config?.local_dirty) return;
@@ -322,8 +336,16 @@ export function createPaperWebRtcMesh({
   }
 
   function broadcastTex({ scheduleBackup = true } = {}) {
+    if (adoptingEpoch) {
+      queuedLocalSnapshot = getText?.() || queuedLocalSnapshot;
+      return;
+    }
     localTexSeq += 1;
-    for (const remotePeerId of relayPeers) sendTexTo(remotePeerId, { force: true });
+    for (const remotePeerId of relayPeers) {
+      if (!crdtPeers.has(remotePeerId) && !crdtPendingPeers.has(remotePeerId)) {
+        sendTexTo(remotePeerId, { force: true });
+      }
+    }
     if (scheduleBackup) scheduleTexBackup();
   }
 
@@ -333,6 +355,10 @@ export function createPaperWebRtcMesh({
 
   function broadcastTexSpan(span) {
     if (!span) return;
+    if (adoptingEpoch) {
+      queuedLocalSpans.push({ ...span });
+      return;
+    }
     localTexSeq += 1;
     const payload = {
       type: "tex_span",
@@ -344,7 +370,11 @@ export function createPaperWebRtcMesh({
       pre: String(span.pre || ""),
     };
     if (!payload.delete_len && !payload.new_text) return;
-    for (const remotePeerId of relayPeers) sendRelay(remotePeerId, payload);
+    for (const remotePeerId of relayPeers) {
+      if (!crdtPeers.has(remotePeerId) && !crdtPendingPeers.has(remotePeerId)) {
+        sendRelay(remotePeerId, payload);
+      }
+    }
     scheduleTexBackup();
   }
 
@@ -440,8 +470,15 @@ export function createPaperWebRtcMesh({
       });
     }
     sendCommentsTo(remotePeerId);
-    sendTexTo(remotePeerId, { force: true });
-    if (!config?.publish_snapshot) requestResync(remotePeerId);
+    const remote = remoteMetadata.get(remotePeerId) || {};
+    const canSyncCrdt =
+      compatibleGit(remote) && Boolean(remote.crdt_epoch) && Boolean(config?.crdt_epoch);
+    if (canSyncCrdt) {
+      if (peerId === authorityPeerId) sendRelaySync(remotePeerId);
+    } else {
+      sendTexTo(remotePeerId, { force: true });
+      if (!config?.publish_snapshot) requestResync(remotePeerId);
+    }
     emitStatus();
   }
 
@@ -517,13 +554,125 @@ export function createPaperWebRtcMesh({
     });
   }
 
+  function sendRelaySync(remotePeerId) {
+    const update = getDocumentUpdate?.();
+    if (!update || !config?.crdt_epoch) return false;
+    const payload = {
+      type: "sync",
+      update: bytesToBase64(update),
+      metadata: publicMetadata(),
+    };
+    const sent = JSON.stringify(relayEnvelope(remotePeerId, payload)).length > RELAY_LIMIT
+      ? sendChunkedSync(remotePeerId, payload)
+      : sendRelay(remotePeerId, payload);
+    if (sent) crdtPendingPeers.add(remotePeerId);
+    return sent;
+  }
+
+  function sendChunkedSync(remotePeerId, payload) {
+    const encoded = String(payload.update || "");
+    if (!encoded) return false;
+    const id = `${peerId}-sync-${Date.now()}`;
+    const size = 24000;
+    const n = Math.ceil(encoded.length / size);
+    for (let i = 0; i < n; i += 1) {
+      if (!sendRelay(remotePeerId, {
+        type: "sync_chunk",
+        id,
+        i,
+        n,
+        update: encoded.slice(i * size, i * size + size),
+        metadata: payload.metadata,
+      })) return false;
+    }
+    return true;
+  }
+
+  function adoptSyncChunk(fromPeer, message) {
+    const id = String(message.id || "");
+    const n = Number(message.n) || 0;
+    const i = Number(message.i);
+    if (!id || !n || !Number.isFinite(i) || i < 0 || i >= n) return;
+    const key = `${fromPeer}:${id}`;
+    const rec = syncChunks.get(key) || {
+      parts: Array(n).fill(null),
+      metadata: message.metadata || {},
+    };
+    rec.parts[i] = String(message.update || "");
+    syncChunks.set(key, rec);
+    if (rec.parts.some((part) => part == null)) return;
+    syncChunks.delete(key);
+    handleSync(fromPeer, {
+      type: "sync",
+      update: rec.parts.join(""),
+      metadata: rec.metadata,
+    });
+  }
+
+  function sendChunkedUpdate(remotePeerId, payload) {
+    const encoded = String(payload.update || "");
+    if (!encoded) return false;
+    const id = `${peerId}-update-${payload.id || Date.now()}`;
+    const size = 24000;
+    const n = Math.ceil(encoded.length / size);
+    for (let i = 0; i < n; i += 1) {
+      if (!sendRelay(remotePeerId, {
+        type: "update_chunk",
+        id,
+        i,
+        n,
+        crdt_epoch: payload.crdt_epoch,
+        update: encoded.slice(i * size, i * size + size),
+      })) return false;
+    }
+    return true;
+  }
+
+  function adoptUpdateChunk(fromPeer, message) {
+    const id = String(message.id || "");
+    const n = Number(message.n) || 0;
+    const i = Number(message.i);
+    if (!id || !n || !Number.isFinite(i) || i < 0 || i >= n) return;
+    const key = `${fromPeer}:${id}`;
+    const rec = updateChunks.get(key) || {
+      parts: Array(n).fill(null),
+      crdt_epoch: String(message.crdt_epoch || ""),
+    };
+    rec.parts[i] = String(message.update || "");
+    updateChunks.set(key, rec);
+    if (rec.parts.some((part) => part == null)) return;
+    updateChunks.delete(key);
+    handleRemoteUpdate(base64ToBytes(rec.parts.join("")), rec.crdt_epoch);
+    if (rec.crdt_epoch === config?.crdt_epoch) crdtPeers.add(fromPeer);
+  }
+
+  function markCrdtReady(remotePeerId) {
+    if (!remotePeerId || !relayPeers.has(remotePeerId)) return;
+    crdtPeers.add(remotePeerId);
+    crdtPendingPeers.delete(remotePeerId);
+    forcedResync.delete(remotePeerId);
+    sendRelay(remotePeerId, {
+      type: "crdt_ready",
+      crdt_epoch: config?.crdt_epoch || "",
+    });
+    emitStatus();
+  }
+
+  function usesCrdtTransport(remotePeerId) {
+    return (
+      crdtPeers.has(remotePeerId) ||
+      crdtPendingPeers.has(remotePeerId) ||
+      (Boolean(adoptingEpoch) && remotePeerId === adoptingPeerId)
+    );
+  }
+
   function handleRemoteUpdate(bytes, epoch) {
-    const id = rememberUpdate(bytes);
-    if (!id) return;
     if (adoptingEpoch) {
       queuedUpdates.push({ bytes, epoch });
       return;
     }
+    const id = rememberUpdate(bytes);
+    if (!id) return;
     if (epoch !== config?.crdt_epoch) {
       setError("P2P update отклонён: CRDT history ещё не синхронизирована");
       return;
@@ -543,19 +692,23 @@ export function createPaperWebRtcMesh({
     }
     if (remoteEpoch === config?.crdt_epoch) {
       handleRemoteUpdate(bytes, remoteEpoch);
+      markCrdtReady(fromPeer);
       return;
     }
     if (fromPeer !== authorityPeerId) return;
     if (adoptingEpoch === remoteEpoch) return;
+    const sameDocument =
+      Boolean(config?.document_hash) &&
+      config?.document_hash === remote.document_hash;
     const localIsClean =
-      !config?.local_dirty &&
-      (config?.document_hash === config?.base_document_hash ||
-        config?.document_hash === remote.document_hash);
+      sameDocument ||
+      (!config?.local_dirty && config?.document_hash === config?.base_document_hash);
     if (!localIsClean) {
       setError("P2P остановлен: локальный main.tex отличается от Git base");
       return;
     }
     adoptingEpoch = remoteEpoch;
+    adoptingPeerId = fromPeer;
     adoptRemoteState?.(bytes, {
       crdt_epoch: remoteEpoch,
       expected_hash: String(remote.document_hash || ""),
@@ -582,8 +735,17 @@ export function createPaperWebRtcMesh({
         adoptRemoteText(message.text, fromPeer, message.seq, message);
       }
       sendCommentsTo(fromPeer);
-      if (!config?.publish_snapshot) requestResync(fromPeer);
-      if (relayPeers.has(fromPeer)) return;
+      if (relayPeers.has(fromPeer)) {
+        const remote = message.metadata || {};
+        const canSyncCrdt =
+          compatibleGit(remote) && Boolean(remote.crdt_epoch) && Boolean(config?.crdt_epoch);
+        if (canSyncCrdt) {
+          if (peerId === authorityPeerId) sendRelaySync(fromPeer);
+        } else if (!config?.publish_snapshot) {
+          requestResync(fromPeer);
+        }
+        return;
+      }
       if (config?.crdt_epoch === message.metadata?.crdt_epoch || peerId === authorityPeerId) {
         sendSync(connections.get(fromPeer)?.channel);
       }
@@ -593,11 +755,27 @@ export function createPaperWebRtcMesh({
       handleSync(fromPeer, message);
       return;
     }
+    if (message.type === "sync_chunk") {
+      adoptSyncChunk(fromPeer, message);
+      return;
+    }
     if (message.type === "update") {
-      handleRemoteUpdate(
-        base64ToBytes(String(message.update || "")),
-        String(message.crdt_epoch || "")
-      );
+      const epoch = String(message.crdt_epoch || "");
+      handleRemoteUpdate(base64ToBytes(String(message.update || "")), epoch);
+      if (epoch === config?.crdt_epoch) crdtPeers.add(fromPeer);
+      return;
+    }
+    if (message.type === "update_chunk") {
+      adoptUpdateChunk(fromPeer, message);
+      return;
+    }
+    if (message.type === "crdt_ready") {
+      if (String(message.crdt_epoch || "") === config?.crdt_epoch) {
+        crdtPeers.add(fromPeer);
+        crdtPendingPeers.delete(fromPeer);
+        forcedResync.delete(fromPeer);
+        emitStatus();
+      }
       return;
     }
     if (message.type === "presence") onPresence?.(message.presence || {});
@@ -608,13 +786,16 @@ export function createPaperWebRtcMesh({
       });
     }
     if (message.type === "tex") {
+      if (usesCrdtTransport(fromPeer)) return;
       if (isStaleTex(fromPeer, message.seq, { allowEqual: true })) return;
       adoptRemoteText(message.text, fromPeer, message.seq, message);
     }
     if (message.type === "tex_chunk") {
+      if (usesCrdtTransport(fromPeer)) return;
       adoptChunk(fromPeer, message);
     }
     if (message.type === "tex_span") {
+      if (usesCrdtTransport(fromPeer)) return;
       if (isStaleTex(fromPeer, message.seq)) return;
       const expected = Number(message.base_len);
       const current = getText?.()?.length ?? 0;
@@ -725,12 +906,20 @@ export function createPaperWebRtcMesh({
       connections.delete(remotePeerId);
       remoteMetadata.delete(remotePeerId);
       relayPeers.delete(remotePeerId);
+      crdtPeers.delete(remotePeerId);
+      crdtPendingPeers.delete(remotePeerId);
       lastTexSeq.delete(remotePeerId);
       resyncAt.delete(remotePeerId);
       lastTexSent.delete(remotePeerId);
       forcedResync.delete(remotePeerId);
       for (const key of [...texChunks.keys()]) {
         if (key.startsWith(`${remotePeerId}:`)) texChunks.delete(key);
+      }
+      for (const key of [...syncChunks.keys()]) {
+        if (key.startsWith(`${remotePeerId}:`)) syncChunks.delete(key);
+      }
+      for (const key of [...updateChunks.keys()]) {
+        if (key.startsWith(`${remotePeerId}:`)) updateChunks.delete(key);
       }
       emitStatus();
       return;
@@ -869,13 +1058,20 @@ export function createPaperWebRtcMesh({
     remoteMetadata.clear();
     pendingIceCandidates.clear();
     queuedUpdates.length = 0;
+    queuedLocalSpans.length = 0;
+    queuedLocalSnapshot = "";
     adoptingEpoch = "";
+    adoptingPeerId = "";
     relayPeers.clear();
+    crdtPeers.clear();
+    crdtPendingPeers.clear();
     lastTexSeq.clear();
     resyncAt.clear();
     lastTexSent.clear();
     forcedResync.clear();
     texChunks.clear();
+    syncChunks.clear();
+    updateChunks.clear();
     localTexSeq = 0;
     if (signal?.readyState === WebSocket.OPEN) sendSignal({ type: "leave" });
     signal?.close();
@@ -893,8 +1089,14 @@ export function createPaperWebRtcMesh({
       update: bytesToBase64(update),
     };
     for (const { channel } of connections.values()) sendChannel(channel, payload);
-    if (!relayOnly()) {
-      for (const remotePeerId of relayPeers) sendRelay(remotePeerId, payload);
+    for (const remotePeerId of relayPeers) {
+      if (crdtPeers.has(remotePeerId) || crdtPendingPeers.has(remotePeerId)) {
+        if (JSON.stringify(relayEnvelope(remotePeerId, payload)).length > RELAY_LIMIT) {
+          sendChunkedUpdate(remotePeerId, payload);
+        } else {
+          sendRelay(remotePeerId, payload);
+        }
+      }
     }
   }
 
@@ -910,9 +1112,22 @@ export function createPaperWebRtcMesh({
     config = { ...config, ...metadata };
     if (completedAdoption) {
       config.local_dirty = false;
+      config.publish_snapshot = false;
       adoptingEpoch = "";
+      const adoptedFrom = adoptingPeerId;
+      adoptingPeerId = "";
+      markCrdtReady(adoptedFrom);
       const queued = queuedUpdates.splice(0);
       for (const item of queued) handleRemoteUpdate(item.bytes, item.epoch);
+      if (queuedLocalSnapshot) {
+        const text = queuedLocalSnapshot;
+        queuedLocalSnapshot = "";
+        queuedLocalSpans.length = 0;
+        reapplyLocalText?.(text);
+      } else {
+        const spans = queuedLocalSpans.splice(0);
+        for (const span of spans) reapplyLocalSpan?.(span);
+      }
       networkError = "";
     }
     emitStatus();
