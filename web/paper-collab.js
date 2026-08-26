@@ -7,7 +7,7 @@
 
 import { KoiApi } from "./api.js?v=20260826e";
 import * as Y from "./vendor/yjs.mjs?v=13.6.27";
-import { createPaperWebRtcMesh } from "./paper-webrtc.js?v=20260826m";
+import { createPaperWebRtcMesh } from "./paper-webrtc.js?v=20260826n";
 
 const NAME_KEY = "koi-collab-name";
 const LOCAL_ORIGIN = Symbol("paper-collab-local");
@@ -201,15 +201,24 @@ export function createPaperCollabClient({
   }
 
   function applySpan(span, origin) {
-    if (!ydoc || !ytext || !span) return;
-    const start = Math.max(0, Math.min(Number(span.start) || 0, ytext.length));
-    const deleteLen = Math.max(0, Math.min(Number(span.delete_len) || 0, ytext.length - start));
+    if (!ydoc || !ytext || !span) return false;
+    const start = Number(span.start) || 0;
+    const deleteLen = Number(span.delete_len) || 0;
     const insert = String(span.new_text || "");
-    if (!deleteLen && !insert) return;
+    if (start < 0 || start > ytext.length) return false;
+    if (deleteLen < 0 || start + deleteLen > ytext.length) return false;
+    if (!deleteLen && !insert) return false;
+    const pre = String(span.pre || "");
+    if (pre) {
+      const got = ytext.toString().slice(Math.max(0, start - pre.length), start);
+      if (got !== pre) return false;
+    }
     ydoc.transact(() => {
       if (deleteLen) ytext.delete(start, deleteLen);
       if (insert) ytext.insert(start, insert);
     }, origin);
+    caretBefore = { ...caretBefore, value: ytext.toString() };
+    return true;
   }
 
   function replaceText(text, origin) {
@@ -219,6 +228,7 @@ export function createPaperCollabClient({
       if (ytext.length) ytext.delete(0, ytext.length);
       if (text) ytext.insert(0, text);
     }, origin);
+    caretBefore = { ...caretBefore, value: ytext.toString() };
   }
 
   function publishText(origin) {
@@ -546,19 +556,28 @@ export function createPaperCollabClient({
   function queueInput(textarea, event) {
     if (!ydoc || !ytext) return;
     if (!synced && !Number(networkStatus.relayPeerCount)) return;
+    const before = caretBefore.value ?? "";
+    const after = textarea?.value ?? "";
     const span = inputSpan(textarea, event, caretBefore);
     caretBefore = {
       start: textarea?.selectionStart ?? 0,
       end: textarea?.selectionEnd ?? 0,
-      value: textarea?.value ?? "",
+      value: after,
     };
     if (!span || (!span.delete_len && !span.new_text)) return;
     mesh.markLocalDirty();
+    if (ytext.toString() !== before) {
+      replaceText(after, LOCAL_ORIGIN);
+      mesh.broadcastTex();
+      return;
+    }
+    const base_len = ytext.length;
+    const pre = before.slice(Math.max(0, span.start - 24), span.start);
     ydoc.transact(() => {
       if (span.delete_len) ytext.delete(span.start, span.delete_len);
       if (span.new_text) ytext.insert(span.start, span.new_text);
     }, LOCAL_ORIGIN);
-    mesh.broadcastTexSpan(span);
+    mesh.broadcastTexSpan({ ...span, base_len, pre });
   }
 
   return {
