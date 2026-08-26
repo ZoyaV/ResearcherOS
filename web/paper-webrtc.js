@@ -85,7 +85,9 @@ export function createPaperWebRtcMesh({
   const forcedResync = new Set();
   const texChunks = new Map();
   let localTexSeq = 0;
+  let texBackupTimer = null;
   const RELAY_LIMIT = 100000;
+  const TEX_BACKUP_MS = 650;
 
   async function flushIceCandidates(remotePeerId, pc) {
     const queued = pendingIceCandidates.get(remotePeerId) || [];
@@ -272,10 +274,20 @@ export function createPaperWebRtcMesh({
 
   function requestResync(fromPeer) {
     const now = Date.now();
-    if (now - (resyncAt.get(fromPeer) || 0) < 400) return;
+    if (now - (resyncAt.get(fromPeer) || 0) < 250) return;
     resyncAt.set(fromPeer, now);
     forcedResync.add(fromPeer);
     sendRelay(fromPeer, { type: "tex_resync" });
+  }
+
+  function scheduleTexBackup() {
+    if (texBackupTimer) clearTimeout(texBackupTimer);
+    if (closing || !config?.local_dirty) return;
+    texBackupTimer = setTimeout(() => {
+      texBackupTimer = null;
+      if (closing || !config?.local_dirty) return;
+      broadcastTex({ scheduleBackup: false });
+    }, TEX_BACKUP_MS);
   }
 
   function sendTexTo(remotePeerId, { force = false } = {}) {
@@ -308,9 +320,10 @@ export function createPaperWebRtcMesh({
     noteRemoteSeq(fromPeer, seq);
   }
 
-  function broadcastTex() {
+  function broadcastTex({ scheduleBackup = true } = {}) {
     localTexSeq += 1;
     for (const remotePeerId of relayPeers) sendTexTo(remotePeerId, { force: true });
+    if (scheduleBackup) scheduleTexBackup();
   }
 
   function requestTexFromPeers() {
@@ -331,6 +344,7 @@ export function createPaperWebRtcMesh({
     };
     if (!payload.delete_len && !payload.new_text) return;
     for (const remotePeerId of relayPeers) sendRelay(remotePeerId, payload);
+    scheduleTexBackup();
   }
 
   function broadcastComments(payload) {
@@ -405,6 +419,7 @@ export function createPaperWebRtcMesh({
     texChunks.set(key, rec);
     if (rec.parts.some((part) => part == null)) return;
     texChunks.delete(key);
+    if (isStaleTex(fromPeer, rec.seq)) return;
     adoptRemoteText(rec.parts.join(""), fromPeer, rec.seq, rec);
   }
 
@@ -591,6 +606,7 @@ export function createPaperWebRtcMesh({
       });
     }
     if (message.type === "tex") {
+      if (isStaleTex(fromPeer, message.seq)) return;
       adoptRemoteText(message.text, fromPeer, message.seq, message);
     }
     if (message.type === "tex_chunk") {
@@ -617,7 +633,9 @@ export function createPaperWebRtcMesh({
       noteRemoteSeq(fromPeer, message.seq);
     }
     if (message.type === "tex_resync") {
-      if (config?.publish_snapshot) sendTexTo(fromPeer, { force: true });
+      if (config?.publish_snapshot || config?.local_dirty) {
+        sendTexTo(fromPeer, { force: true });
+      }
     }
   }
 
@@ -839,8 +857,10 @@ export function createPaperWebRtcMesh({
     if (heartbeat) clearInterval(heartbeat);
     if (reconnectTimer) clearTimeout(reconnectTimer);
     if (stallTimer) clearTimeout(stallTimer);
+    if (texBackupTimer) clearTimeout(texBackupTimer);
     heartbeat = null;
     reconnectTimer = null;
+    texBackupTimer = null;
     for (const { pc, channel } of connections.values()) {
       channel?.close();
       pc.close();
@@ -910,6 +930,7 @@ export function createPaperWebRtcMesh({
     noteLocalState,
     markLocalDirty: () => {
       config = { ...config, local_dirty: true };
+      scheduleTexBackup();
     },
     markPublishSnapshot: () => {
       config = { ...config, local_dirty: true, publish_snapshot: true };
