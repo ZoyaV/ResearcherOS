@@ -12,7 +12,7 @@ import {
   mergeComputeCost,
 } from "./compute-cost.js";
 import { KoiApi } from "./api.js?v=20260826e";
-import { createPaperCollabClient, localUserName } from "./paper-collab.js?v=20260826i";
+import { createPaperCollabClient, localUserName } from "./paper-collab.js?v=20260826m";
 import { destroyKanbanDagView, fitKanbanDagView, refreshKanbanDagView } from "./kanban-dag.js?v=20260715a";
 import { clearKanbanMilestones, clearMilestoneBoardFilter, refreshKanbanMilestones } from "./milestones.js?v=20260807e";
 import {
@@ -8834,27 +8834,31 @@ function updatePaperCollabUi() {
   const roomLabel = paperCollabRoomLabel(network);
   const relayCount = Number(network?.relayPeerCount) || 0;
   const found = Number(network?.signalingPeerCount) || 0;
-  const remoteCount = Number(network?.remotePeerCount) || 0;
-  if (!paperCollab.isActive() && relayCount === 0 && found === 0) {
+  if (relayCount > 0) {
+    el.dataset.stableRelay = "1";
+    el.dataset.stableRelayAt = String(Date.now());
+  }
+  const holdRelay =
+    el.dataset.stableRelay === "1" &&
+    Date.now() - Number(el.dataset.stableRelayAt || 0) < 4000;
+  if (!paperCollab.isActive() && relayCount === 0 && found === 0 && !holdRelay) {
     el.classList.add("hidden");
     el.classList.remove("is-conflict");
     delete el.dataset.collabConflict;
+    delete el.dataset.stableRelay;
     el.removeAttribute("title");
     return;
   }
   el.classList.remove("hidden");
   if (el.dataset.collabConflict === "true") return;
   el.title = paperCollabDebugTitle(network, paperCollab.peerId);
-  const count = Math.max(1 + found, 1 + relayCount);
-  const transientError = /not_joined|peer_not_found|закрыт/i.test(String(network?.error || ""));
+  const count = Math.max(2, 1 + found, 1 + relayCount);
   let next = "live" + roomLabel;
-  if (relayCount > 0) next = `relay · ${count}${roomLabel}`;
-  else if (remoteCount > 0) next = `P2P · ${count}${roomLabel}`;
-  else if (network?.error && !transientError) next = `${network.error}${roomLabel}`;
+  if (relayCount > 0 || holdRelay) next = `relay · ${count}${roomLabel}`;
   else if (network?.enabled && (network?.signaling || found)) next = `P2P · ожидание${roomLabel}`;
   if (el.textContent === next) return;
   el.textContent = next;
-  el.classList.toggle("is-conflict", Boolean(network?.error && !transientError && relayCount === 0));
+  el.classList.remove("is-conflict");
 }
 
 function renderPaperCollabProposal() {

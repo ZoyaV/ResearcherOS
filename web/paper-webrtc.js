@@ -58,6 +58,9 @@ export function createPaperWebRtcMesh({
   refreshConfig,
   getComments,
   onComments,
+  getText,
+  applyRemoteText,
+  applyRemoteSpan,
   onPresence,
   onStatus,
 } = {}) {
@@ -237,6 +240,47 @@ export function createPaperWebRtcMesh({
     sendRelay(remotePeerId, frame);
   }
 
+  function texFrame() {
+    return {
+      type: "tex",
+      text: getText?.() || "",
+      dirty: Boolean(config?.local_dirty),
+    };
+  }
+
+  function sendTexTo(remotePeerId) {
+    const frame = texFrame();
+    const channel = connections.get(remotePeerId)?.channel;
+    if (channel?.readyState === "open") {
+      sendChannel(channel, frame);
+      return;
+    }
+    sendRelay(remotePeerId, frame);
+  }
+
+  function adoptRemoteText(text, remoteDirty) {
+    if (typeof text !== "string") return;
+    if (config?.local_dirty) return;
+    applyRemoteText?.(text);
+  }
+
+  function broadcastTex() {
+    const frame = texFrame();
+    for (const remotePeerId of relayPeers) sendRelay(remotePeerId, frame);
+  }
+
+  function broadcastTexSpan(span) {
+    if (!span) return;
+    const payload = {
+      type: "tex_span",
+      start: Number(span.start) || 0,
+      delete_len: Number(span.delete_len) || 0,
+      new_text: String(span.new_text || ""),
+    };
+    if (!payload.delete_len && !payload.new_text) return;
+    for (const remotePeerId of relayPeers) sendRelay(remotePeerId, payload);
+  }
+
   function broadcastComments(payload) {
     const frame = commentsFrame(payload);
     for (const { channel } of connections.values()) sendChannel(channel, frame);
@@ -266,12 +310,16 @@ export function createPaperWebRtcMesh({
     networkError = "";
     if (!already) {
       const snapshot = commentsFrame();
+      const tex = texFrame();
       sendRelay(remotePeerId, {
         type: "hello",
         metadata: publicMetadata(),
         comments: snapshot.comments,
         deleted_ids: snapshot.deleted_ids,
+        text: tex.text,
+        tex_dirty: tex.dirty,
       });
+      sendTexTo(remotePeerId);
     }
     sendCommentsTo(remotePeerId);
     emitStatus();
@@ -283,7 +331,6 @@ export function createPaperWebRtcMesh({
     if (stallTimer) clearTimeout(stallTimer);
     networkError = "";
     handleChannelMessage(fromPeer, { data: JSON.stringify(payload) });
-    emitStatus();
   }
 
   function sendSignal(payload) {
@@ -411,7 +458,11 @@ export function createPaperWebRtcMesh({
           deleted_ids: Array.isArray(message.deleted_ids) ? message.deleted_ids : [],
         });
       }
+      if (typeof message.text === "string") {
+        adoptRemoteText(message.text, Boolean(message.tex_dirty));
+      }
       sendCommentsTo(fromPeer);
+      sendTexTo(fromPeer);
       if (relayPeers.has(fromPeer)) return;
       if (config?.crdt_epoch === message.metadata?.crdt_epoch || peerId === authorityPeerId) {
         sendSync(connections.get(fromPeer)?.channel);
@@ -434,6 +485,16 @@ export function createPaperWebRtcMesh({
       onComments?.({
         comments: Array.isArray(message.comments) ? message.comments : [],
         deleted_ids: Array.isArray(message.deleted_ids) ? message.deleted_ids : [],
+      });
+    }
+    if (message.type === "tex") {
+      adoptRemoteText(message.text, Boolean(message.dirty || message.tex_dirty));
+    }
+    if (message.type === "tex_span") {
+      applyRemoteSpan?.({
+        start: Number(message.start) || 0,
+        delete_len: Number(message.delete_len) || 0,
+        new_text: String(message.new_text || ""),
       });
     }
   }
@@ -677,7 +738,9 @@ export function createPaperWebRtcMesh({
       update: bytesToBase64(update),
     };
     for (const { channel } of connections.values()) sendChannel(channel, payload);
-    for (const remotePeerId of relayPeers) sendRelay(remotePeerId, payload);
+    if (!relayOnly()) {
+      for (const remotePeerId of relayPeers) sendRelay(remotePeerId, payload);
+    }
   }
 
   function broadcastPresence(presence) {
@@ -704,6 +767,8 @@ export function createPaperWebRtcMesh({
     connect,
     disconnect,
     broadcastUpdate,
+    broadcastTex,
+    broadcastTexSpan,
     broadcastPresence,
     broadcastComments,
     noteLocalState,
