@@ -12,7 +12,7 @@ import {
   mergeComputeCost,
 } from "./compute-cost.js";
 import { KoiApi } from "./api.js?v=20260826t";
-import { createPaperCollabClient, localUserName } from "./paper-collab.js?v=20260826r";
+import { createPaperCollabClient, localUserName } from "./paper-collab.js?v=20260826v";
 import { destroyKanbanDagView, fitKanbanDagView, refreshKanbanDagView } from "./kanban-dag.js?v=20260715a";
 import { clearKanbanMilestones, clearMilestoneBoardFilter, refreshKanbanMilestones } from "./milestones.js?v=20260807e";
 import {
@@ -8749,6 +8749,8 @@ const paperState = {
   collabNetwork: null,
   collabProposal: null,
   viewedSha: null,
+  liveTexBeforeView: "",
+  texDirtyBeforeView: false,
   paperVersions: [],
   paperVersionsDirty: false,
   paperVersionsBehind: 0,
@@ -10079,18 +10081,38 @@ async function pushPaperVersions() {
   }
 }
 
+async function restoreLivePaperTex(entry) {
+  const live = paperCollab.currentText() || paperState.liveTexBeforeView;
+  paperState.viewedSha = null;
+  if (live) {
+    const unchanged = live === paperState.liveTexBeforeView;
+    setTexEditorContent(live, {
+      markClean: unchanged && !paperState.texDirtyBeforeView,
+    });
+  } else {
+    await loadPaperTex(entry.project_id, entry.slug, { force: true });
+  }
+  paperState.liveTexBeforeView = "";
+  paperState.texDirtyBeforeView = false;
+  updatePaperEditorLock();
+  renderPaperVersions();
+}
+
 async function showPaperVersion(sha) {
   const entry = activePaperEntry();
   if (!entry) return;
   if (!sha || sha === "current") {
-    paperState.viewedSha = null;
-    await loadPaperTex(entry.project_id, entry.slug, { force: true });
-    updatePaperEditorLock();
-    renderPaperVersions();
+    if (!paperState.viewedSha) return;
+    await restoreLivePaperTex(entry);
     return;
   }
   try {
     const text = await KoiApi.getPaperTex(entry.project_id, entry.slug, sha);
+    if (!paperState.viewedSha) {
+      paperState.liveTexBeforeView =
+        paperCollab.currentText() || paperEls().texInput?.value || paperState.texText || "";
+      paperState.texDirtyBeforeView = Boolean(paperState.texDirty);
+    }
     paperState.viewedSha = sha;
     paperState.lastTexKey = null;
     setTexEditorContent(text, { markClean: true });

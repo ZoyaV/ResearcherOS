@@ -82,6 +82,7 @@ export function createPaperWebRtcMesh({
   const lastTexSeq = new Map();
   const resyncAt = new Map();
   const lastTexSent = new Map();
+  const forcedResync = new Set();
   let localTexSeq = 0;
 
   async function flushIceCandidates(remotePeerId, pc) {
@@ -271,6 +272,7 @@ export function createPaperWebRtcMesh({
     const now = Date.now();
     if (now - (resyncAt.get(fromPeer) || 0) < 400) return;
     resyncAt.set(fromPeer, now);
+    forcedResync.add(fromPeer);
     sendRelay(fromPeer, { type: "tex_resync" });
   }
 
@@ -292,11 +294,13 @@ export function createPaperWebRtcMesh({
     if (typeof text !== "string" || !text) return;
     const local = getText?.() || "";
     if (local === text) {
+      forcedResync.delete(fromPeer);
       noteRemoteSeq(fromPeer, seq);
       return;
     }
-    if (config?.local_dirty && local) return;
-    if (local && text.length < Math.min(32, local.length)) return;
+    const force = forcedResync.delete(fromPeer);
+    if (config?.local_dirty && local && !force) return;
+    if (!force && local && text.length < Math.min(32, local.length)) return;
     applyRemoteText?.(text);
     noteRemoteSeq(fromPeer, seq);
   }
@@ -650,6 +654,8 @@ export function createPaperWebRtcMesh({
       relayPeers.delete(remotePeerId);
       lastTexSeq.delete(remotePeerId);
       resyncAt.delete(remotePeerId);
+      lastTexSent.delete(remotePeerId);
+      forcedResync.delete(remotePeerId);
       emitStatus();
       return;
     }
@@ -790,6 +796,7 @@ export function createPaperWebRtcMesh({
     lastTexSeq.clear();
     resyncAt.clear();
     lastTexSent.clear();
+    forcedResync.clear();
     localTexSeq = 0;
     if (signal?.readyState === WebSocket.OPEN) sendSignal({ type: "leave" });
     signal?.close();
