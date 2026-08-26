@@ -134,11 +134,7 @@ class SignalRooms:
 
     def _remove_expired_locked(self, room: str, peers: dict[str, SignalPeer]) -> None:
         cutoff = time.time() - PEER_TTL_S
-        for peer_id in [
-            key
-            for key, peer in peers.items()
-            if peer.last_seen < cutoff and not (peer.connection_id and peer.connection_id in self.connections)
-        ]:
+        for peer_id in [key for key, peer in peers.items() if peer.last_seen < cutoff]:
             gone = peers.pop(peer_id, None)
             if gone and gone.connection_id:
                 self.connections.pop(gone.connection_id, None)

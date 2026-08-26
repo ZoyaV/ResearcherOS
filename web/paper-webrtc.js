@@ -158,7 +158,7 @@ export function createPaperWebRtcMesh({
     if (!remotePeerId || remotePeerId === peerId) return;
     const remote = remoteMetadata.get(remotePeerId) || {};
     if (relayOnly()) {
-      startRelay(remotePeerId);
+      startRelay(remotePeerId, { force });
       return;
     }
     if (!validatePeer(remote)) return;
@@ -235,8 +235,31 @@ export function createPaperWebRtcMesh({
         setError("P2P: signaling не видит второго пира");
         return;
       }
-      for (const id of remoteMetadata.keys()) startRelay(id);
+      for (const id of remoteMetadata.keys()) startRelay(id, { force: true });
     }, 8000);
+  }
+
+  function forgetRemotePeers() {
+    remoteMetadata.clear();
+    relayPeers.clear();
+    crdtPeers.clear();
+    crdtPendingPeers.clear();
+    lastTexSent.clear();
+    lastTexSeq.clear();
+    resyncAt.clear();
+    forcedResync.clear();
+    needSnapshot.clear();
+  }
+
+  function wakeSignal() {
+    if (closing || !config?.enabled) return;
+    if (signal?.readyState === WebSocket.OPEN) {
+      sendSignal({ type: "heartbeat" });
+      for (const id of remoteMetadata.keys()) startRelay(id, { force: true });
+      return;
+    }
+    if (signal?.readyState === WebSocket.CONNECTING) return;
+    void openSignal();
   }
 
   function commentsFrame(payload = {}) {
@@ -469,13 +492,13 @@ export function createPaperWebRtcMesh({
     adoptRemoteText(rec.parts.join(""), fromPeer, rec.seq, rec);
   }
 
-  function startRelay(remotePeerId) {
+  function startRelay(remotePeerId, { force = false } = {}) {
     if (!remotePeerId || remotePeerId === peerId || closing) return;
     const already = relayPeers.has(remotePeerId);
     relayPeers.add(remotePeerId);
     if (stallTimer) clearTimeout(stallTimer);
     networkError = "";
-    if (!already) {
+    if (!already || force) {
       const snapshot = commentsFrame();
       sendRelay(remotePeerId, {
         type: "hello",
@@ -1012,6 +1035,11 @@ export function createPaperWebRtcMesh({
 
   async function openSignal() {
     if (!config?.enabled || closing) return;
+    if (signal?.readyState === WebSocket.OPEN) {
+      sendJoin();
+      return;
+    }
+    if (signal?.readyState === WebSocket.CONNECTING) return;
     if (refreshConfig) {
       try {
         const next = await refreshConfig();
@@ -1023,7 +1051,9 @@ export function createPaperWebRtcMesh({
     const ws = new WebSocket(config.signaling_url);
     signal = ws;
     ws.addEventListener("open", () => {
+      joinAt = 0;
       sendJoin();
+      if (heartbeat) clearInterval(heartbeat);
       heartbeat = setInterval(() => sendSignal({ type: "heartbeat" }), 15000);
       emitStatus();
     });
@@ -1037,16 +1067,29 @@ export function createPaperWebRtcMesh({
     ws.addEventListener("close", (event) => {
       if (heartbeat) clearInterval(heartbeat);
       heartbeat = null;
-      signal = null;
+      if (signal === ws) signal = null;
+      forgetRemotePeers();
+      joinAt = 0;
       if (!closing) {
         if (event.code === 1008) {
           setError(`Signaling отклонил join (${event.reason || `код ${event.code}`})`);
         }
+        if (reconnectTimer) clearTimeout(reconnectTimer);
         reconnectTimer = setTimeout(() => void openSignal(), 1500);
       }
       emitStatus();
     });
     ws.addEventListener("error", () => setError("Signaling недоступен"));
+  }
+
+  if (typeof document !== "undefined") {
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") wakeSignal();
+    });
+  }
+  if (typeof window !== "undefined") {
+    window.addEventListener("pageshow", () => wakeSignal());
+    window.addEventListener("online", () => wakeSignal());
   }
 
   async function connect(nextConfig) {

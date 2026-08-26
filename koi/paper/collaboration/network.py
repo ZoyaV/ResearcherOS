@@ -18,7 +18,7 @@ from koi.adapters.paths import repo_root
 from koi.paper.collaboration.ids import room_id
 from koi.paper.collaboration.revisions import content_hash
 
-TOKEN_TTL_S = 10 * 60
+TOKEN_TTL_S = 60 * 60
 TOKEN_AUDIENCE = "researchos-collaboration"
 
 

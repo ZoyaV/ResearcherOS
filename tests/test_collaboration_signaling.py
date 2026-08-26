@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import subprocess
+import time
 from pathlib import Path
 
 import pytest
@@ -11,6 +12,7 @@ import pytest
 from koi.paper.collaboration.network import git_document_state, issue_room_token, lan_ip, verify_room_token
 from koi.paper.collaboration.session import CollabSession
 from koi.paper.collaboration.signaling_service import (
+    PEER_TTL_S,
     ROUTED_TYPES,
     SignalPeer,
     SignalRooms,
@@ -322,3 +324,15 @@ def test_yandex_gateway_join_and_route(monkeypatch: pytest.MonkeyPatch) -> None:
     )
     assert disconnect.status_code == 200
     assert rooms.lookup_connection("conn-alice") is None
+
+
+def test_stale_gateway_peer_expires_even_with_connection_id() -> None:
+    async def scenario() -> None:
+        alice = SignalPeer("alice", object(), connection_id="ghost")
+        alice.last_seen = time.time() - PEER_TTL_S - 5
+        await rooms.join("paper-room", alice)
+        assert rooms.lookup_connection("ghost") == ("paper-room", "alice")
+        assert await rooms.get("paper-room", "alice") is None
+        assert rooms.lookup_connection("ghost") is None
+
+    asyncio.run(scenario())
