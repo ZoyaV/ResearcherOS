@@ -5,9 +5,9 @@
  * Y.Text; server echoes are unnecessary and therefore cannot move the caret.
  */
 
-import { KoiApi } from "./api.js?v=20260826e";
+import { KoiApi } from "./api.js?v=20260826t";
 import * as Y from "./vendor/yjs.mjs?v=13.6.27";
-import { createPaperWebRtcMesh } from "./paper-webrtc.js?v=20260826r";
+import { createPaperWebRtcMesh } from "./paper-webrtc.js?v=20260827e";
 
 const NAME_KEY = "koi-collab-name";
 const LOCAL_ORIGIN = Symbol("paper-collab-local");
@@ -129,6 +129,8 @@ export function createPaperCollabClient({
   onStatus,
   onMaterialized,
   getComments,
+  getLocalText,
+  getLocalDirty,
 } = {}) {
   const peerId = localPeerId();
   let socket = null;
@@ -163,9 +165,11 @@ export function createPaperCollabClient({
     getDocumentUpdate: () => (ydoc ? Y.encodeStateAsUpdate(ydoc) : null),
     getComments: () => getComments?.() || [],
     onComments: (payload) => onComments?.(payload),
-    getText: () => ytext?.toString() ?? "",
+    getText: () => ytext?.toString() || getLocalText?.() || "",
     applyRemoteText: (text) => replaceText(text, P2P_ORIGIN),
     applyRemoteSpan: (span) => applySpan(span, P2P_ORIGIN),
+    reapplyLocalText: (text) => replaceText(text, LOCAL_ORIGIN),
+    reapplyLocalSpan: (span) => applySpan(span, LOCAL_ORIGIN),
     applyRemoteUpdate: (update) => {
       if (ydoc) Y.applyUpdate(ydoc, update, P2P_ORIGIN);
     },
@@ -331,9 +335,19 @@ export function createPaperCollabClient({
         gitCommit: String(config.git_commit || ""),
       };
       emitStatus();
+      const local = getLocalText?.() || "";
+      if (local && ytext && ytext.toString() !== local) {
+        replaceText(local, RESET_ORIGIN);
+      }
+      const gitDirty =
+        Boolean(config.document_hash) &&
+        Boolean(config.base_document_hash) &&
+        config.document_hash !== config.base_document_hash;
       await mesh.connect(config);
-      if (ytext?.toString()) mesh.broadcastTex();
-      else mesh.requestTexFromPeers();
+      if (gitDirty) mesh.markPublishSnapshot();
+      else if (getLocalDirty?.()) mesh.markLocalDirty();
+      mesh.broadcastTex();
+      if (!gitDirty) mesh.requestTexFromPeers();
     } catch (error) {
       networkStatus = {
         ...networkStatus,
@@ -567,7 +581,12 @@ export function createPaperCollabClient({
       value: after,
     };
     if (!span || (!span.delete_len && !span.new_text)) return;
-    mesh.markLocalDirty();
+    mesh.noteLocalTyped();
+    if (!ytext.toString() && after) {
+      replaceText(after, LOCAL_ORIGIN);
+      mesh.broadcastTex();
+      return;
+    }
     if (ytext.toString() !== before) {
       replaceText(after, LOCAL_ORIGIN);
       mesh.broadcastTex();

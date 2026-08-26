@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20260815d" />
+  <link rel="stylesheet" href="styles.css?v=20260826u" />
   <script>
     (function () {
       var t = localStorage.getItem("koi-theme");
@@ -717,6 +717,28 @@
         </div>
         <p id="paper-empty" class="paper-empty">Статья ещё не генерировалась.</p>
         <div id="paper-split" class="paper-split hidden">
+          <aside id="paper-versions" class="paper-versions" aria-label="Версии статьи">
+            <header class="paper-versions__head">
+              <p class="paper-versions__title">Версии</p>
+            </header>
+            <div class="paper-versions__now">
+              <button type="button" id="paper-version-current" class="paper-version is-current is-active" data-paper-version="current" aria-pressed="true">
+                <span class="paper-version__rail" aria-hidden="true"><span class="paper-version__dot"></span></span>
+                <span class="paper-version__body">
+                  <span class="paper-version__name">Сейчас</span>
+                  <span class="paper-version__meta">черновик на экране</span>
+                </span>
+              </button>
+              <button type="button" id="btn-paper-version-push" class="paper-version-action paper-version-action--primary" title="Закоммитить правки статьи и отправить в git">
+                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                  <path fill="currentColor" d="M8 2.2 3.8 6.4l.9.9L7.4 4.6V13h1.2V4.6l2.7 2.7.9-.9L8 2.2zM3 13.8h10v1.2H3z"/>
+                </svg>
+                <span class="paper-version-action__label">Отправить</span>
+              </button>
+            </div>
+            <p class="paper-versions__label">Снимки в git</p>
+            <div id="paper-versions-list" class="paper-versions__list"></div>
+          </aside>
           <section class="paper-pane paper-pane--tex" aria-label="LaTeX исходник">
             <header class="paper-pane__head">
               <div class="paper-pane__title-group">
@@ -828,6 +850,6 @@
 
   <div id="koi-widgets-root" aria-live="polite"></div>
 
-  <script type="module" src="app.js?v=20260826r"></script>
+  <script type="module" src="app.js?v=20260827b"></script>
 </body>
 </html>

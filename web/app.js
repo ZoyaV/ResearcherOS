@@ -11,8 +11,8 @@ import {
   computeCostChipHtml,
   mergeComputeCost,
 } from "./compute-cost.js";
-import { KoiApi } from "./api.js?v=20260826e";
-import { createPaperCollabClient, localUserName } from "./paper-collab.js?v=20260826r";
+import { KoiApi } from "./api.js?v=20260826t";
+import { createPaperCollabClient, localUserName } from "./paper-collab.js?v=20260827e";
 import { destroyKanbanDagView, fitKanbanDagView, refreshKanbanDagView } from "./kanban-dag.js?v=20260715a";
 import { clearKanbanMilestones, clearMilestoneBoardFilter, refreshKanbanMilestones } from "./milestones.js?v=20260807e";
 import {
@@ -8719,6 +8719,7 @@ function markPaperCopyButton(btn, copied = true) {
 const paperState = {
   pollTimer: null,
   texPollTimer: null,
+  versionsPollTimer: null,
   lastRemoteTexMtime: null,
   lastRemotePdfMtime: null,
   pendingRemoteTexMtime: null,
@@ -8747,6 +8748,13 @@ const paperState = {
   collabPeers: [],
   collabNetwork: null,
   collabProposal: null,
+  viewedSha: null,
+  liveTexBeforeView: "",
+  texDirtyBeforeView: false,
+  paperVersions: [],
+  paperVersionsDirty: false,
+  paperVersionsBehind: 0,
+  paperSyncing: false,
   collabProposalResolving: false,
   gutterLineCount: 0,
   progressSettingsOpen: false,
@@ -8756,6 +8764,10 @@ const PAPER_INBOX_CONFIGURED_KEY = "koi_paper_inbox_configured";
 const PAPER_TEX_POLL_MS = 3000;
 const PAPER_TEX_SAVE_GRACE_MS = 15000;
 const paperCollab = createPaperCollabClient({
+  getLocalText: () => paperEls().texInput?.value || paperState.texText || "",
+  // Git dirtiness is represented by document_hash/base_document_hash.
+  // It must not turn a committed versions-rail state into a live edit.
+  getLocalDirty: () => Boolean(paperState.texDirty),
   onState: ({ text, applyToEditor = true }) => {
     applyRemoteCollabText(text, { applyToEditor });
   },
@@ -8794,9 +8806,12 @@ const paperCollab = createPaperCollabClient({
   },
   onMaterialized: (event) => {
     paperState.texDirty = false;
+    paperState.paperVersionsDirty = true;
     if (event?.tex_mtime != null) paperState.lastRemoteTexMtime = event.tex_mtime;
     paperState.texSavedAt = Date.now();
     updatePaperSaveUi();
+    const entry = activePaperEntry();
+    if (entry) void loadPaperVersions(entry.project_id, entry.slug);
   },
 });
 
@@ -8877,7 +8892,7 @@ function renderPaperCollabProposal() {
           .join("")
       : "";
   }
-  if (els.texInput) els.texInput.readOnly = Boolean(proposal);
+  if (els.texInput) els.texInput.readOnly = Boolean(proposal) || Boolean(paperState.viewedSha);
   void renderPaperCommentMargin();
   requestAnimationFrame(syncPaperLayoutMetrics);
 }
@@ -8918,6 +8933,13 @@ async function resolvePaperCollabProposalHunk(hunkId, resolution) {
 }
 
 function applyRemoteCollabText(next, { applyToEditor = true } = {}) {
+  if (paperState.viewedSha) {
+    paperState.viewedSha = null;
+    paperState.liveTexBeforeView = "";
+    paperState.texDirtyBeforeView = false;
+    updatePaperEditorLock();
+    renderPaperVersions();
+  }
   const ta = paperEls().texInput;
   const prev = ta?.value ?? paperState.texText ?? "";
   if (!next && prev) return;
@@ -9124,6 +9146,10 @@ function paperEls() {
     texSelection: document.getElementById("paper-tex-selection"),
     commentAdd: document.getElementById("btn-paper-comment-add"),
     commentsCount: document.getElementById("paper-comments-count"),
+    versions: document.getElementById("paper-versions"),
+    versionsList: document.getElementById("paper-versions-list"),
+    versionCurrent: document.getElementById("paper-version-current"),
+    versionPush: document.getElementById("btn-paper-version-push"),
     panel: document.querySelector(".paper-panel"),
   };
 }
@@ -9468,6 +9494,10 @@ function stopPaperTexPolling() {
     clearInterval(paperState.texPollTimer);
     paperState.texPollTimer = null;
   }
+  if (paperState.versionsPollTimer) {
+    clearInterval(paperState.versionsPollTimer);
+    paperState.versionsPollTimer = null;
+  }
 }
 
 function startPaperTexPolling() {
@@ -9475,6 +9505,12 @@ function startPaperTexPolling() {
   paperState.texPollTimer = setInterval(() => {
     void pollPaperDiskChanges();
   }, PAPER_TEX_POLL_MS);
+  paperState.versionsPollTimer = setInterval(() => {
+    const entry = activePaperEntry();
+    if (entry && !paperState.paperSyncing) {
+      void loadPaperVersions(entry.project_id, entry.slug);
+    }
+  }, 20000);
 }
 
 function isPaperModalOpen() {
@@ -9917,9 +9953,203 @@ async function refreshPaperCommentLayout({ rebuildGutter = false } = {}) {
   layoutPaperCommentAnchors();
 }
 
+function paperVersionDate(stamp) {
+  if (!stamp) return "";
+  try {
+    return new Date(Number(stamp) * 1000).toLocaleDateString("ru-RU", {
+      day: "numeric",
+      month: "short",
+    });
+  } catch {
+    return "";
+  }
+}
+
+function setPaperVersionPushLabel(text) {
+  const btn = paperEls().versionPush;
+  if (!btn) return;
+  const label = btn.querySelector(".paper-version-action__label");
+  if (label) label.textContent = text;
+}
+
+function paperCurrentVersionMeta() {
+  if (paperState.viewedSha) return "откройте «Сейчас», чтобы править";
+  if (paperState.texDirty) return "есть правки, ещё не на диске";
+  if (paperState.paperVersionsDirty) return "черновик, не закоммичен";
+  return "черновик на экране";
+}
+
+function paperVersionRefreshIcon() {
+  return `<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M13.1 8A5.1 5.1 0 1 1 8 2.9V1.6a6.4 6.4 0 1 0 6.2 7.7L13 8.8A5 5 0 0 1 13.1 8zm.3-6.2.1 3.4-3.4-.1 1.3-1.2A5.1 5.1 0 0 0 8 2.9V1.6a6.4 6.4 0 0 1 4.6 2z"/></svg>`;
+}
+
+function applyPaperVersionsPayload(data) {
+  paperState.paperVersions = Array.isArray(data?.commits) ? data.commits : [];
+  paperState.paperVersionsDirty = Boolean(data?.dirty);
+  paperState.paperVersionsBehind = Number(data?.behind) || 0;
+}
+
+function renderPaperVersions() {
+  const els = paperEls();
+  const current = els.versionCurrent;
+  if (current) {
+    const live = !paperState.viewedSha;
+    current.classList.toggle("is-active", live);
+    current.classList.toggle("is-dirty", Boolean(paperState.paperVersionsDirty || paperState.texDirty));
+    current.setAttribute("aria-pressed", live ? "true" : "false");
+    const meta = current.querySelector(".paper-version__meta");
+    if (meta) meta.textContent = paperCurrentVersionMeta();
+  }
+  if (els.versionPush) {
+    const canPush = Boolean(paperState.paperVersionsDirty || paperState.texDirty);
+    els.versionPush.disabled = paperState.paperSyncing || Boolean(paperState.viewedSha) || !canPush;
+    els.versionPush.setAttribute("aria-busy", paperState.paperSyncing ? "true" : "false");
+    setPaperVersionPushLabel(paperState.paperSyncing ? "Отправляю…" : "Отправить");
+  }
+  if (!els.versionsList) return;
+  const commits = paperState.paperVersions || [];
+  if (!commits.length) {
+    els.versionsList.innerHTML = `<p class="paper-versions__empty">Пока нет снимков в git</p>`;
+    return;
+  }
+  els.versionsList.innerHTML = commits
+    .map((item) => {
+      const sha = String(item.sha || "");
+      const incoming = Boolean(item.incoming);
+      const active = Boolean(paperState.viewedSha && sha.startsWith(paperState.viewedSha));
+      const when = paperVersionDate(item.committed_at);
+      const subject = escapeHtml(item.subject || item.short || sha.slice(0, 8));
+      const short = escapeHtml(item.short || sha.slice(0, 8));
+      const badge = incoming
+        ? `<span class="paper-version__badge">новый</span>`
+        : "";
+      const pull = incoming
+        ? `<button type="button" class="paper-version-action paper-version-action--warn" data-paper-version-pull="1" ${
+            paperState.paperSyncing ? "disabled" : ""
+          } title="Забрать этот снимок из git">${paperVersionRefreshIcon()}<span class="paper-version-action__label">Обновить</span></button>`
+        : "";
+      return `<div class="paper-version-row${incoming ? " is-incoming" : ""}">
+        <button type="button" class="paper-version${active ? " is-active" : ""}${incoming ? " is-incoming" : ""}" data-paper-version="${escapeHtml(sha)}" title="${escapeHtml(sha)}" aria-pressed="${active ? "true" : "false"}"${active ? ' aria-current="true"' : ""}>
+          <span class="paper-version__rail" aria-hidden="true"><span class="paper-version__dot"></span></span>
+          <span class="paper-version__body">
+            <span class="paper-version__top">${badge}<span class="paper-version__hash">${short}</span>${when ? `<span class="paper-version__when">${escapeHtml(when)}</span>` : ""}</span>
+            <span class="paper-version__meta">${subject}</span>
+          </span>
+        </button>
+        ${pull}
+      </div>`;
+    })
+    .join("");
+}
+
+async function loadPaperVersions(projectId, slug) {
+  try {
+    applyPaperVersionsPayload(await KoiApi.getPaperVersions(projectId, slug));
+  } catch {
+    paperState.paperVersions = [];
+    paperState.paperVersionsDirty = false;
+    paperState.paperVersionsBehind = 0;
+  }
+  renderPaperVersions();
+}
+
+async function pullPaperVersions() {
+  const entry = activePaperEntry();
+  if (!entry || paperState.paperSyncing) return;
+  paperState.paperSyncing = true;
+  renderPaperVersions();
+  try {
+    applyPaperVersionsPayload(await KoiApi.pullPaperVersions(entry.project_id, entry.slug));
+    paperState.viewedSha = null;
+    paperState.collabKey = null;
+    await paperCollab.disconnect();
+    await loadPaperTex(entry.project_id, entry.slug, { force: true });
+    await ensurePaperCollab(entry.project_id, entry.slug);
+    showPaperToast("Статья обновлена из git");
+  } catch (err) {
+    showPaperToast(err.message || "Не удалось забрать обновления", { variant: "error" });
+  } finally {
+    paperState.paperSyncing = false;
+    renderPaperVersions();
+  }
+}
+
+async function pushPaperVersions() {
+  const entry = activePaperEntry();
+  if (!entry || paperState.paperSyncing || paperState.viewedSha) return;
+  if (paperState.texDirty) {
+    const saved = await savePaperTex({ quiet: true });
+    if (!saved) return;
+  }
+  paperState.paperSyncing = true;
+  renderPaperVersions();
+  try {
+    applyPaperVersionsPayload(await KoiApi.pushPaperVersions(entry.project_id, entry.slug));
+    showPaperToast("Снимок статьи отправлен в git");
+  } catch (err) {
+    showPaperToast(err.message || "Не удалось отправить снимок", { variant: "error" });
+  } finally {
+    paperState.paperSyncing = false;
+    renderPaperVersions();
+  }
+}
+
+async function restoreLivePaperTex(entry) {
+  const live = paperCollab.currentText() || paperState.liveTexBeforeView;
+  paperState.viewedSha = null;
+  if (live) {
+    const unchanged = live === paperState.liveTexBeforeView;
+    setTexEditorContent(live, {
+      markClean: unchanged && !paperState.texDirtyBeforeView,
+    });
+  } else {
+    await loadPaperTex(entry.project_id, entry.slug, { force: true });
+  }
+  paperState.liveTexBeforeView = "";
+  paperState.texDirtyBeforeView = false;
+  updatePaperEditorLock();
+  renderPaperVersions();
+}
+
+async function showPaperVersion(sha) {
+  const entry = activePaperEntry();
+  if (!entry) return;
+  if (!sha || sha === "current") {
+    if (!paperState.viewedSha) return;
+    await restoreLivePaperTex(entry);
+    return;
+  }
+  try {
+    const text = await KoiApi.getPaperTex(entry.project_id, entry.slug, sha);
+    if (!paperState.viewedSha) {
+      paperState.liveTexBeforeView =
+        paperCollab.currentText() || paperEls().texInput?.value || paperState.texText || "";
+      paperState.texDirtyBeforeView = Boolean(paperState.texDirty);
+    }
+    paperState.viewedSha = sha;
+    paperState.lastTexKey = null;
+    setTexEditorContent(text, { markClean: true });
+    updatePaperEditorLock();
+    renderPaperVersions();
+  } catch (err) {
+    showPaperToast(`Не удалось открыть версию: ${err.message}`, { variant: "error" });
+  }
+}
+
+function updatePaperEditorLock() {
+  const els = paperEls();
+  const locked = Boolean(paperState.viewedSha || paperState.collabProposal);
+  if (els.texInput) els.texInput.readOnly = locked;
+  if (els.texSave) els.texSave.disabled = locked || !paperState.texDirty || paperState.texSaving;
+  if (els.texCompile) els.texCompile.disabled = locked || paperState.texSaving || paperState.texCompiling;
+  if (els.texSelection && paperState.viewedSha) {
+    els.texSelection.textContent = "Снимок из git — только просмотр";
+  }
+}
+
 function syncTexFromInput(event) {
   const ta = paperEls().texInput;
-  if (!ta) return;
+  if (!ta || paperState.viewedSha) return;
   paperState.texText = ta.value;
   paperState.texLines = ta.value.split("\n");
   paperState.texDirty = true;
@@ -9940,15 +10170,26 @@ function syncTexFromInput(event) {
 
 function updatePaperSaveUi() {
   const els = paperEls();
-  const busy = paperState.texSaving || paperState.texCompiling;
-  els.texDirty?.classList.toggle("hidden", !paperState.texDirty);
+  els.texDirty?.classList.toggle("hidden", !paperState.texDirty || Boolean(paperState.viewedSha));
   if (els.texSave) {
-    els.texSave.disabled = !paperState.texDirty || busy;
     els.texSave.textContent = paperState.texSaving ? "Сохранение…" : "Сохранить";
   }
   if (els.texCompile) {
-    els.texCompile.disabled = busy;
     els.texCompile.textContent = paperState.texCompiling ? "Сборка…" : "Собрать PDF";
+  }
+  updatePaperEditorLock();
+  if (els.versionPush) {
+    const canPush = Boolean(paperState.paperVersionsDirty || paperState.texDirty);
+    els.versionPush.disabled = paperState.paperSyncing || Boolean(paperState.viewedSha) || !canPush;
+    setPaperVersionPushLabel(paperState.paperSyncing ? "Отправляю…" : "Отправить");
+  }
+  const current = els.versionCurrent;
+  if (current) {
+    current.classList.toggle("is-active", !paperState.viewedSha);
+    current.classList.toggle("is-dirty", Boolean(paperState.paperVersionsDirty || paperState.texDirty));
+    current.setAttribute("aria-pressed", paperState.viewedSha ? "false" : "true");
+    const meta = current.querySelector(".paper-version__meta");
+    if (meta) meta.textContent = paperCurrentVersionMeta();
   }
 }
 
@@ -10173,6 +10414,7 @@ async function savePaperTex({ quiet = false } = {}) {
       ? await KoiApi.flushPaperCollab(entry.project_id, entry.slug)
       : await KoiApi.savePaperTex(entry.project_id, entry.slug, content);
     paperState.texDirty = false;
+    paperState.paperVersionsDirty = true;
     paperState.texText = content;
     paperState.texLines = content.split("\n");
     if (res?.tex_mtime != null) {
@@ -10191,6 +10433,7 @@ async function savePaperTex({ quiet = false } = {}) {
       }, 5000);
     }
     if (!quiet) showPaperToast(`main.tex сохранён · ${label}`);
+    void loadPaperVersions(entry.project_id, entry.slug);
     return true;
   } catch (err) {
     if (els.status) els.status.textContent = `Не удалось сохранить main.tex: ${err.message}`;
@@ -10592,6 +10835,8 @@ async function loadPaperWorkspace(projectId, slug, { pdfExists = false, pdfStamp
     paperState.texLines = [];
   }
   await loadPaperComments(projectId, slug);
+  paperState.viewedSha = null;
+  void loadPaperVersions(projectId, slug);
   if (texLoaded) {
     void ensurePaperCollab(projectId, slug);
   }
@@ -10984,6 +11229,22 @@ function initPaper() {
       paperState.lastRemoteTexMtime = paperState.pendingRemoteTexMtime;
     }
     dismissPaperTexExternalChange();
+  });
+  paperEls().versions?.addEventListener("click", (event) => {
+    if (event.target.closest("[data-paper-version-pull]")) {
+      event.preventDefault();
+      event.stopPropagation();
+      void pullPaperVersions();
+      return;
+    }
+    const btn = event.target.closest("[data-paper-version]");
+    if (!btn) return;
+    void showPaperVersion(btn.dataset.paperVersion);
+  });
+  paperEls().versionPush?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    void pushPaperVersions();
   });
   document.getElementById("paper-inbox-message-copy")?.addEventListener("click", () => {
     void copyPaperInboxBootstrap(document.getElementById("paper-inbox-message-status"));
