@@ -275,6 +275,7 @@ export function createPaperWebRtcMesh({
 
   function sendTexTo(remotePeerId) {
     const frame = texFrame();
+    if (!frame.text) return;
     const channel = connections.get(remotePeerId)?.channel;
     if (channel?.readyState === "open") {
       sendChannel(channel, frame);
@@ -284,15 +285,18 @@ export function createPaperWebRtcMesh({
   }
 
   function adoptRemoteText(text, fromPeer, seq) {
-    if (typeof text !== "string") return;
+    if (typeof text !== "string" || !text) return;
     if (config?.local_dirty) return;
     if (isStaleTex(fromPeer, seq)) return;
+    const local = getText?.() || "";
+    if (local && text.length < Math.min(32, local.length)) return;
     applyRemoteText?.(text);
     noteRemoteSeq(fromPeer, seq);
   }
 
   function broadcastTex() {
     const frame = texFrame();
+    if (!frame.text) return;
     for (const remotePeerId of relayPeers) sendRelay(remotePeerId, frame);
   }
 
@@ -347,9 +351,9 @@ export function createPaperWebRtcMesh({
         metadata: publicMetadata(),
         comments: snapshot.comments,
         deleted_ids: snapshot.deleted_ids,
-        text: tex.text,
-        tex_dirty: tex.dirty,
-        seq: tex.seq,
+        ...(tex.text
+          ? { text: tex.text, tex_dirty: tex.dirty, seq: tex.seq }
+          : {}),
       });
     }
     sendCommentsTo(remotePeerId);
