@@ -11,8 +11,8 @@ import {
   computeCostChipHtml,
   mergeComputeCost,
 } from "./compute-cost.js";
-import { KoiApi } from "./api.js?v=20260815d";
-import { createPaperCollabClient } from "./paper-collab.js?v=20260815k";
+import { KoiApi } from "./api.js?v=20260815e";
+import { createPaperCollabClient } from "./paper-collab.js?v=20260815l";
 import { destroyKanbanDagView, fitKanbanDagView, refreshKanbanDagView } from "./kanban-dag.js?v=20260715a";
 import { clearKanbanMilestones, clearMilestoneBoardFilter, refreshKanbanMilestones } from "./milestones.js?v=20260807e";
 import {
@@ -8745,6 +8745,7 @@ const paperState = {
   collabKey: null,
   collabApplying: false,
   collabPeers: [],
+  collabNetwork: null,
   collabProposal: null,
   collabProposalResolving: false,
   gutterLineCount: 0,
@@ -8767,6 +8768,7 @@ const paperCollab = createPaperCollabClient({
     const status = paperEls().texCollab;
     if (status) {
       status.textContent = "конфликт — оставьте текущий текст или перезагрузите";
+      status.dataset.collabConflict = "true";
       status.classList.add("is-conflict");
       status.classList.remove("hidden");
     }
@@ -8783,6 +8785,7 @@ const paperCollab = createPaperCollabClient({
   },
   onStatus: (status) => {
     paperState.collabPeers = status?.peers || [];
+    paperState.collabNetwork = status?.network || null;
     updatePaperCollabUi();
   },
   onMaterialized: (event) => {
@@ -8799,13 +8802,28 @@ function updatePaperCollabUi() {
   if (!paperCollab.isActive()) {
     el.classList.add("hidden");
     el.classList.remove("is-conflict");
+    delete el.dataset.collabConflict;
     return;
   }
   el.classList.remove("hidden");
-  if (el.classList.contains("is-conflict")) return;
+  if (el.dataset.collabConflict === "true") return;
+  const network = paperState.collabNetwork;
+  if (network?.error) {
+    el.textContent = network.error;
+    el.classList.add("is-conflict");
+    return;
+  }
+  el.classList.remove("is-conflict");
   const others = (paperState.collabPeers || []).filter((peer) => peer.peer_id);
-  const count = Math.max(1, others.length);
-  el.textContent = count > 1 ? `live · ${count}` : "live";
+  const remoteCount = Number(network?.remotePeerCount) || 0;
+  const count = Math.max(1, others.length + remoteCount);
+  if (remoteCount > 0) {
+    el.textContent = `P2P · ${count}`;
+  } else if (network?.enabled && network?.signaling) {
+    el.textContent = "P2P · ожидание";
+  } else {
+    el.textContent = count > 1 ? `live · ${count}` : "live";
+  }
 }
 
 function renderPaperCollabProposal() {

@@ -5,12 +5,15 @@
  * Y.Text; server echoes are unnecessary and therefore cannot move the caret.
  */
 
-import { KoiApi } from "./api.js?v=20260815d";
+import { KoiApi } from "./api.js?v=20260815e";
 import * as Y from "./vendor/yjs.mjs?v=13.6.27";
+import { createPaperWebRtcMesh } from "./paper-webrtc.js?v=20260815a";
 
 const NAME_KEY = "koi-collab-name";
 const LOCAL_ORIGIN = Symbol("paper-collab-local");
 const REMOTE_ORIGIN = Symbol("paper-collab-remote");
+const P2P_ORIGIN = Symbol("paper-collab-p2p");
+const RESET_ORIGIN = Symbol("paper-collab-reset");
 
 function randomId(prefix) {
   return `${prefix}-${Math.random().toString(16).slice(2, 10)}`;
@@ -136,9 +139,45 @@ export function createPaperCollabClient({
   let projectId = "";
   let slug = "";
   let caretBefore = { start: 0, end: 0, value: "" };
+  let crdtEpoch = "";
+  let networkStarted = false;
+  let networkStatus = {
+    enabled: false,
+    signaling: false,
+    remotePeerCount: 0,
+    error: "",
+  };
+
+  const mesh = createPaperWebRtcMesh({
+    peerId,
+    userName: localUserName(),
+    getDocumentUpdate: () => (ydoc ? Y.encodeStateAsUpdate(ydoc) : null),
+    applyRemoteUpdate: (update) => {
+      if (ydoc) Y.applyUpdate(ydoc, update, P2P_ORIGIN);
+    },
+    adoptRemoteState: (update, metadata) => {
+      send({
+        type: "adopt_remote",
+        update: bytesToBase64(update),
+        crdt_epoch: metadata.crdt_epoch,
+        expected_hash: "",
+      });
+    },
+    onPresence: (presence) => onPresence?.([presence]),
+    onStatus: (status) => {
+      networkStatus = { ...networkStatus, ...status };
+      emitStatus();
+    },
+  });
 
   function emitStatus() {
-    onStatus?.({ connected, revision, peers, peerCount: peers.length });
+    onStatus?.({
+      connected,
+      revision,
+      peers,
+      peerCount: peers.length,
+      network: networkStatus,
+    });
   }
 
   function send(payload) {
@@ -164,11 +203,55 @@ export function createPaperCollabClient({
     ytext = ydoc.getText("content");
     ytext.observe((_event, transaction) => publishText(transaction.origin));
     ydoc.on("update", (update, origin) => {
-      if (origin !== LOCAL_ORIGIN) return;
-      if (send({ type: "crdt_update", update: bytesToBase64(update) })) {
-        pendingUpdates += 1;
+      if (origin === LOCAL_ORIGIN || origin === P2P_ORIGIN) {
+        if (send({ type: "crdt_update", update: bytesToBase64(update) })) {
+          pendingUpdates += 1;
+        }
+      }
+      if (origin === LOCAL_ORIGIN || origin === REMOTE_ORIGIN) {
+        mesh.broadcastUpdate(update);
       }
     });
+  }
+
+  async function startNetwork() {
+    if (networkStarted || !projectId || !slug) return;
+    networkStarted = true;
+    try {
+      const config = await KoiApi.getPaperCollabNetwork(projectId, slug, peerId);
+      crdtEpoch = String(config.crdt_epoch || crdtEpoch);
+      await mesh.connect(config);
+    } catch (error) {
+      networkStatus = {
+        ...networkStatus,
+        error: error?.message || "Не удалось запустить P2P",
+      };
+      emitStatus();
+    }
+  }
+
+  function applyReset(message) {
+    createDocument();
+    Y.applyUpdate(ydoc, base64ToBytes(String(message.update || "")), RESET_ORIGIN);
+    synced = true;
+    revision = Number(message.revision) || 0;
+    crdtEpoch = String(message.crdt_epoch || crdtEpoch);
+    mesh.noteLocalState({
+      crdt_epoch: crdtEpoch,
+      document_hash: String(message.hash || ""),
+    });
+    publishText(REMOTE_ORIGIN);
+    emitStatus();
+  }
+
+  function noteServerUpdate(message) {
+    if (message.crdt_epoch) {
+      crdtEpoch = String(message.crdt_epoch);
+      mesh.noteLocalState({
+        crdt_epoch: crdtEpoch,
+        document_hash: String(message.hash || ""),
+      });
+    }
   }
 
   function handleMessage(message) {
@@ -177,14 +260,21 @@ export function createPaperCollabClient({
       Y.applyUpdate(ydoc, base64ToBytes(String(message.update || "")), REMOTE_ORIGIN);
       synced = true;
       revision = Number(message.revision) || 0;
+      noteServerUpdate(message);
       publishText(REMOTE_ORIGIN);
       emitStatus();
+      void startNetwork();
       return;
     }
     if (message.type === "crdt_update") {
       Y.applyUpdate(ydoc, base64ToBytes(String(message.update || "")), REMOTE_ORIGIN);
       revision = Number(message.revision) || revision;
+      noteServerUpdate(message);
       emitStatus();
+      return;
+    }
+    if (message.type === "reset_sync") {
+      applyReset(message);
       return;
     }
     if (message.type === "ack") {
@@ -209,6 +299,14 @@ export function createPaperCollabClient({
     }
     if (message.type === "conflict") {
       onConflict?.(message);
+      return;
+    }
+    if (message.type === "network_error") {
+      networkStatus = {
+        ...networkStatus,
+        error: message.reason || "P2P state отклонён",
+      };
+      emitStatus();
       return;
     }
     if (message.type === "proposal") {
@@ -248,6 +346,9 @@ export function createPaperCollabClient({
     closing = false;
     synced = false;
     pendingUpdates = 0;
+    crdtEpoch = "";
+    networkStarted = false;
+    mesh.disconnect();
     createDocument();
     const params = { peer: peerId, user: localUserName(), actor: "human" };
     const primary = KoiApi.paperCollabWsUrl(projectId, slug, params);
@@ -300,6 +401,9 @@ export function createPaperCollabClient({
     synced = false;
     pendingUpdates = 0;
     peers = [];
+    crdtEpoch = "";
+    networkStarted = false;
+    mesh.disconnect();
     onProposal?.(null);
     emitStatus();
   }
@@ -322,6 +426,7 @@ export function createPaperCollabClient({
       value: textarea?.value ?? "",
     };
     if (!span || (!span.delete_len && !span.new_text)) return;
+    mesh.markLocalDirty();
     ydoc.transact(() => {
       if (span.delete_len) ytext.delete(span.start, span.delete_len);
       if (span.new_text) ytext.insert(span.start, span.new_text);
@@ -334,7 +439,10 @@ export function createPaperCollabClient({
     disconnect,
     rememberCaret,
     queueInput,
-    sendPresence: (presence) => send({ type: "presence", ...presence }),
+    sendPresence: (presence) => {
+      mesh.broadcastPresence(presence);
+      return send({ type: "presence", ...presence });
+    },
     requestFlush: () => send({ type: "flush" }),
     isActive: () => connected && synced,
     hasPendingEdit: () => pendingUpdates > 0,

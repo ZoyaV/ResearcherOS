@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import difflib
 import json
+import secrets
 import threading
 import time
 import uuid
@@ -270,6 +271,7 @@ class CollabSession:
                 self.proposal.current = initial
                 self._save_proposal()
         self.document = CollabDocument(initial, document_id=self.document_id)
+        self.crdt_epoch = f"epoch-{secrets.token_hex(8)}"
         self.bridge = FilesystemBridge(self.document, self.tex_path)
         if self.tex_path.is_file():
             try:
@@ -375,6 +377,7 @@ class CollabSession:
                 "slug": self.slug,
                 "document_id": self.document_id,
                 "room_id": self.room_id,
+                "crdt_epoch": self.crdt_epoch,
                 "revision": self.document.revision,
                 "content_hash": self.document.content_hash(),
                 "peer_count": len(self.peers),
@@ -403,6 +406,7 @@ class CollabSession:
                 "text": self.document.to_string(),
                 "hash": self.document.content_hash(),
                 "room_id": self.room_id,
+                "crdt_epoch": self.crdt_epoch,
             }
             if origin:
                 event["origin"] = origin
@@ -422,6 +426,7 @@ class CollabSession:
                 "revision": self.document.revision,
                 "hash": self.document.content_hash(),
                 "room_id": self.room_id,
+                "crdt_epoch": self.crdt_epoch,
             }
 
     def _update_event(self, update: bytes, origin: str | None = None) -> dict[str, Any]:
@@ -431,9 +436,58 @@ class CollabSession:
             "revision": self.document.revision,
             "hash": self.document.content_hash(),
             "room_id": self.room_id,
+            "crdt_epoch": self.crdt_epoch,
         }
         if origin:
             event["origin"] = origin
+        return event
+
+    def adopt_remote_state(
+        self,
+        update: bytes,
+        *,
+        crdt_epoch: str,
+        expected_hash: str = "",
+        origin: str | None = None,
+    ) -> dict[str, Any]:
+        """Replace an independently seeded CRDT with the room authority's history.
+
+        Two Yjs documents initialized separately from the same plain text do not
+        share CRDT history; merging their full updates duplicates the seed text.
+        A joining clean instance therefore adopts the authority's history once.
+        """
+        if not update or not crdt_epoch:
+            raise ValueError("remote CRDT state and epoch are required")
+        incoming = CollabDocument(document_id=self.document_id)
+        incoming.apply_update(update)
+        if expected_hash and incoming.content_hash() != expected_hash:
+            raise ValueError("remote CRDT state hash does not match signaling metadata")
+        with self._lock:
+            if self.proposal is not None:
+                raise ValueError("cannot adopt remote state while a proposal is pending")
+            self.document = incoming
+            self.crdt_epoch = crdt_epoch
+            self.bridge = FilesystemBridge(self.document, self.tex_path)
+            self.op_log.clear()
+            self.conflict = None
+            self.bridge.materialize()
+            self._queue_editor_command(
+                self.document.to_string(),
+                force=True,
+                save=True,
+            )
+            event = {
+                "type": "reset_sync",
+                "update": base64.b64encode(self.document.get_update()).decode("ascii"),
+                "revision": self.document.revision,
+                "hash": self.document.content_hash(),
+                "room_id": self.room_id,
+                "crdt_epoch": self.crdt_epoch,
+                "origin": origin or "",
+                "tex_mtime": self.bridge.last_mtime,
+            }
+            self.last_activity = time.time()
+        self._broadcast(event)
         return event
 
     def join(

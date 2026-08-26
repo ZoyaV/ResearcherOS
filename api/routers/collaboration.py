@@ -13,6 +13,12 @@ from pydantic import BaseModel, Field
 from api.deps import parse_project
 from koi.paper.catalog import get_paper_slot_dir, normalize_paper_slug
 from koi.paper.generator import TEX_NAME
+from koi.paper.collaboration.network import (
+    git_document_state,
+    issue_room_token,
+    network_config,
+    network_room_id,
+)
 from koi.paper.collaboration.session import (
     get_or_create_session,
     get_session,
@@ -92,6 +98,40 @@ def open_collab_session(project_id: str, slug: str) -> dict[str, Any]:
 def flush_collab_session(project_id: str, slug: str) -> dict[str, Any]:
     session = _session(project_id, slug)
     return session.flush()
+
+
+@router.get("/projects/{project_id}/papers/{slug}/collab/network")
+def get_collab_network(
+    project_id: str,
+    slug: str,
+    peer: str = Query(..., min_length=3, max_length=128),
+) -> dict[str, Any]:
+    session = _session(project_id, slug, create=True)
+    config = network_config()
+    git = git_document_state(project_id, session.tex_path)
+    room = network_room_id(git.repository_id, session.slug, git.relative_path)
+    payload: dict[str, Any] = {
+        "enabled": config.enabled,
+        "signaling_url": config.signaling_url,
+        "ice_servers": config.ice_servers(),
+        "room_id": room,
+        "repository_id": git.repository_id,
+        "git_commit": git.commit,
+        "base_document_hash": git.base_document_hash,
+        "document_hash": session.document.content_hash(),
+        "crdt_epoch": session.crdt_epoch,
+    }
+    if not config.enabled:
+        return payload
+    token, expires_at = issue_room_token(
+        secret=config.token_secret,
+        room=room,
+        peer_id=peer,
+        repository_id=git.repository_id,
+        paper_id=session.slug,
+    )
+    payload.update({"token": token, "expires_at": expires_at})
+    return payload
 
 
 @router.get("/projects/{project_id}/papers/{slug}/collab/proposal")
@@ -256,6 +296,23 @@ async def collab_ws(
                     await websocket.close(code=1003)
                     return
                 await websocket.send_json(session.apply_crdt_update(joined.peer_id, update))
+            elif kind == "adopt_remote":
+                try:
+                    update = base64.b64decode(str(message.get("update") or ""), validate=True)
+                    session.adopt_remote_state(
+                        update,
+                        crdt_epoch=str(message.get("crdt_epoch") or ""),
+                        expected_hash=str(message.get("expected_hash") or ""),
+                        origin=joined.peer_id,
+                    )
+                except (ValueError, TypeError) as exc:
+                    await websocket.send_json(
+                        {
+                            "type": "network_error",
+                            "code": "remote_state_rejected",
+                            "reason": str(exc),
+                        }
+                    )
             elif kind == "op":
                 session.apply_client_op(
                     joined.peer_id,
