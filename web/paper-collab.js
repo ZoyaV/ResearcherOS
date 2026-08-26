@@ -7,7 +7,7 @@
 
 import { KoiApi } from "./api.js?v=20260826t";
 import * as Y from "./vendor/yjs.mjs?v=13.6.27";
-import { createPaperWebRtcMesh } from "./paper-webrtc.js?v=20260827b";
+import { createPaperWebRtcMesh } from "./paper-webrtc.js?v=20260827c";
 
 const NAME_KEY = "koi-collab-name";
 const LOCAL_ORIGIN = Symbol("paper-collab-local");
@@ -344,6 +344,7 @@ export function createPaperCollabClient({
       await mesh.connect(config);
       if (gitDirty) mesh.markPublishSnapshot();
       else if (getLocalDirty?.()) mesh.markLocalDirty();
+      mesh.broadcastTex();
       if (!gitDirty) mesh.requestTexFromPeers();
     } catch (error) {
       networkStatus = {

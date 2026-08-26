@@ -265,11 +265,12 @@ export function createPaperWebRtcMesh({
     if (n > prev) lastTexSeq.set(fromPeer, n);
   }
 
-  function isStaleTex(fromPeer, seq) {
+  function isStaleTex(fromPeer, seq, { allowEqual = false } = {}) {
     if (seq == null || seq === "") return false;
     const n = Number(seq);
     if (!Number.isFinite(n)) return false;
-    return n <= (lastTexSeq.get(fromPeer) ?? -1);
+    const prev = lastTexSeq.get(fromPeer) ?? -1;
+    return allowEqual ? n < prev : n <= prev;
   }
 
   function requestResync(fromPeer) {
@@ -314,7 +315,7 @@ export function createPaperWebRtcMesh({
     }
     const force = forcedResync.delete(fromPeer);
     const remoteDirty = Boolean(meta.dirty || meta.tex_dirty);
-    if (!force && local && !remoteDirty) return;
+    if (!force && local && !remoteDirty && config?.local_dirty) return;
     if (!force && local && text.length < Math.min(32, local.length)) return;
     applyRemoteText?.(text);
     noteRemoteSeq(fromPeer, seq);
@@ -419,7 +420,7 @@ export function createPaperWebRtcMesh({
     texChunks.set(key, rec);
     if (rec.parts.some((part) => part == null)) return;
     texChunks.delete(key);
-    if (isStaleTex(fromPeer, rec.seq)) return;
+    if (isStaleTex(fromPeer, rec.seq, { allowEqual: true })) return;
     adoptRemoteText(rec.parts.join(""), fromPeer, rec.seq, rec);
   }
 
@@ -439,6 +440,7 @@ export function createPaperWebRtcMesh({
       });
     }
     sendCommentsTo(remotePeerId);
+    sendTexTo(remotePeerId, { force: true });
     if (!config?.publish_snapshot) requestResync(remotePeerId);
     emitStatus();
   }
@@ -606,7 +608,7 @@ export function createPaperWebRtcMesh({
       });
     }
     if (message.type === "tex") {
-      if (isStaleTex(fromPeer, message.seq)) return;
+      if (isStaleTex(fromPeer, message.seq, { allowEqual: true })) return;
       adoptRemoteText(message.text, fromPeer, message.seq, message);
     }
     if (message.type === "tex_chunk") {
@@ -633,9 +635,7 @@ export function createPaperWebRtcMesh({
       noteRemoteSeq(fromPeer, message.seq);
     }
     if (message.type === "tex_resync") {
-      if (config?.publish_snapshot || config?.local_dirty) {
-        sendTexTo(fromPeer, { force: true });
-      }
+      sendTexTo(fromPeer, { force: true });
     }
   }
 
