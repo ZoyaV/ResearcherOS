@@ -10,6 +10,7 @@ __pycache__/
 hub/.data/
 hub/.env
 hub/deploy/*.rendered
+deploy/signaling/*.rendered
 REFACTORING_PLAN.md
 # Local Cursor IDE config/hooks/skill links
 .cursor/

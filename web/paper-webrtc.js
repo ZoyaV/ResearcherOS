@@ -125,6 +125,7 @@ export function createPaperWebRtcMesh({
   }
 
   async function connectToPeer(remotePeerId, { force = false } = {}) {
+    if (!remotePeerId || remotePeerId === peerId) return;
     const remote = remoteMetadata.get(remotePeerId) || {};
     if (!validatePeer(remote)) return;
     if (!force && !shouldOffer(remotePeerId)) return;
@@ -203,6 +204,13 @@ export function createPaperWebRtcMesh({
   }
 
   function sendRelay(remotePeerId, payload) {
+    const body = JSON.stringify({
+      type: "relay",
+      to: remotePeerId,
+      payload,
+    });
+    // API Gateway drops the socket on frames above 128 KB.
+    if (body.length > 100000) return false;
     return sendSignal({
       type: "relay",
       to: remotePeerId,
@@ -474,6 +482,7 @@ export function createPaperWebRtcMesh({
       connections.get(remotePeerId)?.pc?.close();
       connections.delete(remotePeerId);
       remoteMetadata.delete(remotePeerId);
+      relayPeers.delete(remotePeerId);
       emitStatus();
       return;
     }
@@ -513,8 +522,33 @@ export function createPaperWebRtcMesh({
       return;
     }
     if (message.type === "error") {
-      setError(`Signaling: ${message.code || "ошибка"}`);
+      const code = String(message.code || "");
+      if (code === "not_joined") {
+        sendJoin();
+        return;
+      }
+      if (code === "peer_not_found") {
+        const gone = String(message.peer_id || "");
+        if (gone) {
+          relayPeers.delete(gone);
+          remoteMetadata.delete(gone);
+        }
+        emitStatus();
+        return;
+      }
+      setError(`Signaling: ${code || "ошибка"}`);
     }
+  }
+
+  function sendJoin() {
+    if (signal?.readyState !== WebSocket.OPEN || !config) return;
+    sendSignal({
+      type: "join",
+      token: config.token,
+      room_id: config.room_id,
+      peer_id: peerId,
+      metadata: publicMetadata(),
+    });
   }
 
   async function openSignal() {
@@ -530,13 +564,7 @@ export function createPaperWebRtcMesh({
     const ws = new WebSocket(config.signaling_url);
     signal = ws;
     ws.addEventListener("open", () => {
-      sendSignal({
-        type: "join",
-        token: config.token,
-        room_id: config.room_id,
-        peer_id: peerId,
-        metadata: publicMetadata(),
-      });
+      sendJoin();
       heartbeat = setInterval(() => sendSignal({ type: "heartbeat" }), 15000);
       emitStatus();
     });

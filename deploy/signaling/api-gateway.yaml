@@ -1,0 +1,40 @@
+openapi: 3.0.0
+info:
+  title: researchos-collab-signaling
+  version: 0.1.0
+paths:
+  /health:
+    get:
+      x-yc-apigateway-integration:
+        type: serverless_containers
+        container_id: __CONTAINER_ID__
+        service_account_id: __SERVICE_ACCOUNT_ID__
+        path: /health
+  /ws-ping:
+    x-yc-apigateway-websocket-message:
+      x-yc-apigateway-integration:
+        type: dummy
+        http_code: 200
+        http_headers:
+          Content-Type: text/plain
+        content:
+          '*': pong
+  /signal:
+    x-yc-apigateway-websocket-connect:
+      x-yc-apigateway-integration:
+        type: dummy
+        http_code: 200
+        http_headers:
+          Content-Type: application/json
+        content:
+          '*': '{"ok":true}'
+    x-yc-apigateway-websocket-message:
+      x-yc-apigateway-integration:
+        type: serverless_containers
+        container_id: __CONTAINER_ID__
+        service_account_id: __SERVICE_ACCOUNT_ID__
+    x-yc-apigateway-websocket-disconnect:
+      x-yc-apigateway-integration:
+        type: serverless_containers
+        container_id: __CONTAINER_ID__
+        service_account_id: __SERVICE_ACCOUNT_ID__

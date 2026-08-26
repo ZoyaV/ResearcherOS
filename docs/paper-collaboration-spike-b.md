@@ -15,11 +15,20 @@ export KOI_COLLAB_TOKEN_SECRET="$(openssl rand -hex 32)"
   --host 0.0.0.0 --port 8090
 ```
 
-For Yandex Cloud, deploy the same ASGI command in a Serverless Container and
-expose `/signal` as a WebSocket endpoint. Configure one active replica for this
-spike: room membership is intentionally ephemeral and in-memory. Horizontal
-scaling requires a shared TTL store (for example, Managed Redis) and is outside
-the two-peer spike.
+Yandex API Gateway does **not** proxy a raw uvicorn WebSocket. The container
+receives `CONNECT` / `MESSAGE` / `DISCONNECT` as HTTP on `/signal` (the
+client path; container `path:` rewrite is ignored) and sends frames back
+through the WebSocket Connections API. Rooms stay in memory on **one** warm
+replica (`--min-instances 1`). A gateway message is at most 128 KB; oversized
+CRDT syncs must stay on DataChannel or be split later.
+
+```bash
+# same KOI_COLLAB_TOKEN_SECRET as both ResearcherOS machines
+./deploy/signaling/deploy.sh
+```
+
+Then set `KOI_COLLAB_SIGNALING_URL=wss://<gateway-domain>/signal` on both
+machines and restart KOI. Horizontal scaling still needs a shared room store.
 
 Every ResearcherOS instance must use the same secret and endpoint:
 

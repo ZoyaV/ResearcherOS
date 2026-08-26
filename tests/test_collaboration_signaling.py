@@ -15,6 +15,7 @@ from koi.paper.collaboration.signaling_service import (
     SignalPeer,
     SignalRooms,
     _send_many,
+    handle_routed,
     rooms,
 )
 
@@ -22,8 +23,10 @@ from koi.paper.collaboration.signaling_service import (
 @pytest.fixture(autouse=True)
 def _clear_signal_rooms():
     rooms.rooms.clear()
+    rooms.connections.clear()
     yield
     rooms.rooms.clear()
+    rooms.connections.clear()
 
 
 def test_signaling_routes_relay_fallback() -> None:
@@ -91,6 +94,38 @@ def test_signaling_room_tracks_authority_and_routes_opaque_payload() -> None:
         await _send_many([alice], payload)
         assert alice_socket.messages == [payload]
         assert "document" not in alice_socket.messages[0]
+
+    asyncio.run(scenario())
+
+
+def test_relay_reaches_room_when_target_id_is_stale() -> None:
+    class Socket:
+        def __init__(self) -> None:
+            self.messages: list[dict] = []
+
+        async def send_json(self, payload: dict) -> None:
+            self.messages.append(payload)
+
+    async def scenario() -> None:
+        alice_socket = Socket()
+        bob_socket = Socket()
+        await rooms.join("paper-room", SignalPeer("alice", alice_socket, connection_id="c-a"))
+        await rooms.join("paper-room", SignalPeer("bob", bob_socket, connection_id="c-b"))
+        await handle_routed(
+            alice_socket,
+            "paper-room",
+            "alice",
+            {"type": "relay", "to": "gone-peer", "payload": {"type": "update"}},
+        )
+        assert bob_socket.messages[0]["type"] == "relay"
+        assert bob_socket.messages[0]["payload"] == {"type": "update"}
+        assert alice_socket.messages == []
+
+        existing, _ = await rooms.join(
+            "paper-room",
+            SignalPeer("alice", alice_socket, connection_id="c-a2"),
+        )
+        assert [item["peer_id"] for item in existing] == ["bob"]
 
     asyncio.run(scenario())
 
@@ -197,3 +232,50 @@ def test_git_document_state_uses_tex_checkout_not_repo_root(
     assert state.commit == paper_commit
     assert state.relative_path == "koi-structure/paper/neurips/main.tex"
     assert state.base_document_hash
+
+
+def test_yandex_gateway_join_and_route(monkeypatch: pytest.MonkeyPatch) -> None:
+    from fastapi.testclient import TestClient
+
+    from koi.paper.collaboration.signaling_service import app
+
+    sent: list[tuple[str, dict]] = []
+
+    async def fake_send(connection_id: str, payload: dict) -> None:
+        sent.append((connection_id, payload))
+
+    monkeypatch.setenv("KOI_COLLAB_TOKEN_SECRET", "secret")
+    monkeypatch.setattr("koi.paper.collaboration.yandex_ws.send_apigw_json", fake_send)
+    token, _ = issue_room_token(
+        secret="secret",
+        room="room-a",
+        peer_id="alice",
+        repository_id="github.com/example/paper",
+        paper_id="emnlp",
+    )
+    client = TestClient(app)
+    connect = client.get(
+        "/signal",
+        headers={
+            "X-Yc-Apigateway-Websocket-Event-Type": "CONNECT",
+            "X-Yc-Apigateway-Websocket-Connection-Id": "conn-alice",
+        },
+    )
+    assert connect.status_code == 200
+    join = client.post(
+        "/signal",
+        headers={
+            "X-Yc-Apigateway-Websocket-Event-Type": "MESSAGE",
+            "X-Yc-Apigateway-Websocket-Connection-Id": "conn-alice",
+        },
+        json={
+            "type": "join",
+            "token": token,
+            "room_id": "room-a",
+            "peer_id": "alice",
+            "metadata": {"git_commit": "abc"},
+        },
+    )
+    assert join.status_code == 204
+    assert rooms.lookup_connection("conn-alice") == ("room-a", "alice")
+    assert any(item[1].get("type") == "room_state" for item in sent)
