@@ -12,7 +12,7 @@ import {
   mergeComputeCost,
 } from "./compute-cost.js";
 import { KoiApi } from "./api.js?v=20260826t";
-import { createPaperCollabClient, localUserName } from "./paper-collab.js?v=20260827d";
+import { createPaperCollabClient, localUserName } from "./paper-collab.js?v=20260827e";
 import { destroyKanbanDagView, fitKanbanDagView, refreshKanbanDagView } from "./kanban-dag.js?v=20260715a";
 import { clearKanbanMilestones, clearMilestoneBoardFilter, refreshKanbanMilestones } from "./milestones.js?v=20260807e";
 import {

@@ -7,7 +7,7 @@
 
 import { KoiApi } from "./api.js?v=20260826t";
 import * as Y from "./vendor/yjs.mjs?v=13.6.27";
-import { createPaperWebRtcMesh } from "./paper-webrtc.js?v=20260827d";
+import { createPaperWebRtcMesh } from "./paper-webrtc.js?v=20260827e";
 
 const NAME_KEY = "koi-collab-name";
 const LOCAL_ORIGIN = Symbol("paper-collab-local");
@@ -581,7 +581,7 @@ export function createPaperCollabClient({
       value: after,
     };
     if (!span || (!span.delete_len && !span.new_text)) return;
-    mesh.markLocalDirty();
+    mesh.noteLocalTyped();
     if (!ytext.toString() && after) {
       replaceText(after, LOCAL_ORIGIN);
       mesh.broadcastTex();
