@@ -8801,12 +8801,24 @@ function paperCollabRoomLabel(network) {
   return room ? ` · ${room}` : "";
 }
 
+function paperCollabTransportLabel(network) {
+  const found = Number(network?.signalingPeerCount);
+  const ice = String(network?.iceState || "").trim();
+  const parts = [];
+  if (Number.isFinite(found) && found > 0) parts.push(`пиры ${found}`);
+  if (ice && ice !== "idle") parts.push(`ice ${ice}`);
+  return parts.length ? ` · ${parts.join(" · ")}` : "";
+}
+
 function paperCollabDebugTitle(network, peerId = "") {
   const parts = [];
   if (network?.roomId) parts.push(`room ${network.roomId}`);
   if (network?.gitCommit) parts.push(`git ${String(network.gitCommit).slice(0, 8)}`);
   if (peerId) parts.push(`peer ${peerId}`);
   if (network?.signaling != null) parts.push(`signaling ${network.signaling ? "on" : "off"}`);
+  if (network?.signalingPeerCount != null) parts.push(`found ${network.signalingPeerCount}`);
+  if (network?.iceState) parts.push(`ice ${network.iceState}`);
+  if (network?.connectionState) parts.push(`pc ${network.connectionState}`);
   if (network?.remotePeerCount != null) parts.push(`p2p ${network.remotePeerCount}`);
   return parts.join(" · ");
 }
@@ -8836,9 +8848,10 @@ function updatePaperCollabUi() {
   const remoteCount = Number(network?.remotePeerCount) || 0;
   const count = Math.max(1, others.length + remoteCount);
   if (remoteCount > 0) {
-    el.textContent = `P2P · ${count}${roomLabel}`;
+    const via = Number(network?.relayPeerCount) > 0 ? "relay" : "P2P";
+    el.textContent = `${via} · ${count}${roomLabel}`;
   } else if (network?.enabled && network?.signaling) {
-    el.textContent = `P2P · ожидание${roomLabel}`;
+    el.textContent = `P2P · ожидание${paperCollabTransportLabel(network)}${roomLabel}`;
   } else {
     el.textContent = (count > 1 ? `live · ${count}` : "live") + roomLabel;
   }

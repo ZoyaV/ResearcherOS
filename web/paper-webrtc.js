@@ -30,12 +30,32 @@ function updateId(bytes) {
   return `${bytes.length}:${(value >>> 0).toString(16)}`;
 }
 
+function isPrivateIPv4(host) {
+  return /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host || "");
+}
+
+function signalingLanHint(signalingUrl) {
+  try {
+    const host = new URL(signalingUrl).hostname;
+    return isPrivateIPv4(host) ? host : "";
+  } catch {
+    return "";
+  }
+}
+
+function withLanAddress(candidateJson, lanIp) {
+  const line = String(candidateJson?.candidate || "");
+  if (!lanIp || !line.includes(".local")) return null;
+  return { ...candidateJson, candidate: line.replace(/\S+\.local/g, lanIp) };
+}
+
 export function createPaperWebRtcMesh({
   peerId,
   userName,
   getDocumentUpdate,
   applyRemoteUpdate,
   adoptRemoteState,
+  refreshConfig,
   onPresence,
   onStatus,
 } = {}) {
@@ -52,6 +72,8 @@ export function createPaperWebRtcMesh({
   const queuedUpdates = [];
   let adoptingEpoch = "";
   let networkError = "";
+  let stallTimer = null;
+  const relayPeers = new Set();
 
   async function flushIceCandidates(remotePeerId, pc) {
     const queued = pendingIceCandidates.get(remotePeerId) || [];
@@ -68,20 +90,26 @@ export function createPaperWebRtcMesh({
   async function addRemoteIceCandidate(remotePeerId, candidate) {
     const entry = connections.get(remotePeerId);
     const pc = entry?.pc || createConnection(remotePeerId, false);
+    const rewritten = withLanAddress(candidate, peerLanIp(remotePeerId)) || candidate;
     if (!pc.remoteDescription) {
       const queued = pendingIceCandidates.get(remotePeerId) || [];
-      queued.push(candidate);
+      queued.push(rewritten);
       pendingIceCandidates.set(remotePeerId, queued);
       return;
     }
     try {
-      await pc.addIceCandidate(candidate);
+      await pc.addIceCandidate(rewritten);
     } catch (error) {
       setError(error?.message || "WebRTC ICE candidate rejected");
     }
   }
 
+  function shouldOffer(remotePeerId) {
+    return String(peerId) > String(remotePeerId);
+  }
+
   function schedulePeerOffer(remotePeerId) {
+    if (!shouldOffer(remotePeerId)) return;
     setTimeout(() => {
       if (closing) return;
       const entry = connections.get(remotePeerId);
@@ -96,6 +124,51 @@ export function createPaperWebRtcMesh({
     }, 1500);
   }
 
+  async function connectToPeer(remotePeerId, { force = false } = {}) {
+    const remote = remoteMetadata.get(remotePeerId) || {};
+    if (!validatePeer(remote)) return;
+    if (!force && !shouldOffer(remotePeerId)) return;
+    try {
+      await offer(remotePeerId);
+      schedulePeerOffer(remotePeerId);
+    } catch (error) {
+      setError(error?.message || "WebRTC offer failed");
+    }
+  }
+
+  function peerLanIp(remotePeerId) {
+    const remote = remoteMetadata.get(remotePeerId) || {};
+    if (isPrivateIPv4(remote.lan_ip)) return remote.lan_ip;
+    return signalingLanHint(config?.signaling_url);
+  }
+
+  function publishIceCandidate(remotePeerId, candidateJson) {
+    if (!candidateJson?.candidate) return;
+    sendSignal({
+      type: "ice_candidate",
+      to: remotePeerId,
+      payload: { candidate: candidateJson },
+    });
+    const rewritten = withLanAddress(candidateJson, config?.lan_ip);
+    if (rewritten) {
+      sendSignal({
+        type: "ice_candidate",
+        to: remotePeerId,
+        payload: { candidate: rewritten },
+      });
+    }
+  }
+
+  function transportSnapshot() {
+    const ices = [...connections.values()].map(({ pc }) => pc?.iceConnectionState).filter(Boolean);
+    const conns = [...connections.values()].map(({ pc }) => pc?.connectionState).filter(Boolean);
+    return {
+      signalingPeerCount: remoteMetadata.size,
+      iceState: ices[0] || (remoteMetadata.size ? "no-pc" : "idle"),
+      connectionState: conns[0] || "",
+    };
+  }
+
   function emitStatus() {
     const connectedPeers = [...connections.values()].filter(
       ({ channel }) => channel?.readyState === "open"
@@ -103,12 +176,69 @@ export function createPaperWebRtcMesh({
     onStatus?.({
       enabled: Boolean(config?.enabled),
       signaling: signal?.readyState === WebSocket.OPEN,
-      remotePeerCount: connectedPeers,
+      remotePeerCount: connectedPeers + relayPeers.size,
+      relayPeerCount: relayPeers.size,
       authorityPeerId,
       roomId: String(config?.room_id || ""),
       gitCommit: String(config?.git_commit || ""),
       error: networkError,
+      ...transportSnapshot(),
     });
+  }
+
+  function armStallWatch() {
+    if (stallTimer) clearTimeout(stallTimer);
+    stallTimer = setTimeout(() => {
+      const open = [...connections.values()].some(
+        ({ channel }) => channel?.readyState === "open"
+      );
+      if (open || closing) return;
+      const snap = transportSnapshot();
+      if (!snap.signalingPeerCount) {
+        setError("P2P: signaling не видит второго пира");
+        return;
+      }
+      for (const id of remoteMetadata.keys()) startRelay(id);
+    }, 8000);
+  }
+
+  function sendRelay(remotePeerId, payload) {
+    return sendSignal({
+      type: "relay",
+      to: remotePeerId,
+      payload,
+    });
+  }
+
+  function startRelay(remotePeerId) {
+    if (!remotePeerId || remotePeerId === peerId || closing) return;
+    const already = relayPeers.has(remotePeerId);
+    relayPeers.add(remotePeerId);
+    if (stallTimer) clearTimeout(stallTimer);
+    networkError = "";
+    if (!already) {
+      sendRelay(remotePeerId, { type: "hello", metadata: publicMetadata() });
+      if (peerId === authorityPeerId || remoteMetadata.size <= 1) {
+        const update = getDocumentUpdate?.();
+        if (update) {
+          sendRelay(remotePeerId, {
+            type: "sync",
+            update: bytesToBase64(update),
+            metadata: publicMetadata(),
+          });
+        }
+      }
+    }
+    emitStatus();
+  }
+
+  function handleRelayPayload(fromPeer, payload) {
+    if (!payload || typeof payload !== "object") return;
+    relayPeers.add(fromPeer);
+    if (stallTimer) clearTimeout(stallTimer);
+    networkError = "";
+    handleChannelMessage(fromPeer, { data: JSON.stringify(payload) });
+    emitStatus();
   }
 
   function sendSignal(payload) {
@@ -161,6 +291,7 @@ export function createPaperWebRtcMesh({
       base_document_hash: config?.base_document_hash || "",
       document_hash: config?.document_hash || "",
       crdt_epoch: config?.crdt_epoch || "",
+      lan_ip: config?.lan_ip || "",
     };
   }
 
@@ -230,7 +361,18 @@ export function createPaperWebRtcMesh({
       remoteMetadata.set(fromPeer, message.metadata || {});
       if (!validatePeer(message.metadata || {})) return;
       if (config?.crdt_epoch === message.metadata?.crdt_epoch || peerId === authorityPeerId) {
-        sendSync(connections.get(fromPeer)?.channel);
+        if (relayPeers.has(fromPeer)) {
+          const update = getDocumentUpdate?.();
+          if (update) {
+            sendRelay(fromPeer, {
+              type: "sync",
+              update: bytesToBase64(update),
+              metadata: publicMetadata(),
+            });
+          }
+        } else {
+          sendSync(connections.get(fromPeer)?.channel);
+        }
       }
       return;
     }
@@ -253,6 +395,8 @@ export function createPaperWebRtcMesh({
     if (!entry) return;
     entry.channel = channel;
     channel.addEventListener("open", () => {
+      if (stallTimer) clearTimeout(stallTimer);
+      networkError = "";
       sendChannel(channel, { type: "hello", metadata: publicMetadata() });
       if (peerId === authorityPeerId) sendSync(channel);
       emitStatus();
@@ -270,14 +414,14 @@ export function createPaperWebRtcMesh({
     connections.set(remotePeerId, entry);
     pc.addEventListener("icecandidate", (event) => {
       if (!event.candidate) return;
-      sendSignal({
-        type: "ice_candidate",
-        to: remotePeerId,
-        payload: { candidate: event.candidate.toJSON() },
-      });
+      publishIceCandidate(remotePeerId, event.candidate.toJSON());
+    });
+    pc.addEventListener("iceconnectionstatechange", () => {
+      if (pc.iceConnectionState === "failed") startRelay(remotePeerId);
     });
     pc.addEventListener("connectionstatechange", () => {
       if (["failed", "closed"].includes(pc.connectionState)) {
+        if (pc.connectionState === "failed") startRelay(remotePeerId);
         entry.channel?.close();
         pc.close();
         connections.delete(remotePeerId);
@@ -306,18 +450,13 @@ export function createPaperWebRtcMesh({
 
   async function handleSignal(message) {
     if (message.type === "room_state") {
+      if (networkError.startsWith("Signaling")) networkError = "";
       authorityPeerId = String(message.authority_peer_id || peerId);
       for (const peer of message.peers || []) {
         remoteMetadata.set(peer.peer_id, peer);
-        if (validatePeer(peer)) {
-          try {
-            await offer(peer.peer_id);
-            schedulePeerOffer(peer.peer_id);
-          } catch (error) {
-            setError(error?.message || "WebRTC offer failed");
-          }
-        }
+        await connectToPeer(peer.peer_id, { force: true });
       }
+      armStallWatch();
       emitStatus();
       return;
     }
@@ -325,7 +464,8 @@ export function createPaperWebRtcMesh({
       authorityPeerId = String(message.authority_peer_id || authorityPeerId);
       const peer = message.peer || {};
       remoteMetadata.set(peer.peer_id, peer);
-      validatePeer(peer);
+      await connectToPeer(peer.peer_id);
+      armStallWatch();
       emitStatus();
       return;
     }
@@ -368,6 +508,10 @@ export function createPaperWebRtcMesh({
       );
       return;
     }
+    if (message.type === "relay") {
+      handleRelayPayload(String(message.from || ""), message.payload || {});
+      return;
+    }
     if (message.type === "error") {
       setError(`Signaling: ${message.code || "ошибка"}`);
     }
@@ -375,10 +519,17 @@ export function createPaperWebRtcMesh({
 
   async function openSignal() {
     if (!config?.enabled || closing) return;
+    if (refreshConfig) {
+      try {
+        const next = await refreshConfig();
+        if (next) config = { ...config, ...next };
+      } catch (error) {
+        setError(error?.message || "Не удалось обновить P2P token");
+      }
+    }
     const ws = new WebSocket(config.signaling_url);
     signal = ws;
     ws.addEventListener("open", () => {
-      networkError = "";
       sendSignal({
         type: "join",
         token: config.token,
@@ -396,12 +547,21 @@ export function createPaperWebRtcMesh({
         setError(error?.message || "Некорректный signaling message");
       }
     });
-    ws.addEventListener("close", () => {
+    ws.addEventListener("close", (event) => {
       if (heartbeat) clearInterval(heartbeat);
       heartbeat = null;
       signal = null;
-      emitStatus();
-      if (!closing) reconnectTimer = setTimeout(() => void openSignal(), 1500);
+      if (!closing) {
+        const detail = event.reason || `код ${event.code}`;
+        setError(
+          event.code === 1008
+            ? `Signaling отклонил join (${detail})`
+            : `Signaling закрыт (${detail})`
+        );
+        reconnectTimer = setTimeout(() => void openSignal(), 1500);
+      } else {
+        emitStatus();
+      }
     });
     ws.addEventListener("error", () => setError("Signaling недоступен"));
   }
@@ -419,6 +579,7 @@ export function createPaperWebRtcMesh({
     closing = true;
     if (heartbeat) clearInterval(heartbeat);
     if (reconnectTimer) clearTimeout(reconnectTimer);
+    if (stallTimer) clearTimeout(stallTimer);
     heartbeat = null;
     reconnectTimer = null;
     for (const { pc, channel } of connections.values()) {
@@ -430,6 +591,7 @@ export function createPaperWebRtcMesh({
     pendingIceCandidates.clear();
     queuedUpdates.length = 0;
     adoptingEpoch = "";
+    relayPeers.clear();
     if (signal?.readyState === WebSocket.OPEN) sendSignal({ type: "leave" });
     signal?.close();
     signal = null;
@@ -446,12 +608,13 @@ export function createPaperWebRtcMesh({
       update: bytesToBase64(update),
     };
     for (const { channel } of connections.values()) sendChannel(channel, payload);
+    for (const remotePeerId of relayPeers) sendRelay(remotePeerId, payload);
   }
 
   function broadcastPresence(presence) {
-    for (const { channel } of connections.values()) {
-      sendChannel(channel, { type: "presence", presence: { peer_id: peerId, ...presence } });
-    }
+    const payload = { type: "presence", presence: { peer_id: peerId, ...presence } };
+    for (const { channel } of connections.values()) sendChannel(channel, payload);
+    for (const remotePeerId of relayPeers) sendRelay(remotePeerId, payload);
   }
 
   function noteLocalState(metadata) {

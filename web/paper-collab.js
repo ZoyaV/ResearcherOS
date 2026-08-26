@@ -153,6 +153,8 @@ export function createPaperCollabClient({
   const mesh = createPaperWebRtcMesh({
     peerId,
     userName: localUserName(),
+    refreshConfig: () =>
+      projectId && slug ? KoiApi.getPaperCollabNetwork(projectId, slug, peerId) : null,
     getDocumentUpdate: () => (ydoc ? Y.encodeStateAsUpdate(ydoc) : null),
     applyRemoteUpdate: (update) => {
       if (ydoc) Y.applyUpdate(ydoc, update, P2P_ORIGIN);

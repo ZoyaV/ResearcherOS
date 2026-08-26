@@ -8,9 +8,15 @@ from pathlib import Path
 
 import pytest
 
-from koi.paper.collaboration.network import git_document_state, issue_room_token, verify_room_token
+from koi.paper.collaboration.network import git_document_state, issue_room_token, lan_ip, verify_room_token
 from koi.paper.collaboration.session import CollabSession
-from koi.paper.collaboration.signaling_service import SignalPeer, SignalRooms, _send_many, rooms
+from koi.paper.collaboration.signaling_service import (
+    ROUTED_TYPES,
+    SignalPeer,
+    SignalRooms,
+    _send_many,
+    rooms,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -18,6 +24,15 @@ def _clear_signal_rooms():
     rooms.rooms.clear()
     yield
     rooms.rooms.clear()
+
+
+def test_signaling_routes_relay_fallback() -> None:
+    assert "relay" in ROUTED_TYPES
+
+
+def test_lan_ip_prefers_explicit_override(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("KOI_COLLAB_LAN_IP", "192.168.0.110")
+    assert lan_ip() == "192.168.0.110"
 
 
 def test_room_token_rejects_tampering_and_expiration() -> None:

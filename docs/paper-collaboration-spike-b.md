@@ -62,6 +62,9 @@ If Chromium is not installed yet:
   duplicates their initial text. A clean joining peer adopts the first peer's
   CRDT history. A joining peer with local changes is blocked instead.
 - Git remains the durable checkpoint; WebRTC does not create commits.
+- If ICE fails (VPN/firewall), peers fall back to opaque `relay` frames on
+  the signaling socket so the same room can still edit. Prefer DataChannel
+  when it opens.
 
 ## Two-instance acceptance checklist
 

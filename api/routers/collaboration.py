@@ -16,6 +16,7 @@ from koi.paper.generator import TEX_NAME
 from koi.paper.collaboration.network import (
     git_document_state,
     issue_room_token,
+    lan_ip,
     network_config,
     network_room_id,
 )
@@ -120,6 +121,7 @@ def get_collab_network(
         "base_document_hash": git.base_document_hash,
         "document_hash": session.document.content_hash(),
         "crdt_epoch": session.crdt_epoch,
+        "lan_ip": lan_ip(),
     }
     if not config.enabled:
         return payload

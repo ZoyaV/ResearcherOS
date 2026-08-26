@@ -24,7 +24,7 @@ load_env_file()
 
 MAX_ROOM_PEERS = 5
 PEER_TTL_S = 45
-ROUTED_TYPES = {"offer", "answer", "ice_candidate"}
+ROUTED_TYPES = {"offer", "answer", "ice_candidate", "relay"}
 
 app = FastAPI(
     title="ResearchOS Collaboration Signaling",
@@ -149,7 +149,15 @@ async def signal(websocket: WebSocket) -> None:
         metadata = first.get("metadata")
         safe_metadata = {
             key: metadata.get(key)
-            for key in ("user_name", "actor_type", "git_commit", "base_document_hash", "document_hash", "crdt_epoch")
+            for key in (
+                "user_name",
+                "actor_type",
+                "git_commit",
+                "base_document_hash",
+                "document_hash",
+                "crdt_epoch",
+                "lan_ip",
+            )
             if isinstance(metadata, dict) and metadata.get(key) is not None
         }
         peer = SignalPeer(peer_id=peer_id, websocket=websocket, metadata=safe_metadata)

@@ -206,6 +206,27 @@ class NetworkConfig:
         return servers
 
 
+def lan_ip() -> str:
+    """Best-effort LAN address so browsers can replace mDNS ICE hosts."""
+    override = os.environ.get("KOI_COLLAB_LAN_IP", "").strip()
+    if override:
+        return override
+    for iface in ("en0", "en1", "eth0"):
+        try:
+            result = subprocess.run(
+                ["ipconfig", "getifaddr", iface],
+                capture_output=True,
+                text=True,
+                timeout=2,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            continue
+        addr = (result.stdout or "").strip()
+        if result.returncode == 0 and addr:
+            return addr
+    return ""
+
+
 def network_config() -> NetworkConfig:
     return NetworkConfig(
         signaling_url=os.environ.get("KOI_COLLAB_SIGNALING_URL", "").strip(),
