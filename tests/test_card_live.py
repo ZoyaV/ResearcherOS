@@ -166,6 +166,26 @@ def test_normalize_hint_path_strips_repo_prefix(tmp_path: Path, monkeypatch: pyt
     )
 
 
+def test_resolve_finds_sibling_repo_file_without_dotdot(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """The image URLs the UI builds carry no ``../``, yet must still resolve."""
+    repo = tmp_path / "proj"
+    repo.mkdir()
+    plot = tmp_path / "other-repo" / "runs" / "plots" / "sr.png"
+    plot.parent.mkdir(parents=True)
+    plot.write_bytes(b"png")
+
+    monkeypatch.setattr(
+        "koi.projects.live_artifacts.repo_root",
+        lambda _pid: repo,
+    )
+
+    resolved = resolve_project_path("proj", "other-repo/runs/plots/sr.png")
+    assert resolved == plot.resolve()
+
+
 def test_resolve_rejects_escape(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     repo = tmp_path / "proj"
     repo.mkdir()

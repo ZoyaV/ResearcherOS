@@ -27,7 +27,23 @@ MAX_TAIL_LINES = 500
 MAX_IMAGES = 24
 LIVE_ACTIVITY_MAX_AGE_SEC = 30 * 60
 # Prefer gather/host dashboards at the top of the KOI metrics pane.
+# Dual-host A-1 10k order: jobs main → ns2 main → ns2 sysmon.
 METRICS_IMAGE_PRIORITY = (
+    "dashboard.png",
+    "dashboard_scores.png",
+    "dashboard_speed.png",
+    "dashboard_losses.png",
+    "dashboard_sr_return.png",
+    "loss_curve.png",
+    "action_acc.png",
+    "gpu_sysmon.png",
+    "agent_sample_tail.png",
+    "agent_sample_ask.png",
+    "agent_sample.png",
+    "agent_sample_full.png",
+    "jobs_gather_dashboard.png",
+    "ns2_gather_dashboard.png",
+    "ns2_host_sysmon.png",
     "gather_dashboard.png",
     "aggregate_metrics.png",
     "host_sysmon.png",
@@ -143,14 +159,20 @@ def resolve_project_path(project_id: str, rel: str) -> Path:
     raw = str(rel or "").strip()
     if not raw:
         raise ValueError("Empty path")
+    roots = _allowed_roots(project_id)
     if raw.startswith("/"):
-        candidate = Path(raw).resolve()
+        candidates = [Path(raw).resolve()]
     else:
-        candidate = (repo_root(project_id) / raw).resolve()
-    for root in _allowed_roots(project_id):
-        if _is_under(candidate, root):
+        # ``_path_for_api`` drops the ``../`` from sibling-repo hints, so a
+        # relative path may belong to the repo or to the workspace around it.
+        candidates = [(root / raw).resolve() for root in roots]
+    allowed = [c for c in candidates if any(_is_under(c, root) for root in roots)]
+    if not allowed:
+        raise ValueError("Path outside project workspace")
+    for candidate in allowed:
+        if candidate.exists():
             return candidate
-    raise ValueError("Path outside project workspace")
+    return allowed[0]
 
 
 def tail_file(path: Path, *, lines: int = DEFAULT_TAIL_LINES) -> str:
