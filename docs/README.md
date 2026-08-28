@@ -7,6 +7,8 @@
 | **Человек** | [human/](human/) | [getting-started.md](human/getting-started.md) |
 | **Агент IDE** | [agents.md](agents.md) | [AGENTS.md](../AGENTS.md) |
 
+Страницы фич платформы (отдельно, стиль как у docs-site): [features/](features/) — начать с [features/README.md](features/README.md).
+
 ## Человек (`docs/human/`)
 
 Путеводители, форматы данных, как устроена база знаний.
