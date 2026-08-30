@@ -1,7 +1,7 @@
 /**
- * Полноэкранный просмотр картинок из отчётов и базы знаний.
- * Клик по картинке в .markdown-preview открывает её в модальном окне поверх всего;
- * можно приближать/отдалять (кнопки, колесо мыши, двойной клик) и перетаскивать.
+ * Full-screen image viewer for reports and the knowledge base.
+ * Clicking an image in .markdown-preview opens it in a modal above the interface;
+ * users can zoom with buttons, the mouse wheel, or a double click, and can pan it.
  */
 
 const ZOOM_MIN = 1;
@@ -39,7 +39,7 @@ function resetView() {
   applyTransform();
 }
 
-/** Масштабирование с центром в точке (cx, cy) внутри области просмотра. */
+/** Zoom around point (cx, cy) inside the viewport. */
 function zoomTo(nextScale, cx, cy) {
   if (!els) return;
   const clamped = clamp(nextScale, ZOOM_MIN, ZOOM_MAX);
@@ -87,18 +87,18 @@ function buildDom() {
   root.id = "image-lightbox";
   root.className = "image-lightbox hidden";
   root.setAttribute("role", "dialog");
-  root.setAttribute("aria-label", "Просмотр изображения");
+  root.setAttribute("aria-label", "Image viewer");
   root.innerHTML = `
     <div class="image-lightbox-backdrop" data-lightbox-close></div>
     <div class="image-lightbox-stage">
       <img class="image-lightbox-img" alt="" draggable="false" />
     </div>
-    <div class="image-lightbox-toolbar" role="toolbar" aria-label="Масштаб">
-      <button type="button" class="image-lightbox-btn" data-lightbox-action="zoom-out" title="Отдалить" aria-label="Отдалить">−</button>
-      <button type="button" class="image-lightbox-btn" data-lightbox-action="reset" title="Сбросить масштаб" aria-label="Сбросить масштаб">⤢</button>
-      <button type="button" class="image-lightbox-btn" data-lightbox-action="zoom-in" title="Приблизить" aria-label="Приблизить">+</button>
+    <div class="image-lightbox-toolbar" role="toolbar" aria-label="Zoom">
+      <button type="button" class="image-lightbox-btn" data-lightbox-action="zoom-out" title="Zoom out" aria-label="Zoom out">−</button>
+      <button type="button" class="image-lightbox-btn" data-lightbox-action="reset" title="Reset zoom" aria-label="Reset zoom">⤢</button>
+      <button type="button" class="image-lightbox-btn" data-lightbox-action="zoom-in" title="Zoom in" aria-label="Zoom in">+</button>
     </div>
-    <button type="button" class="image-lightbox-close" data-lightbox-close title="Закрыть (Esc)" aria-label="Закрыть">×</button>
+    <button type="button" class="image-lightbox-close" data-lightbox-close title="Close (Esc)" aria-label="Close">×</button>
   `;
   document.body.appendChild(root);
   els = {
@@ -124,7 +124,7 @@ function bindEvents() {
       else if (action === "reset") resetView();
       return;
     }
-    // Клик по пустой области сцены (не по картинке и без перетаскивания) закрывает окно
+    // Clicking empty stage space (outside the image and without dragging) closes the viewer.
     if (target === els.stage && !state.moved) {
       close();
     }
@@ -181,13 +181,13 @@ function bindEvents() {
 }
 
 /**
- * Найти картинку, по которой кликнули: в отчётах/базе знаний (.markdown-preview)
- * или на мониторе карточки (.card-live-metric — картинка в ссылке).
- * Видео игнорируются.
+ * Find the clicked image in reports/the knowledge base (.markdown-preview)
+ * or the card monitor (.card-live-metric: an image inside a link).
+ * Videos are ignored.
  */
 function resolveClickedImage(target) {
   if (!target?.closest) return null;
-  // Плитки метрик на мониторе: <a class="card-live-metric"><img></a>
+  // Metric tiles in the monitor: <a class="card-live-metric"><img></a>
   const metricLink = target.closest(".card-live-metric");
   if (metricLink) {
     const img = metricLink.querySelector("img");
@@ -199,8 +199,8 @@ function resolveClickedImage(target) {
 }
 
 /**
- * Подключить лайтбокс: делегированный клик по картинкам в отчётах / базе знаний
- * и обработка Escape.
+ * Enable the lightbox with delegated clicks on images in reports/the knowledge base
+ * and Escape-key handling.
  */
 export function initImageLightbox() {
   if (typeof document === "undefined" || els) return;

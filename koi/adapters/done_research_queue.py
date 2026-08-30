@@ -108,7 +108,7 @@ def enqueue_done_card_if_needed(
     try:
         from koi.adapters.project_sync_queue import enqueue_push
 
-        enqueue_push(project.id, "card_done", f"карточка {card_id} ({title}) → done")
+        enqueue_push(project.id, "card_done", f"card {card_id} ({title}) → done")
     except Exception:
         pass
     return True

@@ -60,16 +60,16 @@ def processing_instructions(*, focus_agent_chat_id: str | None = None) -> str:
     chat = "-m koi.agent_chat.cli"
     if focus_agent_chat_id:
         return (
-            "agent-chat: скилл **koi-agent-chat** — "
-            f"новая задача `{focus_agent_chat_id}`. "
+            "agent-chat: use **koi-agent-chat** — "
+            f"new task `{focus_agent_chat_id}`. "
             f"`{py} {chat} claim {focus_agent_chat_id}` → context → answer."
         )
     pending = _pending_agent_chat()
     if not pending:
-        return "Очередь agent-chat пуста."
+        return "The agent-chat queue is empty."
     ids = ", ".join(item["id"] for item in pending[:3])
     return (
-        "agent-chat: скилл **koi-agent-chat** — "
+        "agent-chat: use **koi-agent-chat** — "
         f"pending ids: {ids}. "
         f"`{py} {chat} claim <id>` → context → answer."
     )
@@ -157,8 +157,8 @@ def loop_prompt() -> str:
     watch = INBOX_SCRIPT
     pending_cmd = f"{py} {watch} pending"
     task = (
-        "ResearchOS Chat Inbox: проверь agent-chat pending "
-        f"(`{pending_cmd}`) и обработай по скиллу koi-agent-chat "
+        "ResearchOS Chat Inbox: check pending agent-chat items "
+        f"(`{pending_cmd}`) and process them with koi-agent-chat "
         "(claim → context → answer)."
     )
     return f"/loop {LOOP_POLL_INTERVAL_S}s {task}"
@@ -169,53 +169,53 @@ def bootstrap_prompt() -> str:
     watch = INBOX_SCRIPT
     log_rel = ".run/logs/agent-chat-watch.log"
     loop_line = loop_prompt()
-    return f"""Ты **ResearchOS Chat Inbox** — фоновый агент для панели «Спросить агента» (localhost:8080).
+    return f"""You are **ResearchOS Chat Inbox**, the background agent for the Ask the agent panel (localhost:8080).
 
-**Настройка один раз.** UI кладёт вопросы в JSON-очередь; watcher будит этот чат через `{WAKE_PREFIX}` (~1–3 с).
+**One-time setup.** The UI puts questions in a JSON queue; the watcher wakes this chat through `{WAKE_PREFIX}` in about 1–3 seconds.
 
-## Сделай сейчас
+## Do this now
 
-1. Назови этот чат **ResearchOS Chat Inbox**.
+1. Name this chat **ResearchOS Chat Inbox**.
 
-2. Убедись, что **watcher чата** запущен (`koi-serve.sh start` поднимает его автоматически):
+2. Ensure the **chat watcher** is running (`koi-serve.sh start` launches it automatically):
    ```
    cd {ENGINE_ROOT}
    ./scripts/koi-serve.sh start
    {py} {watch} status
    ```
-   В status должно быть `"chat_inbox_watcher_running": true`.
+   Status must contain `"chat_inbox_watcher_running": true`.
 
-3. Запусти **loop-мониторинг** (обязательно, оставь работать):
+3. Start **loop monitoring** and leave it running:
 
-   **A) Мониторинг лога watcher** (предпочтительно):
+   **A) Watch the watcher log** (preferred):
    ```
    tail -n 0 -f {log_rel}
    ```
-   Regex уведомлений: `^{WAKE_PREFIX}`
+   Notification regex: `^{WAKE_PREFIX}`
 
-   **B) Fallback — loop опроса очереди каждые {LOOP_POLL_INTERVAL_S} с:**
+   **B) Fallback: poll the queue every {LOOP_POLL_INTERVAL_S} seconds:**
    ```
    {loop_line}
    ```
 
-4. На каждый `{WAKE_PREFIX}` или новый pending из loop — обработай вопрос по скиллу **koi-agent-chat**:
+4. For every `{WAKE_PREFIX}` or new pending item, process the question with **koi-agent-chat**:
    `claim` → `context` → `answer`
 
-5. Не останавливай мониторинг/loop, пока я явно не попрошу.
+5. Do not stop monitoring until explicitly requested.
 
-Сейчас: `{py} {watch} pending` → обработай всё накопленное."""
+Now run `{py} {watch} pending` and process every accumulated item."""
 
 
 def format_pending_report() -> str:
     agent = _pending_agent_chat()
     if not agent:
-        return "Очередь agent-chat пуста (pending: 0)."
+        return "The agent-chat queue is empty (pending: 0)."
     lines = [f"Pending agent-chat: {len(agent)}", ""]
     for item in agent:
         question = str(item.get("question") or "").strip()
         if len(question) > 100:
             question = question[:97] + "…"
-        lines.append(f"  agent-chat  {item['id']}  {question or '(без текста)'}")
+        lines.append(f"  agent-chat  {item['id']}  {question or '(no text)'}")
     lines.append("")
     lines.append(processing_instructions())
     return "\n".join(lines)
@@ -258,15 +258,15 @@ def inbox_task_message(
     chat = "-m koi.agent_chat.cli"
     if agent_chat_id:
         return (
-            f"ResearchOS Chat Inbox — вопрос `{agent_chat_id}`.\n\n"
-            f"Проверь очередь:\n`{py} {inbox} pending`\n\n"
-            f"Обработай по скиллу **koi-agent-chat**:\n"
+            f"ResearchOS Chat Inbox — question `{agent_chat_id}`.\n\n"
+            f"Check the queue:\n`{py} {inbox} pending`\n\n"
+            f"Process it with **koi-agent-chat**:\n"
             f"1. `{py} {chat} claim {agent_chat_id}`\n"
             f"2. `{py} {chat} context {agent_chat_id}`\n"
             f"3. `{py} {chat} answer {agent_chat_id} \"…\"`"
         )
     return (
-        f"Проверь pending agent-chat:\n`{py} {inbox} pending`\n\n"
+        f"Check pending agent-chat items:\n`{py} {inbox} pending`\n\n"
         f"{processing_instructions()}"
     )
 

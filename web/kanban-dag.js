@@ -33,9 +33,9 @@ const DAG_PHASE = {
 };
 
 const DAG_PHASE_LABELS = {
-  todo: "В очереди (TODO)",
-  running: "Идёт",
-  done: "Пройден",
+  todo: "Queued (TODO)",
+  running: "Running",
+  done: "Completed",
 };
 
 function dagCardPhase(columnId) {
@@ -283,7 +283,7 @@ class KanbanDagEditor {
         cards: this.positions.cards,
       });
     } catch (err) {
-      this.ctx.onStatus?.(err?.message || "Не удалось сохранить раскладку DAG", true);
+      this.ctx.onStatus?.(err?.message || "Could not save the DAG layout", true);
       console.error("DAG layout save failed", err);
     }
   }
@@ -396,18 +396,18 @@ class KanbanDagEditor {
     const size = this.worldSize();
     this.rootEl.innerHTML = `
       <div class="kanban-dag-viewport" data-dag-viewport>
-        <div class="kanban-dag-floatbar" role="toolbar" aria-label="Инструменты графа">
+        <div class="kanban-dag-floatbar" role="toolbar" aria-label="Graph tools">
           <div class="kanban-dag-toolbar__tools">
-            <button type="button" class="kanban-dag-tool is-active" data-dag-tool="move" aria-pressed="true" title="Перемещение">✥</button>
-            <button type="button" class="kanban-dag-tool" data-dag-tool="arrow" aria-pressed="false" title="Направленная связь">→</button>
-            <button type="button" class="kanban-dag-tool" data-dag-action="layout" title="Упорядочить по связям">⫴</button>
-            <button type="button" class="kanban-dag-tool kanban-dag-tool--wide" data-dag-action="toggle-qa" aria-pressed="false" title="Показать Q/A">Q/A</button>
+            <button type="button" class="kanban-dag-tool is-active" data-dag-tool="move" aria-pressed="true" title="Move">✥</button>
+            <button type="button" class="kanban-dag-tool" data-dag-tool="arrow" aria-pressed="false" title="Directed link">→</button>
+            <button type="button" class="kanban-dag-tool" data-dag-action="layout" title="Arrange by dependencies">⫴</button>
+            <button type="button" class="kanban-dag-tool kanban-dag-tool--wide" data-dag-action="toggle-qa" aria-pressed="false" title="Show Q/A">Q/A</button>
           </div>
           <div class="kanban-dag-toolbar__actions">
-            <button type="button" class="kanban-dag-tool" data-dag-action="zoom-out" title="Уменьшить" aria-label="Уменьшить">−</button>
-            <button type="button" class="kanban-dag-tool" data-dag-action="zoom-in" title="Увеличить" aria-label="Увеличить">+</button>
-            <button type="button" class="kanban-dag-tool" data-dag-action="suggest" title="Предложить DAG">✦</button>
-            <button type="button" class="kanban-dag-tool" data-dag-action="reset-view" title="Все карточки в вид" aria-label="Все карточки в вид">⌂</button>
+            <button type="button" class="kanban-dag-tool" data-dag-action="zoom-out" title="Zoom out" aria-label="Zoom out">−</button>
+            <button type="button" class="kanban-dag-tool" data-dag-action="zoom-in" title="Zoom in" aria-label="Zoom in">+</button>
+            <button type="button" class="kanban-dag-tool" data-dag-action="suggest" title="Suggest DAG">✦</button>
+            <button type="button" class="kanban-dag-tool" data-dag-action="reset-view" title="Fit all cards" aria-label="Fit all cards">⌂</button>
           </div>
         </div>
         <div class="kanban-dag-link-hint hidden" data-dag-link-hint aria-live="polite"></div>
@@ -534,17 +534,17 @@ class KanbanDagEditor {
   _updateLinkHint() {
     if (!this.linkHintEl) return;
     if (this.tool === "move" && this.selectedEdge) {
-      this.linkHintEl.textContent = "Delete / Backspace — удалить · двойной клик — тоже удалить";
+      this.linkHintEl.textContent = "Delete / Backspace — remove · double-click also removes";
       this.linkHintEl.classList.remove("hidden");
       return;
     }
     if (this.tool === "arrow" && this.arrowDraft) {
-      this.linkHintEl.textContent = "Отпустите на целевой карточке (prerequisite → зависимый)";
+      this.linkHintEl.textContent = "Release on the target card (prerequisite → dependent)";
       this.linkHintEl.classList.remove("hidden");
       return;
     }
     if (this.tool === "arrow") {
-      this.linkHintEl.textContent = "Зажмите на источнике и отпустите на целевой карточке";
+      this.linkHintEl.textContent = "Press on the source and release on the target card";
       this.linkHintEl.classList.remove("hidden");
       return;
     }
@@ -574,7 +574,7 @@ class KanbanDagEditor {
         const shortQ = q.question.length > 42 ? `${q.question.slice(0, 42)}…` : q.question;
         const showAnswer = closed && answer;
         return `<div class="kanban-dag-rq-pill${showAnswer ? " is-answered" : ""}" data-rq-id="${escapeHtml(q.id)}">
-          <button type="button" class="kanban-dag-rq-pill__trigger" aria-label="Исследовательский вопрос">?</button>
+          <button type="button" class="kanban-dag-rq-pill__trigger" aria-label="Research question">?</button>
           <div class="kanban-dag-rq-pill__flyout" role="tooltip">
             <p class="kanban-dag-rq-pill__q">${escapeHtml(q.question)}</p>
             ${showAnswer ? `<p class="kanban-dag-rq-pill__a">${escapeHtml(answer)}</p>` : ""}
@@ -611,8 +611,8 @@ class KanbanDagEditor {
               ${dagStatusHtml(phase)}
               <h3 class="kanban-dag-card__title">${escapeHtml(card.title)}</h3>
             </div>
-            <button type="button" class="kanban-dag-link-handle" data-action="link" title="Тянуть связь" aria-label="Тянуть связь">⤓</button>
-            <button type="button" class="kanban-dag-card__btn" data-action="report" title="Отчёт" aria-label="Отчёт">↗</button>
+            <button type="button" class="kanban-dag-link-handle" data-action="link" title="Drag link" aria-label="Drag link">⤓</button>
+            <button type="button" class="kanban-dag-card__btn" data-action="report" title="Report" aria-label="Report">↗</button>
           </article>
           ${tagsHtml ? `<div class="kanban-dag-card__tags">${tagsHtml}</div>` : ""}
         </div>`;
@@ -621,7 +621,7 @@ class KanbanDagEditor {
 
     const filterNote =
       hiddenCount > 0
-        ? `<div class="kanban-dag-filter-note" aria-live="polite">Скрыто ${hiddenCount} по фильтру тегов</div>`
+        ? `<div class="kanban-dag-filter-note" aria-live="polite">${hiddenCount} hidden by tag filter</div>`
         : "";
 
     this.nodesEl.innerHTML = bundles + filterNote;
@@ -658,7 +658,7 @@ class KanbanDagEditor {
     this.edgeHitsEl.innerHTML = list
       .map(
         (e) =>
-          `<g class="kanban-dag-edge-group" data-edge-from="${escapeHtml(e.from)}" data-edge-to="${escapeHtml(e.to)}" data-edge-kind="depends" title="Двойной клик — удалить связь">
+          `<g class="kanban-dag-edge-group" data-edge-from="${escapeHtml(e.from)}" data-edge-to="${escapeHtml(e.to)}" data-edge-kind="depends" title="Double-click to remove link">
             <path class="kanban-dag-edge-hit" d="${e.path}" vector-effect="non-scaling-stroke" />
           </g>`
       )
@@ -910,14 +910,14 @@ class KanbanDagEditor {
     if (!panel) return;
     if (!suggestions.length) {
       panel.classList.remove("hidden");
-      panel.innerHTML = '<p class="kanban-dag-suggest__empty">Новых связей не найдено.</p>';
+      panel.innerHTML = '<p class="kanban-dag-suggest__empty">No new links found.</p>';
       return;
     }
     panel.classList.remove("hidden");
     panel.innerHTML = `
       <div class="kanban-dag-suggest__head">
-        <h3>Предложенные связи (${suggestions.length})</h3>
-        <button type="button" class="btn btn-sm btn-primary" data-suggest-action="apply">Применить</button>
+        <h3>Suggested links (${suggestions.length})</h3>
+        <button type="button" class="btn btn-sm btn-primary" data-suggest-action="apply">Apply</button>
       </div>
       <ul class="kanban-dag-suggest__list">${suggestions
         .map(
@@ -1095,7 +1095,7 @@ class KanbanDagEditor {
       return;
     }
     this._cancelArrowDraft();
-    this.ctx.onStatus?.("Отпустите на другой карточке", true);
+    this.ctx.onStatus?.("Release on another card", true);
   }
 
   async _completeArrowDraft(toCardId) {
@@ -1114,13 +1114,13 @@ class KanbanDagEditor {
 
     try {
       await this.ctx.onAddEdge?.(toCardId, fromId);
-      this.ctx.onStatus?.("Связь сохранена");
+      this.ctx.onStatus?.("Link saved");
     } catch (err) {
       if (toCard) {
         toCard.depends_on = (toCard.depends_on || []).filter((d) => d !== fromId);
       }
       this._renderEdges();
-      this.ctx.onStatus?.(err?.message || "Не удалось сохранить связь", true);
+      this.ctx.onStatus?.(err?.message || "Could not save the link", true);
       console.error("DAG link failed", err);
     }
   }
@@ -1140,11 +1140,11 @@ class KanbanDagEditor {
 
     try {
       await this.ctx.onRemoveEdge?.(toId, fromId);
-      this.ctx.onStatus?.("Связь удалена");
+      this.ctx.onStatus?.("Link removed");
     } catch (err) {
       if (toCard) toCard.depends_on = prevDeps;
       this._scheduleEdgeRender();
-      this.ctx.onStatus?.(err?.message || "Не удалось удалить связь", true);
+      this.ctx.onStatus?.(err?.message || "Could not remove the link", true);
       console.error("DAG unlink failed", err);
     }
   }

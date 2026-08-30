@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Курирование знаний · ResearcherOS</title>
-  <meta name="description" content="Собрать из отчётов и выводов связную картину: закономерности, противоречия и границы применимости." />
+  <title>Knowledge curation · ResearcherOS</title>
+  <meta name="description" content="Maintain a coherent knowledge base from verdicts, findings, reports, and curated documents." />
   <script>
     (function () {
       var t = localStorage.getItem("koi-theme");
@@ -20,16 +20,15 @@
 <body class="page-detail">
   <header class="site-header site-header--detail">
     <div class="site-header__inner">
-      <a class="brand" href="../index.html" aria-label="ResearcherOS — на главную">
+      <a class="brand" href="../index.html" aria-label="ResearcherOS — home">
         <img class="brand__logo" src="../assets/logo.png?v=6" alt="ResearcherOS" height="27" />
       </a>
-      <nav class="nav" aria-label="Основное">
+      <nav class="nav" aria-label="Main navigation">
         <a href="../index.html#about">About</a>
         <a href="../index.html#start">How to start</a>
         <a href="../index.html#skills" aria-current="page">Skills</a>
-        <a href="../index.html#lessons">Lessons</a>
         <a href="https://github.com/ZoyaV/ResearcherOS">GitHub</a>
-        <button type="button" id="btn-theme" class="btn-theme" title="Тёмная тема" aria-label="Тёмная тема">
+        <button type="button" id="btn-theme" class="btn-theme" title="Dark theme" aria-label="Dark theme">
           <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"/><path fill="currentColor" d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" stroke-width="2"/></svg>
           <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 14.5A8.5 8.5 0 0 1 9.5 3 7 7 0 1 0 21 14.5z"/></svg>
         </button>
@@ -38,49 +37,50 @@
   </header>
   <main class="article">
     <a class="back-link" href="../index.html#skills">← Skills</a>
-    <h1 class="article__title">Курирование знаний</h1>
+    <h1 class="article__title">Knowledge curation</h1>
     <p class="skill-id">koi-knowledge-curator</p>
     <div class="article__meta">
-      <span class="chip">Несколько новых готовых карточек или подготовка статьи</span>
+      <span class="chip">After new findings or when the knowledge base needs cleanup</span>
     </div>
-    <p class="article__lead">Собрать из отчётов и выводов связную картину: закономерности, противоречия и границы применимости.</p>
+    <p class="article__lead">Maintain a coherent knowledge base from verdicts, findings, reports, and curated documents.</p>
 
-    <h2>Что делает</h2>
-    <p>Читает отчёты и накопленные выводы и пишет курируемые заметки по темам поверх автоматической сборки базы знаний. Фиксирует, что повторяется, где данные спорят и где вывод ещё нельзя обобщать. Автоматические файлы руками не правит — они перезапишутся.</p>
+    <h2>What it does</h2>
+    <p>Audits project knowledge, links findings to methods and reports, removes duplication, preserves provenance, and keeps curated documents distinct from generated indexes. It highlights contradictions and stale conclusions rather than silently choosing one.</p>
 
-    <h2>Зачем</h2>
-    <p>Автосборка даёт точный, но плоский список. Курирование нужно, когда готовите статью, доклад или хотите увидеть связи между экспериментами, а не только отдельные вердикты.</p>
+    <h2>Why use it</h2>
+    <p>Keep accumulated research usable as the project grows and prevent summaries from drifting from source reports.</p>
 
-    <h2>Когда вызывать</h2>
+    <h2>When to use it</h2>
     <ul class="skill-scenarios">
-      <li>С последнего курирования накопилось несколько новых готовых экспериментов</li>
-      <li>Готовите статью, отчёт или доклад по проекту</li>
-      <li>Нужна тематическая заметка: закономерности, противоречия, открытые вопросы</li>
+      <li>Experiments produced overlapping findings</li>
+      <li>The dashboard contains stale or duplicated material</li>
+      <li>A curated overview needs links to evidence</li>
     </ul>
 
-    <h2>Как вызвать</h2>
-    <p>Укажите проект и попросите суммаризировать знания или написать курируемую заметку по теме. AI-помощник соберёт сырьё и положит документ в базу знаний проекта.</p>
+    <h2>How to invoke it</h2>
+    <p>Ask the assistant to curate a project knowledge base. It should inspect reports and generated indexes, then edit only appropriate curated sources.</p>
     <div class="example">
-      <p>Пример фразы AI-помощнику в редакторе:</p>
-      <pre><code>Суммаризируй знания проекта &lt;название&gt;:
-напиши курируемую заметку в базе знаний — закономерности, противоречия, границы.</code></pre>
+      <p>Example request for the AI assistant in your editor:</p>
+      <pre><code>Curate the knowledge base for project &lt;project&gt;:
+check provenance, duplicates, contradictions, and update the appropriate curated documents.</code></pre>
     </div>
 
-    <h2>Схема работы</h2>
-    <p class="diagram-caption">Схема — путь от сырых отчётов и выводов к тематической заметке. Оглавление базы знаний подхватывает новый документ само; править автогенные сводки не нужно.</p>
+    <h2>Workflow diagram</h2>
+    <p class="diagram-caption">Inventory sources, check provenance and duplicates, identify contradictions, update curated documents, and regenerate indexes through normal hooks.</p>
     <div class="graph">
       <pre class="mermaid">
 flowchart TD
-  A[Собрать отчёты и выводы] --> B[Найти повторяющиеся закономерности]
-  B --> C[Противоречия и открытые вопросы]
-  C --> D[Заметка по теме в базе знаний]
-  D --> E[Оглавление подхватит само]
+  A[Inventory verdicts and findings] --> B[Trace each item to a report]
+  B --> C[Find duplicates and contradictions]
+  C --> D[Update curated documents]
+  D --> E[Regenerate indexes]
+  E --> F[Review knowledge dashboard]
       </pre>
     </div>
 
     <div class="article__actions">
-      <a class="btn btn-ghost" href="https://github.com/ZoyaV/ResearcherOS/tree/main/agents/skills/koi-knowledge-curator">Исходник на GitHub</a>
-      <a class="btn btn-primary" href="../index.html#skills">К списку Skills</a>
+      <a class="btn btn-ghost" href="https://github.com/ZoyaV/ResearcherOS/tree/main/agents/skills/koi-knowledge-curator">Source on GitHub</a>
+      <a class="btn btn-primary" href="../index.html#skills">Back to Skills</a>
     </div>
   </main>
   <footer class="site-footer">

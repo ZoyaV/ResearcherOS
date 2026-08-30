@@ -39,7 +39,7 @@ EMPTY_HTML = """\
 </head>
 <body>
   <h1>__TITLE__</h1>
-  <p>Пустой мастер-отчёт. Отредактируйте этот файл в
+  <p>Empty master report. Edit this file in
     <code>koi-structure/pages/__SLUG__/</code>.</p>
 </body>
 </html>
@@ -67,7 +67,7 @@ def _now() -> str:
 def slugify(title: str) -> str:
     s = title.strip().lower()
     s = re.sub(r"\s+", "-", s)
-    s = re.sub(r"[^a-z0-9а-яё_\-]+", "", s, flags=re.IGNORECASE)
+    s = re.sub(r"[^a-z0-9_\-]+", "", s, flags=re.IGNORECASE)
     s = re.sub(r"-{2,}", "-", s).strip("-_") or "page"
     if len(s) > MAX_SLUG:
         s = s[:MAX_SLUG].rstrip("-_")
@@ -233,7 +233,7 @@ def resolve_page_file(project_id: str, page_id: str, relative: str = ENTRY_NAME)
 
 
 def create_page(project_id: str, title: str) -> dict[str, Any]:
-    title = (title or "").strip() or "Мастер-отчёт"
+    title = (title or "").strip() or "Master report"
     index = load_index(project_id)
     slug = _unique_slug(project_id, slugify(title), index)
     page_id = str(uuid4())

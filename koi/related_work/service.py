@@ -44,20 +44,20 @@ def cursor_chat_message(item_id: str) -> str:
     script = _related_work_script()
     return f"""ResearchOS Literature Inbox — Related Work `{item_id}`.
 
-Скилл **koi-related-work** (или выполни шаги ниже):
+Use **koi-related-work** or follow these steps:
 
-0. **Сразу** отметь задачу принятой (UI покажет «Агент работает»):
+0. **Immediately** claim the task so the UI shows Agent is working:
    `{py} {script} claim {item_id}`
 
-1. Контекст и промпт:
+1. Context and prompt:
    `{py} {script} context {item_id}`
 
-2. Напиши раздел Related Works в markdown (заголовок `## Related Works`, 2–5 абзацев).
+2. Write a Markdown Related Works section (`## Related Works`, 2–5 paragraphs).
 
-3. **Обязательно** отправь черновик в UI (без этого текст в чате НЕ появится на странице):
+3. **Always** send the draft to the UI; otherwise chat text will not appear on the page:
    `{py} {script} answer {item_id} -f related-work.md`
 
-Шаг 0 и 3 обязательны — UI опрашивает очередь, а не чат Cursor."""
+Steps 0 and 3 are mandatory because the UI polls the queue, not Cursor chat."""
 
 
 def _sync_generate(material: dict[str, object]) -> dict[str, object] | None:

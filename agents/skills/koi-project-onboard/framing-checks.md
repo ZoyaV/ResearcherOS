@@ -1,415 +1,321 @@
-# Framing checks — онтология узлов и шаблон frames
+# Framing checks: node ontology and interview frames
 
-Компаньон к [SKILL.md](SKILL.md). Применять на фиксации каждого сократовского
-слоя и ещё раз перед записью `project.md`.
+Companion to [SKILL.md](SKILL.md). Apply these checks when fixing each
+Socratic layer and again before writing `project.md`.
 
-## Содержание
-
-- [Смысл узлов для интервью](#смысл-узлов-для-интервью)
-- [Type-checks](#type-checks-философия-науки--практика)
-- [Ворота готовности узлов](#ворота-готовности-узлов)
-- [Настойчивое адаптивное интервью](#настойчивое-адаптивное-интервью)
-- [Prose и anti-jargon](#prose--anti-jargon-обязательно-с-koi-prose-style)
-- [Сократовские слои](#сократовские-слои-академический-research-interview)
-- [Заголовки узлов и карточек](#заголовки-узлов-и-карточек--8-слов-12-в-clarity-loop)
-- [Good / bad формулировки](#good--bad-формулировки)
-- [Быстрый self-check](#быстрый-self-check-перед-записью)
-
-Иерархия KOI (жёсткая):
+The KOI hierarchy is strict:
 
 ```text
 problem → cause → (cause_evidence | remediation) → method → kanban cards
 ```
 
-Вердикты (`supported` / `refuted` / `open`) живут на **cause**, не на method.
+Verdicts (`supported`, `refuted`, `open`) belong to **cause**, not method.
 
----
+## Node meaning during the interview
 
-## Смысл узлов для интервью
+The tree is a causal research argument, not a topic/task list.
 
-Дерево — причинный исследовательский аргумент, а не список тем и задач:
+| Node | What it records | Control question |
+|------|-----------------|------------------|
+| `problem` | Observable phenomenon or gap: object, conditions, actual/expected outcome, significance | What requires explanation? |
+| `cause` | Explanatory hypothesis: the mechanism believed to produce the problem | Why does it happen? |
+| `cause_evidence` | Testable prediction that should be observed if the cause is true | What would we see under the proposed cause? |
+| `remediation` | Intervention hypothesis: a change expected to weaken the cause and problem | What changes, and what effect should follow? |
+| `method` | Protocol testing its parent: comparison, control, measurement, decision rule | How do we distinguish support from contradiction? |
+| kanban card | Concrete unit of a method: run, collection, analysis, or ablation | What work unit happens now? |
 
-| Узел | Что в нём фиксирует исследователь | Контрольный вопрос |
-|------|-----------------------------------|--------------------|
-| `problem` | Наблюдаемое явление или разрыв: объект, условия, фактический и ожидаемый результат, значимость | Что именно требует объяснения? |
-| `cause` | Объяснительную гипотезу: механизм, который предположительно порождает problem | Почему это происходит? |
-| `cause_evidence` | Проверяемое предсказание: что должно наблюдаться, если cause верна | Что мы увидим при верной причине? |
-| `remediation` | Интервенционную гипотезу: какое изменение должно ослабить cause и problem | На что вмешиваемся и какой эффект ждём? |
-| `method` | Протокол проверки предыдущего узла: сравнение, контроль, измерение и правило решения | Как различим поддержку и противоречие? |
-| kanban card | Конкретное выполнение части method: запуск, сбор данных, анализ или абляцию | Какую единицу работы делаем сейчас? |
+A `cause` is already an explanatory hypothesis. In onboarding, “hypothesis”
+refers to its two testable child forms: `cause_evidence` and `remediation`.
 
-`cause` уже является гипотезой — объяснительной. Словом `hyp` в структуре
-онбординга обозначаются два дочерних способа сделать её проверяемой:
-`cause_evidence` и `remediation`.
+`cause_evidence` is not completed evidence and not a command such as “inspect
+logs.” It is an expected observation stated **before** evaluation. Actual results
+belong in card reports.
 
-`cause_evidence` — не полученное доказательство и не команда «посмотреть
-логи». Это ожидаемое наблюдение **до** выполнения проверки. Фактический
-результат живёт в отчёте карточки.
-
-`remediation` должна содержать причинную цепочку:
+A remediation must express:
 
 ```text
-вмешательство → изменение cause → изменение problem
+intervention → change in cause → change in problem
 ```
 
-Неудача remediation непосредственно опровергает выбранное вмешательство, но
-не обязательно саму cause. Не переносить такой вердикт на cause автоматически.
+Failure of one remediation refutes that intervention but does not automatically
+refute the cause.
 
----
+## Type checks
 
-## Type-checks (философия науки → практика)
+Run every draft node through these tests. A failure means rewrite, not “keep it
+as a topic.”
 
-Прогони каждый черновик узла. Провал = переформулировать, не «оставить как тему».
+| # | Test | Question | Common failure |
+|---|------|----------|----------------|
+| 1 | Phenomenon vs theory | Is this an observed gap, or already an explanation? | Problem = “poor exploration” (a cause) |
+| 2 | Causal vs instrumental | Does cause explain why, or propose trying X? | Cause = “add diversity bonus” |
+| 3 | Falsifiability | What would refute the cause? | “Study X's effect” without direction |
+| 4 | Intervention link | Does remediation act on the named cause? | Reward hypothesis under a “too little data” cause |
+| 5 | Evidence vs fix | Diagnose (`cause_evidence`) or intervene (`remediation`)? | Diagnostic ablation recorded as remediation |
+| 6 | Grain size | Can one verdict resolve this node? | “All OOD generalization problems” |
+| 7 | Underdetermination | Does one node mix several causes? | Shift + capacity + reward in one cause |
+| 8 | Method is protocol | Does method name comparison and metric rather than an idea? | Method = “diversity” without baseline |
+| 9 | Prediction vs procedure | Is evidence an expected observation rather than a command? | “Inspect logs” |
+| 10 | Prediction vs result | Was evidence stated before evaluation? | “Diversity was low” before a run |
+| 11 | Parent link | Does the child test its actual parent? | Reward remediation under a data-volume cause |
+| 12 | Decision completeness | Are supporting and contradicting outcomes clear? | Metric without direction or threshold |
 
-| # | Тест | Вопрос к формулировке | Типичный провал |
-|---|------|----------------------|-----------------|
-| 1 | **Phenomenon vs theory** | Это наблюдаемый gap / боль, или уже объяснение? | Problem = «плохой exploration» (это cause) |
-| 2 | **Causal vs instrumental** | Cause — *почему так*, или «давайте попробуем X»? | Cause = «добавить diversity bonus» |
-| 3 | **Falsifiability** | Что должно случиться, чтобы cause стал `refuted`? | «Изучить влияние X» без направления |
-| 4 | **Interventionist link** | Remediation реально вмешивается в названную cause? | Hyp про reward, cause про «мало данных» — связь слабая |
-| 5 | **Evidence vs fix** | Мы *доказываем диагноз* (`cause_evidence`) или *лечим* (`remediation`)? | Diagnostic ablation записан как remediation |
-| 6 | **Grain size** | Один вердикт на узел, не программа на год? | Cause = «все проблемы OOD generalization» |
-| 7 | **Underdetermination** | Не смешаны ли две причины в одном узле? | «И shift, и capacity, и плохой reward» |
-| 8 | **Method = protocol** | Method называет сравнение и метрику, не идею? | Method = «diversity» без baseline |
-| 9 | **Prediction vs procedure** | Cause evidence — ожидаемое наблюдение или команда что-то сделать? | «Посмотреть логи» вместо ожидаемого паттерна |
-| 10 | **Prediction vs result** | Cause evidence сформулировано до проверки, а не выдаёт результат за известный? | «Разнообразие оказалось низким» до прогона |
-| 11 | **Parent link** | Дочерний узел проверяет именно своего родителя? | Remediation про reward под cause «мало данных» |
-| 12 | **Decision completeness** | Понятны поддерживающий и противоречащий исходы? | Указана метрика без направления или порога |
+Code and literature are evidence, not automatic answers:
 
-Код и lit — подсказки, не автозаполнение:
+| Label | Meaning | Use |
+|-------|---------|-----|
+| `code+lit` | Supported by repository and literature | Preferred frame |
+| `code-only` | A bet in code with weak literature support | Fine for remediation/method |
+| `lit-only` | Common field frame with no code support | Use cautiously; do not make it the root without confirmation |
 
-| Метка | Значение | Как предлагать |
-|-------|----------|----------------|
-| `code+lit` | Есть в репо и в литературе | Предпочтительный frame |
-| `code-only` | Ставка в коде, в lit слабо | Нормально для remediation/method |
-| `lit-only` | Поле так фреймит, в коде опоры нет | Осторожно; не делать корнем без confirm |
+Never replace the problem with a method, model, loss, or job-script name.
 
-**Запрет:** подменять `problem` названием метода, модели, loss или job-скрипта.
+## Node readiness gates
 
----
-
-## Ворота готовности узлов
-
-Количество заданных вопросов не закрывает слой. Узел готов только после
-прохождения обязательных ворот. `FAIL` означает продолжить интервью, а не
-записать расплывчатый текст в описание.
+Question count does not close a layer. A node is ready only when every mandatory
+gate passes. On `FAIL`, continue the interview.
 
 ### problem
 
-- Понятен объект или система.
-- Названо наблюдаемое явление, а не широкая тема.
-- Названы условия, в которых оно проявляется.
-- Понятно фактическое и ожидаемое состояние либо релевантное сравнение.
-- Объяснена научная или практическая значимость.
-- В формулировке нет предполагаемой причины, метода или решения.
+- Object/system is clear.
+- The observed phenomenon is specific rather than a broad topic.
+- Conditions where it appears are named.
+- Actual versus expected state or comparison is clear.
+- Scientific or practical significance is explained.
+- The wording contains no assumed cause, method, or solution.
 
 ### cause
 
-- Это один механизм, а не повтор problem и не набор возможных причин.
-- Объяснено, как механизм порождает именно родительскую problem.
-- Это утверждение о мире, а не «добавить / попробовать / исследовать X».
-- Назван хотя бы один исход, при котором от причины пришлось бы отказаться.
-- Гранулярность допускает один осмысленный вердикт.
+- One mechanism, not a restated problem or a list of alternatives.
+- Explains how it produces the parent problem.
+- A world claim, not “add / try / study X.”
+- At least one outcome would make us abandon it.
+- One meaningful verdict can resolve it.
 
 ### cause_evidence
 
-- Сформулировано ожидаемое наблюдение при верной cause.
-- Объяснено, почему это наблюдение следует именно из родительской cause.
-- Названо наблюдение, которое противоречило бы cause.
-- Это не протокол, не уже полученный результат и не вмешательство.
+- States the expected observation if the cause is true.
+- Explains why that observation follows from the parent cause.
+- Names a contradicting observation.
+- Is not a protocol, completed result, or intervention.
 
 ### remediation
 
-- Названо конкретное вмешательство.
-- Объяснено, на какую часть родительской cause оно воздействует.
-- Указан ожидаемый промежуточный эффект на cause.
-- Указан ожидаемый эффект на problem.
-- Понятно, что провал вмешательства не автоматически опровергает cause.
+- Names a concrete intervention.
+- Says which part of the parent cause it changes.
+- States the expected intermediate effect on the cause.
+- States the expected effect on the problem.
+- Makes clear that intervention failure need not refute the cause.
 
 ### method
 
-- Ясно, какой `cause_evidence` или `remediation` проверяется.
-- Определены воздействие или сравниваемые условия.
-- Определены контроль / baseline и фиксируемые условия.
-- Названы данные, среда или выборка и основные измерения.
-- Заранее определены поддерживающий и противоречащий исходы.
-- Это воспроизводимый протокол, а не название модели, фичи или направления.
+- Identifies the parent cause_evidence/remediation being tested.
+- Defines the intervention or comparison conditions.
+- Defines baseline/control and fixed conditions.
+- Names data/environment/sample and primary measurements.
+- Prespecifies supporting and contradicting outcomes.
+- Is reproducible, not a model/feature/topic name.
 
-### Связность ветки
+### Branch coherence
 
-После локальных ворот прочитай ветку одним аргументом:
+Read the branch as one argument:
 
 ```text
-наблюдаем problem,
-потому что предполагаем cause;
-если cause верна, ожидаем cause_evidence
-и/или remediation должна ослабить cause;
-method различает ожидаемые исходы.
+We observe the problem
+because we hypothesize the cause;
+if the cause is true, we expect cause_evidence
+and/or remediation should weaken the cause;
+the method distinguishes the expected outcomes.
 ```
 
-Если предложение распадается, локально хорошие узлы ещё не образуют хорошую
-ветку. Найди слабое ребро и продолжи интервью.
+If it breaks, identify the weak edge and continue interviewing even when the
+individual nodes look good.
 
----
+## Persistent adaptive interview
 
-## Настойчивое адаптивное интервью
+The researcher supplies domain meaning; the agent owns node classification,
+testability, and tree coherence. Do not accept the researcher's node label
+without checking it.
 
-Исследователь сообщает предметный смысл; агент отвечает за тип узла,
-проверяемость и связность дерева. Не принимай саморазметку исследователя без
-проверки.
+After every answer:
 
-После каждого ответа:
+1. Paraphrase without KOI terminology.
+2. Classify the substance as phenomenon, mechanism, prediction, intervention,
+   protocol, or completed result.
+3. Check current-node gates and parent linkage.
+4. Select the single most important defect or gap.
+5. Explain briefly why the current wording cannot be fixed yet.
+6. Offer 1–3 plausible interpretations grounded in literature, code, or earlier answers.
+7. Ask exactly one question that closes the gap or distinguishes interpretations.
+8. Repeat until `PASS`, then propose final wording for confirmation.
 
-1. Парафразируй содержание без терминов KOI.
-2. Сам классифицируй его как явление, механизм, предсказание, вмешательство,
-   протокол или фактический результат.
-3. Проверь ворота текущего узла и связь с родителем.
-4. Выбери один самый важный дефект или пробел.
-5. Коротко скажи, почему текущую формулировку пока нельзя зафиксировать.
-6. Предложи 1–3 предметно правдоподобные интерпретации из литературы, кода или
-   предыдущих ответов.
-7. Задай ровно один вопрос, который закрывает пробел или различает варианты.
-8. Повторяй до `PASS`; только затем предложи итоговую формулировку на confirm.
+Do not repeat mechanically. Every follow-up must use the previous answer and
+target a specific missing component.
 
-Не превращай настойчивость в механическое повторение. Каждый следующий вопрос
-должен использовать уже полученный ответ и извлекать конкретно недостающий
-компонент.
+### Short answer
 
-### Короткий ответ
+“Poor generalization” is a topic, not a ready problem. Ask which conditions show
+the gap (training vs unseen environments, short vs long episodes, or task
+classes), then ask for the missing observable change, expectation, or importance.
 
-«Плохая генерализация» — тема, но не готовый problem. Не проси «рассказать
-подробнее» вообще. Сначала уточни наиболее важный компонент:
+### Misclassified answer
 
-> Между какими условиями вы видите разрыв: обучающими и новыми средами,
-> короткими и длинными эпизодами или разными классами задач?
+If the user says “the cause is to add memory,” recognize a remediation and ask
+which current failure the memory should repair: loss of early events, insufficient
+context, or failure to use stored information.
 
-После ответа уточни следующий отсутствующий компонент: наблюдаемое изменение,
-ожидание или значимость.
+If “the evidence is compare with and without memory,” recognize a method and ask
+which difference should appear if lost early context is the cause.
 
-### Перепутанный тип
+If the problem is “the agent forgets early events,” test whether this is actually
+a cause by asking which externally observable behavior it explains.
 
-Если человек говорит «причина — добавить память», распознай remediation:
-
-> «Добавить память» описывает изменение системы, а не механизм возникновения
-> ошибки. Какое нарушение сейчас должно исправить это изменение: теряется
-> информация о ранних событиях, не хватает длины контекста или сохранённая
-> информация не используется при решении?
-
-Если человек говорит «доказательство — сравнить с памятью и без», распознай
-method:
-
-> Сравнение двух вариантов — уже протокол. Какое различие между ними вы
-> ожидаете увидеть, если потеря раннего контекста действительно является
-> причиной?
-
-Если человек формулирует problem как «агент не помнит ранние события»,
-проверь, не является ли это cause:
-
-> Потеря ранних событий уже описывает внутренний механизм. Какое внешне
-> наблюдаемое нарушение поведения вы пытаетесь этим объяснить?
-
-### Формула академического pushback
+### Academic pushback formula
 
 ```text
-Что услышал → какой критерий не пройден → почему это важно для ветки
-→ 1–3 возможные интерпретации → один различающий вопрос
+What I heard → failed criterion → why it matters to the branch
+→ 1–3 plausible interpretations → one distinguishing question
 ```
 
-Не соглашайся из вежливости и не говори только «это неверный тип». Объясни
-содержательную границу и помоги исследователю перейти к лучшей формулировке.
-Не додумывай предметный факт без подтверждения.
+Do not agree out of politeness and do not merely say “wrong node type.” Explain
+the conceptual boundary and help improve the framing. Never invent domain facts
+without confirmation.
 
----
+## Prose and anti-jargon
 
-## Prose / anti-jargon (обязательно с koi-prose-style)
+Every onboarding message follows
+[`koi-prose-style`](../koi-prose-style/SKILL.md): self-check before each message
+and a full subagent cycle when fixing a layer and before writing files.
 
-**Каждое** сообщение онбординга человеку (не только узлы в `project.md`) —
-через правила [`koi-prose-style`](../koi-prose-style/SKILL.md):
-prose-self-check перед отправкой хода; полный subagent-цикл на фиксации слоя
-и перед записью файла.
+| Bad | Good |
+|-----|------|
+| Executable code world model fails trace validation | World model fails to reproduce game transitions from a recorded playthrough |
+| validate fail on CWM rollout | Transition checks fail when replaying the recorded trajectory |
+| OOD SR drop after GiGPO LoRA | After reinforcement learning, successful episodes decrease outside the training distribution |
+| diversity_coef / SR@50 hybrid | Mixed reward combines episode success and action-variety bonus; evaluation measures success at step 50 |
+| trace mismatch in env step | Predicted next frame does not match the actual game transition |
 
-Ниже — частые провалы при онбординге из кода (сразу чинить).
+Automatic `FAIL`:
 
-| Bad (лог / код / каша) | Good (естественный язык) |
-|------------------------|--------------------------|
-| Исполняемый code world model по trace не воспроизводит переходы игры (validate fail) | Модель мира по записанной партии не воспроизводит ходы игры при проверке |
-| validate fail на CWM rollout | При прогоне записанной траектории проверка переходов игры не проходит |
-| OOD SR drop after GiGPO LoRA | После обучения с подкреплением доля успешных эпизодов вне обучающего распределения падает |
-| diversity_coef / SR@50 hybrid | Смешанная награда: успех эпизода плюс бонус за разнообразие действий; смотрим долю успеха на шаге 50 |
-| trace mismatch in env step | Предсказанный следующий кадр среды не совпадает с реальным шагом игры |
+1. Unexplained jargon in a node title.
+2. Module/file/flag/pipeline status in a title (`validate fail`, `OOM`, `WIP`).
+3. Languages mixed within one phrase.
+4. A reader without the repository cannot identify the phenomenon.
 
-Правила-триггеры `FAIL`:
+Keep technical paths and class names in card `desc` or internal agent notes, not
+problem/cause titles.
 
-1. В **заголовке** узла — англ. термин без русской расшифровки рядом.
-2. В заголовке — имя модуля, файла, флага, статус пайплайна (`validate fail`,
-   `OOM`, `N/A`, `WIP`).
-3. Смешение EN/RU в одной фразе («исполняемый code world model»).
-4. Человек без репо не поймёт, о чём боль — перепиши до явления, не до
-   названия компонента.
+## Socratic layers
 
-Технику (`validate`, путь к скрипту, имя класса) клади в `desc:` карточки или
-во внутренние notes агента — не в title problem/cause.
+Do not show a “choose Frame A/B/C” table. The variant bank is internal; the
+conversation combines prior work, researcher position, and repository evidence.
 
----
+| Layer | Minimum questions | Output |
+|-------|-------------------|--------|
+| **PROBLEM** | At least 4 | One problem grounded in researcher position and literature |
+| **PROGRAM** | At least 1; 2 for a new program | `programs:` or explicit no-program decision |
+| **CAUSE+HYP** | At least 4 | 1–2 causes and 1–2 hypotheses |
+| **METHOD** | At least 3 | 1–2 methods and 0–3 seed cards |
 
-## Сократовские слои (академический research interview)
+Minimum count is a lower bound only. Continue until readiness gates pass.
 
-Не отдавать таблицу «выбери Frame A/B/C». Банк вариантов — внутренний;
-в диалоге — prior work + позиция исследователя + сверка.
+Before PROGRAM, scan adjacent `*/koi-structure/project.md` files for existing
+programs. Ask whether the project joins one. Otherwise propose 2–3 field-level
+programs from literature or let the user name one. Program titles use at most
+eight words.
 
-**Тон:** академический. Не психология / коучинг («что болит», «как вам
-важнее»). Да: постановка проблемы, вклад в область, механизм, фальсификация,
-протокол.
-
-| Слой | Минимум вопросов | Что фиксируем в конце |
-|------|------------------|------------------------|
-| **PROBLEM** | ≥4 (P1–P4) | 1 problem (позиция исследователя ⟷ lit) |
-| **PROGRAM** | ≥1 (R1; +R2 если новая) | `programs:` в frontmatter или явное «без» |
-| **CAUSE+HYP** | ≥4 (C1–C4) | 1–2 cause + 1–2 hyp |
-| **METHOD** | ≥3 (M1–M3) | 1–2 method + 0–3 seed cards |
-
-Минимум — только нижняя граница охвата. Короткие, противоречивые или
-неправильно классифицированные ответы требуют дополнительных уточнений до
-`PASS` ворот готовности.
-
-**PROGRAM:** сначала скан соседних `*/koi-structure/project.md` → список
-уже используемых программ. Если есть — спросить, входит ли проект в одну из
-них. Если нет / «отдельная» — предложить 2–3 варианта из литературы (рамка
-области, не метод) или дать написать свою. Title программы ≤ 8 слов.
-
-### Внутренний банк (после lit scan)
+Maintain an internal bank:
 
 ```text
-problem_candidates: [ … ]   # 2–3, с пометкой code+lit / lit-only
+problem_candidates: [ … ]   # code+lit / lit-only
 cause_candidates:   [ … ]
-hyp_candidates:     [ … ]   # remediation: | cause_evidence:
+hyp_candidates:     [ … ]   # remediation / cause_evidence
 method_candidates:  [ … ]
 ```
 
-На слое PROBLEM — только problem-кандидаты и papers про phenomenon/gap.
+During PROBLEM, expose only problem candidates and papers about the phenomenon.
 
-### Триангуляция (каждый ход после ответа)
+### Triangulation after each answer
 
-```text
-Сверка: ваше утверждение «…»
-  ⟨согласуется | уточняет | расходится⟩ с Author et al. (Year) («…»).
-В репозитории: …
-Комментарий: <1–2 предложения — следствие для формулировки узла>
-```
+In connected prose, relate:
 
-### Шаблон хода (один вопрос)
+1. one to three papers and how they frame the phenomenon/cause;
+2. a plain academic paraphrase of the user's position;
+3. what the repository already measures or changes.
 
-```text
-[Слой: PROBLEM] шаг 1/4
+Do not use log-like field labels. A good paragraph says: “You describe … . This
+resembles Title (Year), which … . It differs from Author et al. (Year) because
+… . In the repository, the distinction appears in … . This suggests framing the
+problem as … .” Then ask one question.
 
-Из литературы (похожие постановки):
-- Author et al. (Year) — проблему определяют как …
-- Author2 (Year) — иначе: …
+Use academic research-interview language, not coaching language:
 
-Из кода / из вашего предыдущего ответа:
-- …
+| Avoid | Prefer |
+|-------|--------|
+| What hurts most? | Related work frames the problem as A or B. Is your problem similar? |
+| How do you feel about it? | Why is this problem worth solving; which field gap does it close? |
+| What matters personally? | How would resolving it advance the field? |
+| Explain without modules | Under which conditions is the lack of progress clearest? |
 
-Сверка: …
+## Title limits
 
-Q: В проектах, близких к вашему, проблему часто ставят так или так.
-Считаете ли вы, что решаете схожую проблему — или ваша постановка другая?
-```
+| Field | Limit | Put details in |
+|-------|-------|----------------|
+| Node title | At most 8 words | Node description |
+| Kanban card title | At most 8 words | `desc` |
+| Project frontmatter title | Prefer at most 8 words | `description` |
+| Critical title after two clarity-loop failures | At most 12 words, rarely | Description |
 
-После ответа — следующий ход **начинается со сверки**, затем уточнение или
-следующий вопрос слоя. В конце слоя — prose-узел → confirm → следующий слой.
+During the clarity loop, the cold reader sees titles only. Before every rewrite,
+the Writer rereads `koi-structure/onboard-brief.md`. Do not “clarify” by drifting
+from a scientific phenomenon to pipeline debugging. Discard a drifting candidate
+even if the cold reader marks it CLEAR.
 
-### Примеры тона вопросов
-
-| ❌ Психология / бытовой | ✅ Академический research interview |
-|-------------------------|-------------------------------------|
-| Что для вас болит сильнее всего? | В близких работах проблему ставят как A или B. Считаете ли вы, что решаете схожую проблему? |
-| Как вы это переживаете? | Почему эту проблему стоит решать — какой пробел она закрывает? |
-| Что вам важнее лично? | Чем продвинется область, если постановку удастся закрыть? |
-| Расскажите своими словами без модулей | В каких условиях отсутствие прогресса по этой проблеме видно яснее всего? |
-
-### Prose в диалоге (сверка и комментарии)
-
-Сверку пиши связным текстом. Не используй ярлыки полей (`Сверка:`,
-`Комментарий:`, `⟨согласуется|…⟩`) и мета-жаргон агента.
-
-| ❌ Так писать нельзя (лог / каша) | ✅ Так можно (prose) |
-|----------------------------------|---------------------|
-| Сверка: ваше утверждение «LLM/VLM не индуцирует скрытую механику среды / игры из траекторий» совпадает с постановкой From Gameplay Traces to Game Mechanics (2026): gap — reverse-engineer правил из наблюдений… С OPINE-World (2026) — частичное пересечение… Комментарий: для KOI-узла problem это сильная формулировка… не скатиться в описание пайплайна (VLM, validate) | Вы говорите, что модель по записанным партиям не восстанавливает скрытые правила игры. Это близко к работе «From Gameplay Traces to Game Mechanics» (2026): там тоже ищут правила по наблюдениям, а не строят игрового агента под другую задачу. У Rodionov и соавт. (2026) сильнее акцент на исполняемой модели и планировании; у вас в центре именно сбой индукции правил из траектории. С OPINE-World (2026) пересечение частичное: они упираются в правила через взаимодействие, но корень видят в описании объектов — вы пока не делаете это корневой проблемой. В репозитории это видно по циклу «запись партии → гипотеза о правилах → проверка на игре». Имеет смысл держать формулировку проблемы на уровне явления и не подменять её описанием пайплайна проверки. |
-
-Запрещено в чате онбординга без русской расшифровки рядом: `gap`, `claim`,
-`prior work`, `falsification`, `category error`, `KOI-узел`, `validate`,
-`trace`/`step()` как зачин фразы, сырые аббревиатуры `LLM`/`VLM` без пояснения
-при первом появлении в ходе («языковая или мультимодальная модель (LLM/VLM)»).
-
-### Заголовки узлов и карточек: ≤ 8 слов (≤12 в clarity loop)
-
-На карте дерева и в канбане виден только короткий заголовок.
-
-| Поле | Лимит | Куда остальное |
-|------|-------|----------------|
-| Заголовок узла (первая строка) | **≤ 8 слов** | описание узла (абзацы ниже) — при открытии |
-| Заголовок карточки канбана | **≤ 8 слов** | `desc:` — при открытии карточки |
-| Frontmatter `title` проекта | ≤ 8 слов желательно | `description` |
-| Критический узел после clarity loop §5 | **≤ 12 слов** (редко) | только если ≤8 дважды не хватило cold reader |
-
-При фиксации слоя и prose-pass: если title > 8 слов без исключения — разрезать.
-Clarity loop (§5): cold reader видит **только заголовки**; описания вне цикла.
-Writer перед каждой правкой titles **перечитывает**
-`koi-structure/onboard-brief.md` (якорь диалога; шаблон
-`onboard-brief.template.md`). Нельзя «уточнять» до пайплайна или отладки
-вместо явления. Дрифт от brief бракует кандидата даже при CLEAR. Макс. 6
-итераций. Brief пишется на диск в §6b и живёт рядом с `project.md`.
-
----
-
-## Good / bad формулировки
+## Good and bad formulations
 
 ### problem
 
-| Bad | Good: заголовок ≤8 слов | Описание (при открытии) |
-|-----|-------------------------|-------------------------|
-| Diversity bonus в PPO | Политика не переносится на новые среды | После обучения с подкреплением в одной среде доля успеха падает вне обучающего распределения |
-| Обучение CrafText | Поведение не переносится на новые правила | Агент решает учебные инструкции, но не переносит политику на задачи с другими правилами |
-| Исполняемый code world model… (validate fail) | Модель не воспроизводит правила игры | По записанной партии проверка ходов и правил игры не проходит |
+| Bad | Good title | Description |
+|-----|------------|-------------|
+| Diversity bonus in PPO | Policy fails in unseen environments | After training in one environment, success falls outside the training distribution. |
+| CrafText training | Behavior fails under new rules | The agent follows training instructions but cannot transfer its policy to tasks with different rules. |
+| Executable code world model validate fail | Model fails to reproduce game rules | Given a recorded game, transition and rule validation fails. |
 
 ### cause
 
-| Bad | Good: заголовок ≤8 слов | Описание |
-|-----|-------------------------|----------|
-| Нужен diversity reward | Политика схлопывается в узкие траектории | Среда исследована недостаточно; агент повторяет малый набор действий |
-| Попробовать curriculum | Неверная модель правил среды | Команда переоценивает, какие правила на самом деле определяют успех |
+| Bad | Good title | Description |
+|-----|------------|-------------|
+| Need diversity reward | Policy collapses to narrow trajectories | The agent explores too little and repeats a small action set. |
+| Try curriculum | Incorrect model of environment rules | The system overestimates which rules determine success. |
 
-К cause в **описании** можно добавить намёк на опровержение: «опровергнута,
-если при том же бюджете разнообразие поведения высокое, а качество вне
-распределения всё равно падает».
+A cause description may include refutation: “refuted if behavior remains diverse
+at the same budget while out-of-distribution quality still falls.”
 
 ### remediation / cause_evidence
 
-| Bad | Good: заголовок ≤8 слов | Описание |
-|-----|-------------------------|----------|
-| Поисследовать diversity | Бонус за разнообразие в награде | Дополнительный стимул к разнообразию действий расширит исследование… |
-| Посмотреть логи | Схлопывание видно по разнообразию действий | На обучающих прогонах число разных пар «состояние — действие» падает… |
+| Bad | Good title | Description |
+|-----|------------|-------------|
+| Research diversity | Reward action variety | An additional incentive should expand explored behavior. |
+| Inspect logs | Collapse appears as low action variety | Under the cause, distinct state-action pairs should decrease during training. |
 
 ### method
 
-| Bad | Good: заголовок ≤8 слов | Описание |
-|-----|-------------------------|----------|
-| Diversity | Бонус за разнообразие против успеха | Сравнить обучение с бонусом и только на успех эпизода; те же модель и бюджет |
-| Эксперименты с env | Случайная среда против обычной | Сравнить случайные исходы действий и предсказуемую среду; глубина исследования и доля успеха |
+| Bad | Good title | Description |
+|-----|------------|-------------|
+| Diversity | Variety bonus versus episode success | Compare training with a variety bonus against success-only reward using the same model and budget. |
+| Environment experiments | Random versus predictable environments | Compare random action outcomes with a predictable environment using exploration depth and success rate. |
 
----
+## Final self-check
 
-## Быстрый self-check перед записью
+For every node:
 
-Для каждого узла в выбранном frame:
-
-1. Все применимые к типу узла проверки #1–#12 — PASS.
-2. Parent/child типы допустимы (см. иерархию выше).
-3. Remediation ссылается на *эту* cause, не на соседнюю.
-4. Method можно превратить в карточку с baseline за один абзац.
-5. Нет узла, который является только названием файла из репо.
-6. **koi-prose-style PASS** (или явный waiver от человека после 3× FAIL).
-7. Заголовок читается вслух без знания имён классов/флагов репо.
-8. Заголовок узла/карточки — **≤ 8 слов**; подробности в описании/`desc`.
-9. Все ворота готовности соответствующего типа пройдены.
-10. Вся ветка читается как один связный причинный аргумент.
+1. All applicable type checks pass.
+2. Parent/child types follow the hierarchy.
+3. Remediation acts on this cause, not a neighboring cause.
+4. Method can become a baseline experiment card in one paragraph.
+5. No node is merely a repository filename.
+6. `koi-prose-style` passed or the user explicitly waived it after three failures.
+7. Title reads naturally without knowing repository classes or flags.
+8. Node/card title is at most eight words unless a valid clarity exception exists.
+9. Readiness gates pass.
+10. The branch reads as one coherent causal argument.

@@ -1,105 +1,106 @@
-# Анти-AI проза для KOI (по Wikipedia)
+# Anti-AI prose for KOI
 
-Адаптация [Wikipedia:Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing)
-для коротких текстов ResearchOS (узлы, карточки, вопросы, рассказы о выводе,
-knowledge). Признаки **вероятностные**: один случайный оборот — слабо;
-скопление в одном фрагменте — `FAIL`.
+This adapts [Wikipedia: Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing)
+for short ResearchOS text: nodes, cards, questions, conclusions, and knowledge
+documents. These signs are **probabilistic**: one incidental phrase is weak
+evidence, while a cluster in one fragment is `FAIL`.
 
-Чини **конкретным смыслом**, а не заменой одного «AI-слова» на другое.
+Repair prose with **specific meaning**, not by replacing one AI-sounding word
+with another.
 
-Полный paper-чеклист A–H (если пишете статью):  
+For paper writing, see the full A–H checklist at
 `.cursor/skills/paper-orchestra-shared/writing_quality_check.md`.
 
 ---
 
-## 1. Пустые «важные» слова (vocabulary)
+## 1. Empty prestige vocabulary
 
-Не писать скоплениями (и по-русски, и по-английски):
+Avoid clusters of:
 
-| Избегать | Лучше |
-|----------|--------|
-| революционный, прорывной, cutting-edge, groundbreaking | назвать, что именно изменилось |
-| комплексный, многогранный, nuanced, multifaceted | одно конкретное уточнение |
-| ключевой / критически важный / pivotal / crucial (без цифры) | «важно, потому что …» + факт |
-| бесшовно, seamlessly, synergy, holistic | как соединяется на деле |
-| ландшафт / tapestry / delve / underscore / foster | убрать; начать с содержания |
-| «это подчёркивает важность…» | следствие или число |
+| Avoid | Prefer |
+|-------|--------|
+| revolutionary, cutting-edge, groundbreaking | state exactly what changed |
+| comprehensive, nuanced, multifaceted | give one concrete qualification |
+| pivotal, crucial, critical without evidence | explain why using a fact |
+| seamless, synergy, holistic | describe the actual connection |
+| landscape, tapestry, delve, underscore, foster | remove and start with content |
+| “this highlights the importance of …” | give the consequence or measurement |
 
-Русские маркеры: *в современном мире*, *не секрет, что*, *стоит отметить*,
-*важно подчеркнуть*, *играет ключевую роль*, *открывает новые горизонты*.
+Other common markers: in today's world, it is no secret, it is worth noting,
+plays a key role, opens new horizons.
 
-**Как чинить:** удали оборот и оставь утверждение с фактом.
-
----
-
-## 2. Горлочистки и шаблонные концовки
-
-**Не начинать** с: «Стоит отметить, что…», «Важно понимать, что…»,
-«В контексте…», «В эпоху…», «It is worth noting that…».
-
-**Не заканчивать** абзац/desc формулами: «В целом…», «Подводя итог…»,
-«Таким образом, можно заключить…», «несмотря на вызовы, продолжает
-развиваться…» — если нет нового факта.
-
-**Как чинить:** начни с смысла; концовку без новой информации — вырежи.
+**Repair:** delete the phrase and retain the factual claim.
 
 ---
 
-## 3. Риторика вместо смысла
+## 2. Throat-clearing and stock conclusions
 
-| Шаблон | Проблема | Как лучше |
-|--------|----------|-----------|
-| не только X, но и Y / not only … but also | часто пустая симметрия | скажи X и Y прямо |
-| не X, а Y (без реальной ошибки читателя) | театральный контраст | одно прямое утверждение |
-| A, B и C (всегда ровно три) | «правило трёх» LLM | список по содержанию: 2 или 4+ ок |
-| от игрушечных задач до реальных систем | ложный диапазон | назови реальные случаи |
+Do not begin with “It is worth noting that,” “It is important to understand,”
+“In the context of,” or “In an era of.”
 
----
+Do not end a paragraph or description with “Overall,” “In summary,” “Thus one
+can conclude,” or “despite challenges, it continues to evolve” unless a new
+fact follows.
 
-## 4. Рекламный и «значимостный» тон
-
-Не писать как пресс-релиз: *богатство*, *уникальный вклад*, *знаменует сдвиг*,
-*serves as a testament*, хвостовые `, выделяя…` / `, обеспечивая…` /
-`, underscoring…` без нового измеримого факта.
-
-**Как чинить:** кто выигрывает, на сколько, при каких условиях — или вырежи.
+**Repair:** begin with the point and remove endings that add no information.
 
 ---
 
-## 5. Размытые ссылки на «всех»
+## 3. Rhetoric instead of meaning
 
-Не: «исследователи считают», «эксперты отмечают», «широко известно»,
-«многие работы показывают» — без имён/ссылок.
-
-**Как чинить:** назови источник или убери претензию.
-
----
-
-## 6. Знаки и оформление (для длинных desc / knowledge)
-
-- Скопление длинных тире (—) и « — » с пробелами — разбей на предложения
-  или скобки.
-- Title Case в русских заголовках узлов/карточек — не нужен.
-- Жирный/эмодзи как украшение в UI-тексте — убери.
-- Плейсхолдеры (`TODO`, `lorem`, `insert here`, «будет добавлено позже»)
-  в видимом тексте — `FAIL`.
-
-Для заголовков ≤8 слов эти пункты редки; смотри в `desc` и knowledge.
+| Pattern | Problem | Better |
+|---------|---------|--------|
+| not only X but also Y | often empty symmetry | state X and Y directly |
+| not X but Y without a likely misconception | theatrical contrast | use one direct statement |
+| always exactly A, B, and C | forced rule of three | use the number the content requires |
+| from toy tasks to real systems | false range | name the actual cases |
 
 ---
 
-## 7. Простой глагол
+## 4. Promotional significance
 
-Предпочитай «есть / это / имеет» вычурным: *служит как*, *выступает в роли*,
-*stands as*, *boasts*, *features*, *offers* (в смысле «имеет»).
+Avoid press-release language such as rich, unique contribution, marks a shift,
+serves as a testament, and trailing “highlighting,” “ensuring,” or
+“underscoring” clauses without a measurable consequence.
+
+**Repair:** say who benefits, by how much, and under which conditions, or remove it.
 
 ---
 
-## Быстрый порядок для ревьюера
+## 5. Vague attribution
 
-1. Пустые слова + значимость + горлочистки  
-2. Риторика (not only / тройки) + размытые «эксперты»  
-3. Тире / плейсхолдеры / рекламный тон  
+Do not write “researchers believe,” “experts note,” “it is widely known,” or
+“many studies show” without naming or linking the source.
 
-Плюс всегда: естественный русский, один язык на фразу, аббревиатура после
-смысла, заголовок ≤8 слов, без внутренних id.
+**Repair:** cite the source or remove the attribution.
+
+---
+
+## 6. Punctuation and presentation
+
+- Break up clusters of em dashes with sentences or parentheses.
+- Avoid unnecessary Title Case in node and card labels.
+- Remove decorative bold and emoji from UI text.
+- Visible placeholders such as `TODO`, `lorem`, `insert here`, or “to be added
+  later” are `FAIL`.
+
+These issues usually appear in `desc` and knowledge prose rather than short
+titles.
+
+---
+
+## 7. Plain verbs
+
+Prefer “is” and “has” over ornate alternatives such as serves as, stands as,
+boasts, features, or offers when they merely mean existence or possession.
+
+---
+
+## Reviewer order
+
+1. Empty words, significance claims, and throat-clearing
+2. Rhetorical patterns and vague experts
+3. Em dashes, placeholders, and promotional tone
+
+Always also check: natural English, one language per phrase, explained
+abbreviations, titles at most eight words, and no visible internal ids.

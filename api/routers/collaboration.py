@@ -64,7 +64,7 @@ def _slot(project_id: str, slug: str):
     normalized = normalize_paper_slug(slug)
     slot_dir = get_paper_slot_dir(project_id, normalized)
     if slot_dir is None:
-        raise HTTPException(404, f"Статья «{normalized}» не найдена")
+        raise HTTPException(404, f"Paper \"{normalized}\" not found")
     return normalized, slot_dir
 
 
@@ -75,7 +75,7 @@ def _session(project_id: str, slug: str, *, create: bool = False):
         return get_or_create_session(project_id, normalized, tex_path)
     session = get_session(project_id, normalized)
     if session is None:
-        raise HTTPException(404, "Нет активной collaborative session")
+        raise HTTPException(404, "No active collaborative session")
     return session
 
 
@@ -152,7 +152,7 @@ def accept_collab_proposal(
     try:
         return session.accept_proposal(body.proposal_id)
     except KeyError as exc:
-        raise HTTPException(409, "Предложение уже изменилось или было обработано") from exc
+        raise HTTPException(409, "The proposal changed or was already processed") from exc
 
 
 @router.post("/projects/{project_id}/papers/{slug}/collab/proposal/reject")
@@ -165,7 +165,7 @@ def reject_collab_proposal(
     try:
         return session.reject_proposal(body.proposal_id)
     except KeyError as exc:
-        raise HTTPException(409, "Предложение уже изменилось или было обработано") from exc
+        raise HTTPException(409, "The proposal changed or was already processed") from exc
 
 
 @router.post("/projects/{project_id}/papers/{slug}/collab/proposal/hunk/accept")
@@ -178,7 +178,7 @@ def accept_collab_proposal_hunk(
     try:
         return session.resolve_proposal_hunk(body.proposal_id, body.hunk_id, accept=True)
     except KeyError as exc:
-        raise HTTPException(409, "Фрагмент уже изменился; проверьте актуальный diff") from exc
+        raise HTTPException(409, "The fragment changed; review the latest diff") from exc
 
 
 @router.post("/projects/{project_id}/papers/{slug}/collab/proposal/hunk/reject")
@@ -191,14 +191,14 @@ def reject_collab_proposal_hunk(
     try:
         return session.resolve_proposal_hunk(body.proposal_id, body.hunk_id, accept=False)
     except KeyError as exc:
-        raise HTTPException(409, "Фрагмент уже изменился; проверьте актуальный diff") from exc
+        raise HTTPException(409, "The fragment changed; review the latest diff") from exc
 
 
 @router.post("/collaboration/editor-buffer")
 def post_editor_buffer(body: EditorBufferBody) -> dict[str, Any]:
     session = get_session_by_tex_path(Path(body.path))
     if session is None:
-        raise HTTPException(404, "Для main.tex нет активной collaborative session")
+        raise HTTPException(404, "main.tex has no active collaborative session")
     session.import_external(body.text, source="cursor-buffer")
     proposal = session.proposal.to_dict() if session.proposal else None
     return {
@@ -215,7 +215,7 @@ def get_editor_buffer_command(
 ) -> dict[str, Any]:
     session = get_session_by_tex_path(Path(path))
     if session is None:
-        raise HTTPException(404, "Для main.tex нет активной collaborative session")
+        raise HTTPException(404, "main.tex has no active collaborative session")
     return {"command": session.latest_editor_command(after)}
 
 
@@ -223,7 +223,7 @@ def get_editor_buffer_command(
 def post_editor_buffer_sync(body: EditorSyncBody) -> dict[str, Any]:
     session = get_session_by_tex_path(Path(body.path))
     if session is None:
-        raise HTTPException(404, "Для main.tex нет активной collaborative session")
+        raise HTTPException(404, "main.tex has no active collaborative session")
     return {"command": session.queue_editor_sync(force=body.force)}
 
 

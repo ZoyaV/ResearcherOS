@@ -1,57 +1,56 @@
-# Бриф онбординга (якорь постановки)
+# Onboarding brief (framing anchor)
 
-Этот файл — **источник правды** для высоких целей проекта после attach.
-При любом написании или правке **заголовков** узлов/карточек агент обязан
-перечитать его и не уходить в пайплайн/отладку.
+This file is the **source of truth** for the project's high-level goals after
+attachment. Before writing or changing node/card **titles**, reread it and avoid
+drifting into pipeline or debugging details.
 
-Не показывать cold reader целиком как «подсказку к репо»; для clarity loop
-использовать только секции ниже как внутренний ANCHOR Writer’а.
+Do not give the complete brief to the cold reader as repository context. During
+the clarity loop, only the Writer uses it as an internal ANCHOR.
 
 ---
 
-## Исследовательская цель / вклад в область
+## Research goal / contribution to the field
 
 >
 
-## Problem (явление)
+## Problem (phenomenon)
 
-> Объект; наблюдаемое явление; условия; фактическое и ожидаемое состояние;
-> почему это важно. Без причины и решения.
-
->
-
-## Cause (объяснительная гипотеза)
-
-> Один механизм; как он порождает problem; при каком исходе от него
-> отказываемся.
+> Object; observed phenomenon; conditions; actual versus expected state; why it
+> matters. Do not include a cause or solution.
 
 >
 
-## Hypothesis (проверяемое следствие или вмешательство)
+## Cause (explanatory hypothesis)
 
-> тип: cause_evidence | remediation
-
-> Для cause_evidence: ожидаемое и противоречащее наблюдение.
-> Для remediation: вмешательство → изменение cause → изменение problem.
+> One mechanism; how it produces the problem; what result would make us abandon it.
 
 >
 
-## Method (протокол проверки — без имён модулей)
+## Hypothesis (testable consequence or intervention)
 
-> Что сравниваем; что контролируем; данные/среда; метрики; заранее заданные
-> поддерживающий и противоречащий исходы.
+> type: cause_evidence | remediation
+
+> For cause_evidence: expected and contradicting observations.
+> For remediation: intervention → change in cause → change in problem.
 
 >
 
-## Program (если есть)
+## Method (evaluation protocol, without module names)
+
+> Comparison; controls; data/environment; metrics; prespecified supporting and
+> contradicting outcomes.
+
+>
+
+## Program (when applicable)
 
 > id:
 > title:
 
-## Границы (что сознательно не берём в корень)
+## Boundaries (deliberately excluded from the root)
 
 >
 
-## Опорная литература (кратко, 3–5)
+## Key literature (brief, 3–5 items)
 
 > - Title (Year) — …

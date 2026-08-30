@@ -762,7 +762,7 @@ def critique_and_revise_related_work(
         else:
             # Heuristic revise: prepend question-answering frame.
             frame = (
-                f"Отвечая на вопрос «{question}»: "
+                f"Answering the question \"{question}\": "
                 if any(ord(ch) > 127 for ch in question)
                 else f"Answering «{question}»: "
             )
@@ -1050,9 +1050,9 @@ def _heuristic_orchestrator(
         cite = ", ".join(nums) if nums else "?"
         basis = _normalize_text(str(cluster.get("similarity_basis") or cluster.get("description") or ""))
         if index == 0:
-            prose_chunks.append(f"В работах [{cite}] предлагают {basis}.")
+            prose_chunks.append(f"Papers [{cite}] propose {basis}.")
         else:
-            prose_chunks.append(f"В отличие от этого в работах [{cite}] делают иначе: {basis}.")
+            prose_chunks.append(f"In contrast, papers [{cite}] take a different approach: {basis}.")
     related_md = (
         f"# Related Work\n\n"
         f"{' '.join(prose_chunks)}\n\n"
@@ -1207,7 +1207,7 @@ def build_report_markdown(
         lines.append(desc or "_No description._")
         if basis and basis != desc:
             lines.append("")
-            lines.append(f"**Почему вместе.** {basis}")
+            lines.append(f"**Why grouped together.** {basis}")
         lines.append("")
         for title in cluster.get("paper_titles") or []:
             finding = findings_by_title.get(title)
@@ -1228,11 +1228,11 @@ def build_report_markdown(
             answer = (finding.answer if finding else "") or ""
             lines.append(f"**TLDR.** {tldr or '—'}")
             lines.append("")
-            lines.append(f"**Ответ на вопрос.** {answer or '—'}")
+            lines.append(f"**Answer to the question.** {answer or '—'}")
             lines.append("")
             quotes = finding.quotes if finding else []
             if quotes:
-                lines.append("**Цитаты.**")
+                lines.append("**Quotes.**")
                 lines.append("")
                 for quote in quotes:
                     text = str(quote.get("text") or "").strip()
@@ -1245,7 +1245,7 @@ def build_report_markdown(
                         lines.append(f"> — {why}")
                     lines.append("")
             else:
-                lines.append("**Цитаты.** _нет_")
+                lines.append("**Quotes.** _none_")
                 lines.append("")
         lines.append("")
     lines.extend(["## Paper assignments", ""])

@@ -38,11 +38,11 @@ MODE = sys.argv[1] if len(sys.argv) > 1 else "session"
 def format_context(items: list) -> str:
     lines = [
         "## KOI done-research queue",
-        f"В очереди {len(items)} карточ(ка/ки/ек) после переноса в done.",
-        "Скилл **koi-done-research**: context → вывод (certainty + importance) → "
+        f"The queue contains {len(items)} card(s) moved to done.",
+        "Use **koi-done-research**: context → conclusion (certainty + importance) → "
         "PATCH research_questions → complete.",
         "",
-        "Очередь:",
+        "Queue:",
     ]
     for item in items:
         lines.append(
@@ -93,8 +93,8 @@ def main() -> None:
             except Exception:
                 pass
         msg = (
-            f"В очереди done-research осталось карточек: {len(items)}. "
-            "Скилл koi-done-research: context → research_questions → complete."
+            f"The done-research queue still contains {len(items)} card(s). "
+            "Use koi-done-research: context → research_questions → complete."
         )
         print(json.dumps({"followup_message": msg}, ensure_ascii=False))
         return

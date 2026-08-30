@@ -329,7 +329,7 @@ def running_kanban_activity(project_id: str) -> list[dict[str, Any]]:
             author = (
                 author_for_card_column(project_id, card.id, "running")
                 or author_for_card_touch(project_id, card.id)
-                or "коллега"
+                or "colleague"
             )
             items.append(
                 {
@@ -370,7 +370,7 @@ def _author_for_question(
     )
     if r.returncode == 0 and r.stdout.strip():
         return r.stdout.strip()
-    return "коллега"
+    return "colleague"
 
 
 def discovery_key(project_id: str, question_id: str, signature: str) -> str:
@@ -452,7 +452,7 @@ def detect_rq_discoveries(
                 project_id,
                 qid,
                 nq,
-                author="коллега",
+                author="colleague",
                 old_ref=old_ref,
                 new_ref=new_ref,
                 git_path=path,
@@ -499,7 +499,7 @@ def detect_filesystem_rq_discoveries(
     default_author = (
         os.environ.get("KOI_DISCOVERY_AUTHOR", "").strip()
         or os.environ.get("USER", "").strip()
-        or "коллега"
+        or "colleague"
     )
     discoveries: list[dict[str, Any]] = []
     for mount in list_mounts():

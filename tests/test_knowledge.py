@@ -102,18 +102,18 @@ def test_hypotheses_markdown_contract(knowledge_project: Project) -> None:
         knowledge_project, {"card-1": "cause/card-1.run.md"}
     )
 
-    assert markdown == """# Гипотезы и результаты
+    assert markdown == """# Hypotheses and results
 
-Автовыжимка по 1 гипотезам (подтверждено: 1, опровергнуто: 0, открыто: 0; инсайтов: 1). Источник — project.md и research.json, пересобирается при каждом сохранении проекта; не править руками.
+Automatically generated summary of 1 hypotheses (supported: 1, refuted: 0, open: 0; insights: 1). Sources: project.md and research.json. Rebuilt whenever the project is saved; do not edit manually.
 
 ## Cause hypothesis
 
-Вердикт: ✔ подтверждена  ·  узел `cause-1`
+Verdict: ✔ supported  ·  node `cause-1`
 
 The suspected mechanism.
 
 - Did the metric improve?
-  - The metric improved by twelve percent.  _(уверенность: definite, важность: 5/5; метод `method-1`, карточка `card-1` → [отчёт](../reports/cause/card-1.run.md))_
+  - The metric improved by twelve percent.  _(certainty: definite, importance: 5/5; method `method-1`, card `card-1` → [report](../reports/cause/card-1.run.md))_
 """
 
 
@@ -132,6 +132,7 @@ def test_summary_contract_includes_docs_insights_and_reports(
         "insights": 1,
         "docs": 1,
         "reports": 1,
+        "pages": 0,
     }
     assert summary["docs"][0]["path"] == "knowledge/hypotheses.md"
     assert summary["docs"][0]["generated"] is True
@@ -156,8 +157,8 @@ def test_write_is_idempotent_and_logs_verdict_changes(
     knowledge.write_project_knowledge(knowledge_project)
 
     updated_log = log_path.read_text(encoding="utf-8")
-    assert "✔ подтверждена → ✗ опровергнута" in updated_log
-    assert updated_log.count("# Журнал базы знаний: Demo project") == 1
+    assert "✔ supported → ✗ refuted" in updated_log
+    assert updated_log.count("# Knowledge base log: Demo project") == 1
 
 
 def test_service_import_remains_compatible() -> None:

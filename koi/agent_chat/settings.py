@@ -20,9 +20,9 @@ def settings_snapshot() -> dict:
     snapshot = {
         "agent_chat_mode": mode,
         "agent_chat_mode_labels": {
-            AGENT_CHAT_MODE_API: "Фоновый агент (Cursor API)",
-            AGENT_CHAT_MODE_CURSOR_IDE: "Агент в Cursor (hooks)",
-            AGENT_CHAT_MODE_CURSOR_INBOX: "Inbox-чат (рекомендуется)",
+            AGENT_CHAT_MODE_API: "Background agent (Cursor API)",
+            AGENT_CHAT_MODE_CURSOR_IDE: "Agent in Cursor (hooks)",
+            AGENT_CHAT_MODE_CURSOR_INBOX: "Inbox chat (recommended)",
         },
         "cursor_api_key_configured": has_cursor_api_key(),
         "cursor_api_key_masked": mask_cursor_api_key(),

@@ -2493,7 +2493,7 @@ a.btn {
   border-color: rgba(61, 232, 255, 0.75);
 }
 
-/* Мастер-отчёты (pages) — иконки над узлом */
+/* Master reports (pages): icons above a node */
 .node-pages-triggers {
   position: absolute;
   left: 50%;
@@ -2735,7 +2735,7 @@ a.btn {
   background: #fff;
 }
 
-/* Подсказка «?» — в углу внутри карточки */
+/* “?” help control in the corner of a card */
 .map-node.has-type-help {
   padding-top: 0.55rem;
   padding-right: 0.65rem;
@@ -2778,7 +2778,7 @@ a.btn {
   color: #fff;
 }
 
-/* Полноэкранная подсказка по типу узла */
+/* Full-screen node-type help */
 .node-type-help-overlay {
   position: fixed;
   inset: 0;
@@ -4442,7 +4442,7 @@ textarea.inline-edit-field {
   color: var(--muted);
 }
 
-/* --------------------- Статья по проекту (NeurIPS PDF) --------------------- */
+/* --------------------- Project paper (NeurIPS PDF) --------------------- */
 
 #paper-modal.modal {
   padding: 0.5rem;
@@ -4790,7 +4790,7 @@ textarea.inline-edit-field {
   width: 100%;
   height: 100%;
   border: none;
-  /* PDF-страницы белые в обеих темах — фон рамки нейтральный. */
+  /* PDF pages are white in both themes, so the frame background stays neutral. */
   background: var(--surface-col);
 }
 
@@ -6154,7 +6154,7 @@ textarea.inline-edit-field {
   box-shadow: none;
 }
 
-/* Подзадачи: - [ ] / - [x] */
+/* Subtasks: - [ ] / - [x] */
 .modal-panel--report .markdown-preview ul:has(.md-task-item) {
   list-style: none;
   padding-left: 0.15em;
@@ -6262,7 +6262,7 @@ textarea.inline-edit-field {
   background: var(--surface-input);
 }
 
-/* Картинки в превью кликабельны — открываются в лайтбоксе */
+/* Preview images are clickable and open in the lightbox. */
 .markdown-preview img:not(.md-media--video) {
   cursor: zoom-in;
   transition: filter 0.15s ease, transform 0.15s ease;
@@ -6272,7 +6272,7 @@ textarea.inline-edit-field {
   filter: brightness(1.06);
 }
 
-/* —— Лайтбокс просмотра картинок —— */
+/* —— Image lightbox —— */
 .image-lightbox {
   position: fixed;
   inset: 0;
@@ -8999,7 +8999,7 @@ textarea.inline-edit-field {
   min-height: 0;
 }
 
-/* Краткий вывод на карточках в Done (вместо плана/заметки) */
+/* Brief conclusion on Done cards, replacing the plan/note */
 .kanban-card .card-desc-display.card-desc-conclusion {
   margin-top: 0.28rem;
   padding: 0.32rem 0.42rem;
@@ -9012,7 +9012,7 @@ textarea.inline-edit-field {
 }
 
 .kanban-card .card-desc-display.card-desc-conclusion:not(.is-empty)::before {
-  content: "Вывод";
+  content: "Conclusion";
   display: block;
   font-size: 0.56rem;
   font-weight: 600;
@@ -9927,7 +9927,7 @@ textarea.inline-edit-field {
   }
 }
 
-/* ---------------- База знаний проекта + вердикты гипотез ---------------- */
+/* ---------------- Project knowledge base + hypothesis verdicts ---------------- */
 
 .node-verdict {
   position: absolute;
@@ -9972,7 +9972,7 @@ textarea.inline-edit-field {
   padding-right: 6px;
 }
 
-/* --- База знаний: дашборд вкладки «База» --- */
+/* --- Knowledge base: Knowledge tab dashboard --- */
 .kb-dash { display: flex; flex-direction: column; gap: 14px; }
 .kb-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .kb-chip { padding: 4px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 600;
@@ -12872,7 +12872,7 @@ button.kb-doc {
 }
 
 .rw-related-output:empty:not(.has-content)::before {
-  content: "Черновик Related Work появится здесь.";
+  content: "The Related Work draft will appear here.";
   color: var(--muted);
   font-style: italic;
   white-space: normal;

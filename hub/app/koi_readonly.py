@@ -194,7 +194,7 @@ def _read_hub_card_report(
     desc = str(card.get("description") or "").strip()
     content = (
         desc
-        or f"_Отчёт ещё не синхронизирован в Hub. Карточка: {card.get('title', card_id)}._"
+        or f"_The report has not been synchronized with Hub yet. Card: {card.get('title', card_id)}._"
     )
     return {
         "content": content,
@@ -242,12 +242,12 @@ def node_types_meta() -> dict[str, Any]:
     return {
         "types": [t.value for t in NodeType],
         "labels": {
-            NodeType.PROBLEM.value: "Проблема",
-            NodeType.CAUSE.value: "Причина",
-            NodeType.CAUSE_EVIDENCE.value: "Доказательство причины",
-            NodeType.REMEDIATION.value: "Гипотеза устранения",
-            NodeType.METHOD.value: "Метод",
-            NodeType.EXPERIMENT.value: "Эксперимент",
+            NodeType.PROBLEM.value: "Problem",
+            NodeType.CAUSE.value: "Cause",
+            NodeType.CAUSE_EVIDENCE.value: "Cause evidence",
+            NodeType.REMEDIATION.value: "Remediation hypothesis",
+            NodeType.METHOD.value: "Method",
+            NodeType.EXPERIMENT.value: "Experiment",
         },
         "kanban_owners": ["method"],
         "allowed_children": {
@@ -267,7 +267,7 @@ def get_laboratory() -> dict[str, str]:
     return {
         "id": "researchos-hub",
         "title": "ResearchOS Hub",
-        "description": "Публичные и сетевые исследовательские проекты",
+        "description": "Public and network research projects",
     }
 
 
@@ -431,7 +431,7 @@ def kanban_running_activity(request: Request, project_id: str) -> dict[str, Any]
         items = cached
     else:
         items = running_activity_for_project(
-            project, author=hub_project.owner_login or "коллега"
+            project, author=hub_project.owner_login or "a colleague"
         )
     return {"ok": True, "project_id": project_id, "items": items}
 
@@ -591,11 +591,11 @@ def knowledge_asset(
     if not raw or ".." in Path(raw).parts:
         raise HTTPException(400, "Invalid path")
     if not raw.startswith("reports/"):
-        raise HTTPException(404, f"Файл не найден: {path}")
+        raise HTTPException(404, f"File not found: {path}")
     rel = raw[len("reports/") :]
     file_path = store.resolve_report_file(hub_project.slug, rel)
     if file_path is None:
-        raise HTTPException(404, f"Файл не найден: {path}")
+        raise HTTPException(404, f"File not found: {path}")
     return FileResponse(file_path)
 
 
@@ -610,11 +610,11 @@ def knowledge_file(
     if not raw or ".." in Path(raw).parts or not raw.endswith(".md"):
         raise HTTPException(400, "Invalid path")
     if not raw.startswith("reports/"):
-        raise HTTPException(404, f"Файл не найден: {path}")
+        raise HTTPException(404, f"File not found: {path}")
     rel = raw[len("reports/") :]
     file_path = store.resolve_report_file(hub_project.slug, rel)
     if file_path is None:
-        raise HTTPException(404, f"Файл не найден: {path}")
+        raise HTTPException(404, f"File not found: {path}")
     return PlainTextResponse(
         file_path.read_text(encoding="utf-8"),
         media_type="text/markdown; charset=utf-8",

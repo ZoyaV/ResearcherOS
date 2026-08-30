@@ -31,7 +31,7 @@ def test_parse_subtasks_inline_and_multiline() -> None:
 
 
 def test_parse_subtasks_last_item_before_section() -> None:
-    text = """## 3. Подзадачи
+    text = """## 3. Subtasks
 
 - [X] Done item
 - [ ] Open item
@@ -48,7 +48,7 @@ def test_parse_live_hints_and_subtasks():
 metrics_dir: runs/plots
 live_note: epoch 3 running
 
-Подзадачи:
+Subtasks:
 - [x] Sync code
 - [ ] Train model
 """

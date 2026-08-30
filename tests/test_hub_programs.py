@@ -43,8 +43,8 @@ def _hub_project(**kwargs):
 def test_projects_grouped_by_program(monkeypatch):
     prog = [
         {
-            "id": "мультимодальное-обучение-с-подкреплением",
-            "title": "Мультимодальное обучение с подкреплением",
+            "id": "multimodal-reinforcement-learning",
+            "title": "Multimodal reinforcement learning",
             "description": "",
         }
     ]
@@ -65,8 +65,8 @@ def test_projects_grouped_by_program(monkeypatch):
         title="bike",
         programs=[
             {
-                "id": "obuchenie-na-platforme-researchos",
-                "title": "Обучение на платформе ResearchOS",
+                "id": "researchos-training",
+                "title": "Training on ResearchOS",
                 "description": "",
             }
         ],
@@ -82,7 +82,7 @@ def test_projects_grouped_by_program(monkeypatch):
                     {
                         "id": "problem",
                         "node_type": "problem",
-                        "title": "Проблема обучения LLM принятию решений в OOD средах",
+                        "title": "Training LLMs to make decisions in OOD environments",
                         "parent_id": None,
                         "description": "",
                         "verdict": "open",
@@ -102,7 +102,7 @@ def test_projects_grouped_by_program(monkeypatch):
                     {
                         "id": "problem",
                         "node_type": "problem",
-                        "title": "Проблема обучения LLM принятию решений в OOD средах",
+                        "title": "Training LLMs to make decisions in OOD environments",
                         "parent_id": None,
                         "description": "",
                         "verdict": "open",
@@ -158,13 +158,13 @@ def test_projects_grouped_by_program(monkeypatch):
 
     grouped = projects_grouped(_Req())
     group_ids = {g["id"] for g in grouped["groups"]}
-    assert "мультимодальное-обучение-с-подкреплением" in group_ids
-    assert "obuchenie-na-platforme-researchos" in group_ids
+    assert "multimodal-reinforcement-learning" in group_ids
+    assert "researchos-training" in group_ids
 
     mm = next(
         g
         for g in grouped["groups"]
-        if g["id"] == "мультимодальное-обучение-с-подкреплением"
+        if g["id"] == "multimodal-reinforcement-learning"
     )
     assert len(mm["composites"]) == 1
     assert mm["composites"][0]["id"] == "llm-ood-decision-making"
@@ -172,6 +172,6 @@ def test_projects_grouped_by_program(monkeypatch):
     assert mm["projects"] == []
 
     bike_group = next(
-        g for g in grouped["groups"] if g["id"] == "obuchenie-na-platforme-researchos"
+        g for g in grouped["groups"] if g["id"] == "researchos-training"
     )
     assert [p["id"] for p in bike_group["projects"]] == ["bicycle-ads-efficiency"]

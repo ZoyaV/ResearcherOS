@@ -1,24 +1,24 @@
-# Формат программ и лаборатории KOI
+# KOI program and laboratory format
 
-Организационный слой **над** KOI-проектами. Дерево гипотез и канбан остаются в `projects/<id>/project.md`.
+An organizational layer **above** KOI projects. The hypothesis tree and kanban board remain in `projects/<id>/project.md`.
 
-## Иерархия
+## Hierarchy
 
 ```
-laboratory.md              — лаборатория (миссия, порядок программ)
-programs/<id>/program.md   — исследовательская программа (список project id)
-projects/<id>/project.md   — KOI-проект (как раньше)
+laboratory.md              — laboratory (mission and program order)
+programs/<id>/program.md   — research program (list of project IDs)
+projects/<id>/project.md   — KOI project (unchanged)
 ```
 
-Проект может входить в несколько программ. Членство задаётся в `program.md` (`projects:`) и/или в frontmatter проекта (`programs:`).
+A project may belong to multiple programs. Membership is defined in `program.md` (`projects:`) and/or in project frontmatter (`programs:`).
 
-## Лаборатория (`laboratory.md`)
+## Laboratory (`laboratory.md`)
 
 ```yaml
 ---
 id: zverl-koi
 title: KOI Laboratory
-description: Краткое описание
+description: Brief description
 format: koi/laboratory/1
 programs:
   - embodied-ai
@@ -26,24 +26,24 @@ programs:
 ---
 ```
 
-Поле `programs` задаёт порядок групп в UI и в глобальном индексе KB.
+The `programs` field defines group order in the UI and global knowledge-base index.
 
-## Программа (`programs/<id>/program.md`)
+## Program (`programs/<id>/program.md`)
 
 ```yaml
 ---
 id: embodied-ai
 title: Embodied AI agents
-description: Краткое описание программы
+description: Brief program description
 format: koi/program/1
 projects:
   - ai-agents-embodied
 ---
 ```
 
-Тело файла (markdown после frontmatter) — стратегический вопрос программы; для людей и агентов.
+The file body (Markdown after frontmatter) states the program's strategic question for humans and agents.
 
-## Опционально в проекте
+## Optional project fields
 
 ```yaml
 ---
@@ -56,16 +56,16 @@ programs:
 
 ## API
 
-| Метод | Путь | Описание |
+| Method | Path | Description |
 |-------|------|----------|
-| GET | `/laboratory` | Метаданные лаборатории |
-| GET | `/programs` | Список программ с project id |
-| POST | `/programs` | Создать программу (`title`, опционально `description`) |
-| GET | `/programs/{id}` | Программа + сводка по проектам |
-| GET | `/projects/grouped` | Проекты, сгруппированные по программам |
-| GET | `/projects` | Список проектов; у каждого поле `programs` |
-| POST | `/projects` | Создать проект; опционально `program_id` — сразу добавить в программу |
+| GET | `/laboratory` | Laboratory metadata |
+| GET | `/programs` | Programs with project IDs |
+| POST | `/programs` | Create a program (`title`, optional `description`) |
+| GET | `/programs/{id}` | Program and project summary |
+| GET | `/projects/grouped` | Projects grouped by program |
+| GET | `/projects` | Project list; each item has a `programs` field |
+| POST | `/projects` | Create a project; optional `program_id` adds it to a program immediately |
 
 ## KB
 
-Агрегированные показатели программ доступны через laboratory API и интерфейс ResearchOS.
+Aggregated program metrics are available through the laboratory API and ResearchOS interface.

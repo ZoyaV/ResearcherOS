@@ -42,7 +42,7 @@ def _resolve_project_markdown_path(project_id: str, path: str) -> Path:
         ):
             return doc_target
 
-    raise HTTPException(status_code=404, detail=f"Файл не найден: {path}")
+    raise HTTPException(status_code=404, detail=f"File not found: {path}")
 
 
 def _resolve_project_asset_path(project_id: str, path: str) -> Path:
@@ -63,7 +63,7 @@ def _resolve_project_asset_path(project_id: str, path: str) -> Path:
         if str(doc_target).startswith(repo_prefix) and doc_target.is_file():
             return doc_target
 
-    raise HTTPException(status_code=404, detail=f"Файл не найден: {path}")
+    raise HTTPException(status_code=404, detail=f"File not found: {path}")
 
 
 @router.get("/projects/{project_id}/knowledge")
@@ -96,8 +96,8 @@ def get_project_knowledge_log(project_id: str):
     get_project(project_id, sync_reports=False)
     path = knowledge_log_path(project_id)
     text = path.read_text(encoding="utf-8") if path.exists() else (
-        "# Журнал базы знаний\n\n_Записей пока нет — журнал наполняется автоматически "
-        "при сохранении проекта (вердикты, инсайты, новые документы)._\n"
+        "# Knowledge base log\n\n_No entries yet. The log is populated automatically "
+        "when the project is saved (verdicts, insights, and new documents)._\n"
     )
     return PlainTextResponse(text, media_type="text/markdown; charset=utf-8")
 

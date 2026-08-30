@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Проектирование эксперимента · ResearcherOS</title>
-  <meta name="description" content="Дожать постановку эксперимента до ясного плана — один вопрос за ход, до любого запуска." />
+  <title>Experiment design · ResearcherOS</title>
+  <meta name="description" content="Turn an experiment idea into a clear plan, one question at a time, before any run." />
   <script>
     (function () {
       var t = localStorage.getItem("koi-theme");
@@ -20,16 +20,15 @@
 <body class="page-detail">
   <header class="site-header site-header--detail">
     <div class="site-header__inner">
-      <a class="brand" href="../index.html" aria-label="ResearcherOS — на главную">
+      <a class="brand" href="../index.html" aria-label="ResearcherOS — home">
         <img class="brand__logo" src="../assets/logo.png?v=6" alt="ResearcherOS" height="27" />
       </a>
-      <nav class="nav" aria-label="Основное">
+      <nav class="nav" aria-label="Main navigation">
         <a href="../index.html#about">About</a>
         <a href="../index.html#start">How to start</a>
         <a href="../index.html#skills" aria-current="page">Skills</a>
-        <a href="../index.html#lessons">Lessons</a>
         <a href="https://github.com/ZoyaV/ResearcherOS">GitHub</a>
-        <button type="button" id="btn-theme" class="btn-theme" title="Тёмная тема" aria-label="Тёмная тема">
+        <button type="button" id="btn-theme" class="btn-theme" title="Dark theme" aria-label="Dark theme">
           <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"/><path fill="currentColor" d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" stroke-width="2"/></svg>
           <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 14.5A8.5 8.5 0 0 1 9.5 3 7 7 0 1 0 21 14.5z"/></svg>
         </button>
@@ -38,53 +37,53 @@
   </header>
   <main class="article">
     <a class="back-link" href="../index.html#skills">← Skills</a>
-    <h1 class="article__title">Проектирование эксперимента</h1>
+    <h1 class="article__title">Experiment design</h1>
     <p class="skill-id">koi-grill-experiment</p>
     <div class="article__meta">
-      <span class="chip">Новая карточка / постановка</span>
+      <span class="chip">A new card or experiment specification</span>
     </div>
-    <p class="article__lead">Дожать постановку эксперимента до ясного плана — один вопрос за ход, до любого запуска.</p>
+    <p class="article__lead">Turn an experiment idea into a clear plan, one question at a time, before any run.</p>
 
-    <h2>Что делает</h2>
-    <p>Это планирование, а не прогон. AI-помощник ведёт интервью: один вопрос за ход и рекомендация ответа. Последовательно закрывает утверждение, метрику и правило вердикта, границы, реализацию, таблицы и графики, подзадачи и критерий «готово». В итоге — черновик постановки в отчёте и карточка в бэклоге доски.</p>
+    <h2>What it does</h2>
+    <p>This is planning, not execution. The AI assistant interviews you with one question and a recommended answer per turn. It covers the claim, metric and verdict rule, boundaries, implementation, tables and charts, subtasks, and definition of done. The result is a draft specification in the report and a backlog card.</p>
 
-    <h2>Зачем</h2>
-    <p>Чтобы не запускать эксперимент с размытой гипотезой и неочевидным критерием успеха. Сначала общее понимание постановки — потом код и прогон.</p>
+    <h2>Why use it</h2>
+    <p>Prevent experiments from starting with a vague hypothesis or ambiguous success criterion.</p>
 
-    <h2>Когда вызывать</h2>
+    <h2>When to use it</h2>
     <ul class="skill-scenarios">
-      <li>Нужна новая карточка эксперимента, а есть только общая идея</li>
-      <li>Постановка сырая: нет метрики, подзадач или порога «поддержано / опровергнуто»</li>
-      <li>Перед написанием отчёта нужно зафиксировать решения вслух, по одному вопросу</li>
+      <li>You have a broad idea but need an experiment card</li>
+      <li>The specification lacks a metric, subtasks, or a verdict threshold</li>
+      <li>You need to record decisions one question at a time</li>
     </ul>
 
-    <h2>Как вызвать</h2>
-    <p>Скажите AI-помощнику спроектировать или «прогреть» эксперимент для конкретного метода. Попросите один вопрос за ход. Не просите сразу запускать — для прогона есть сценарий выполнения карточки.</p>
+    <h2>How to invoke it</h2>
+    <p>Ask the AI assistant to design or grill an experiment for a specific method, one question per turn. Use the separate card-execution workflow for the run itself.</p>
     <div class="example">
-      <p>Пример фразы AI-помощнику в редакторе:</p>
-      <pre><code>Спроектируй новый эксперимент для метода &lt;method&gt;:
-прогрей постановку, один вопрос за ход, с рекомендацией на каждом шаге.</code></pre>
+      <p>Example request for the AI assistant in your editor:</p>
+      <pre><code>Design a new experiment for method &lt;method&gt;:
+grill the specification one question at a time and recommend an answer at every step.</code></pre>
     </div>
 
-    <h2>Схема работы</h2>
-    <p class="diagram-caption">Схема — дерево тем интервью по порядку зависимостей. Сначала контекст и утверждение, затем метрика и границы, потом реализация и визуализации, в конце подзадачи и карточка в бэклоге. Пропуск ветки — только если вы явно сказали «это не нужно».</p>
+    <h2>Workflow diagram</h2>
+    <p class="diagram-caption">Topics follow their dependencies: context and claim, metrics and boundaries, implementation and visualizations, then subtasks and a backlog card. A branch is skipped only when you explicitly say it is unnecessary.</p>
     <div class="graph">
       <pre class="mermaid">
 flowchart TD
-  A[Контекст проекта] --> B[Утверждение и зачем]
-  B --> C[Метрика и правило вердикта]
-  C --> D[Границы и зависимости]
-  D --> E[Данные, модель, команда запуска]
-  E --> F[Таблицы и графики]
-  F --> G[Подзадачи и критерий готово]
-  G --> H[Карточка в бэклоге]
-  H --> I[Черновик постановки в отчёте]
+  A[Project context] --> B[Claim and motivation]
+  B --> C[Metric and verdict rule]
+  C --> D[Boundaries and dependencies]
+  D --> E[Data, model, launch command]
+  E --> F[Tables and charts]
+  F --> G[Subtasks and definition of done]
+  G --> H[Backlog card]
+  H --> I[Draft report specification]
       </pre>
     </div>
 
     <div class="article__actions">
-      <a class="btn btn-ghost" href="https://github.com/ZoyaV/ResearcherOS/tree/main/agents/skills/koi-grill-experiment">Исходник на GitHub</a>
-      <a class="btn btn-primary" href="../index.html#skills">К списку Skills</a>
+      <a class="btn btn-ghost" href="https://github.com/ZoyaV/ResearcherOS/tree/main/agents/skills/koi-grill-experiment">Source on GitHub</a>
+      <a class="btn btn-primary" href="../index.html#skills">Back to Skills</a>
     </div>
   </main>
   <footer class="site-footer">

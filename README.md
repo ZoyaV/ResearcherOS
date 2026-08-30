@@ -142,11 +142,11 @@ Then restart: `./scripts/koi-serve.sh restart`.
 Place the code repo next to `ReseachOS/`, then in Cursor / Claude Code:
 
 ```
-Подключи ../my_experiment к ResearcherOS.
+Connect ../my_experiment to ResearcherOS.
 
-Следуй agents/skills/koi-project-onboard/SKILL.md.
-В конце: python -m koi.projects.install_cli install my_experiment
-(материалы → tree/my_experiment/koi-structure на ветке koi/research).
+Follow agents/skills/koi-project-onboard/SKILL.md.
+At the end, run: python -m koi.projects.install_cli install my_experiment
+(materials → tree/my_experiment/koi-structure on the koi/research branch).
 ```
 
 Ongoing sync (push/pull research branch):

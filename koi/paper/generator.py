@@ -1,23 +1,23 @@
-"""Генерация научной статьи (NeurIPS preprint, LaTeX → PDF) по графу исследования.
+"""Generate a research paper (NeurIPS preprint, LaTeX → PDF) from the research graph.
 
-Источник данных — всё накопленное в проекте: дерево гипотез (project.md),
-выводы по экспериментам (research.json), отчёты карточек (reports/**.md и
-**.run.md), графики из reports/**/assets/*.png|jpg, курируемые документы
-knowledge/*.md.
+The source data includes everything accumulated in the project: the hypothesis
+tree (project.md), experiment findings (research.json), card reports
+(reports/**.md and **.run.md), plots from reports/**/assets/*.png|jpg, and
+curated documents in knowledge/*.md.
 
-Сценарий в режиме **cursor_inbox**: кнопка в UI → очередь `.run/paper-queue.json` →
-`PAPER_WAKE` → агент в чате **ResearchOS Paper Inbox** → `answer` → сборка PDF.
+Workflow in **cursor_inbox** mode: UI button → `.run/paper-queue.json` queue →
+`PAPER_WAKE` → agent in the **ResearchOS Paper Inbox** chat → `answer` → PDF build.
 
-Сценарий в других режимах: кнопка → POST /projects/{id}/paper → фоновая задача:
-  1. собрать контекст проекта;
-  2. попросить LLM-агента (koi.adapters.agent_backends.run_agent) написать тело статьи
-     на английском в LaTeX;
-  3. собрать main.tex (фиксированная преамбула + тело), скомпилировать PDF
-     (tectonic из .tools/ или системный tectonic/pdflatex);
-  4. при сбое агента или компиляции — детерминированный fallback, который
-     верстает статью напрямую из структурированных данных.
+Workflow in other modes: button → POST /projects/{id}/paper → background task:
+  1. collect project context;
+  2. ask an LLM agent (koi.adapters.agent_backends.run_agent) to write the paper
+     body in English LaTeX;
+  3. assemble main.tex (fixed preamble + body) and compile the PDF using tectonic
+     from .tools/ or a system tectonic/pdflatex installation;
+  4. if the agent or compilation fails, use a deterministic fallback that lays
+     out the paper directly from structured data.
 
-Результат: ``paper/`` (legacy slug ``default``) или ``paper/<slug>/`` с
+Result: ``paper/`` (legacy slug ``default``) or ``paper/<slug>/`` containing
 ``{main.tex, paper.pdf, figures/, status.json, paper.json}``.
 """
 
@@ -66,7 +66,7 @@ FIGURE_EXTS = (".png", ".jpg", ".jpeg")
 LATEX_MARKER = "===LATEX==="
 
 PREAMBLE = r"""\documentclass{article}
-% numbers — иначе natbib (автор-год) несовместим с plain thebibliography
+% Use numbers because author-year natbib is incompatible with plain thebibliography.
 \PassOptionsToPackage{numbers}{natbib}
 \usepackage[preprint]{neurips_2025}
 \usepackage{iftex}
@@ -88,7 +88,7 @@ PREAMBLE = r"""\documentclass{article}
 
 
 # ---------------------------------------------------------------------------
-# Пути и статус
+# Paths and status
 
 
 def _status_path(project_id: str, paper_slug: str = DEFAULT_PAPER_SLUG) -> Path:
@@ -125,7 +125,7 @@ def _is_running(status: dict) -> bool:
 
 
 def paper_status(project_id: str, paper_slug: str = DEFAULT_PAPER_SLUG) -> dict:
-    """Состояние статьи: status.json + наличие артефактов."""
+    """Return paper state from status.json and artifact availability."""
     papers = list_project_papers(project_id)
     match = next((item for item in papers if item["slug"] == paper_slug), None)
     if match is not None:
@@ -157,12 +157,12 @@ def paper_status(project_id: str, paper_slug: str = DEFAULT_PAPER_SLUG) -> dict:
     status = _read_status_file(project_id, paper_slug)
     if not _is_running(status) and out.get("state") == "running":
         out["state"] = "error"
-        out["error"] = out.get("error") or "Генерация прервана (устаревший running-статус)."
+        out["error"] = out.get("error") or "Generation was interrupted (stale running status)."
     return out
 
 
 def start_paper_generation(project_id: str, paper_slug: str = DEFAULT_PAPER_SLUG) -> bool:
-    """Пометить генерацию запущенной. False — уже идёт другая генерация."""
+    """Mark generation as running. Return False if another run is active."""
     if _is_running(_read_status_file(project_id, paper_slug)):
         return False
     _write_status(
@@ -181,7 +181,7 @@ def start_paper_generation(project_id: str, paper_slug: str = DEFAULT_PAPER_SLUG
 
 
 # ---------------------------------------------------------------------------
-# Сбор контекста проекта
+# Project context collection
 
 
 def _slug(text: str, max_len: int = 60) -> str:
@@ -194,7 +194,7 @@ def _children(project: Project, parent_id: Optional[str]):
 
 
 def _outline(project: Project) -> str:
-    """Текстовое дерево гипотез с типами, вердиктами и описаниями."""
+    """Render a text hypothesis tree with types, verdicts, and descriptions."""
     lines: list[str] = []
 
     def walk(parent_id: Optional[str], depth: int) -> None:
@@ -246,7 +246,7 @@ def _cards_text(project: Project) -> str:
 
 
 def _report_text_for_card(project_id: str, relative: str) -> str:
-    """Содержимое отчёта карточки: сохранённый .md, иначе рабочий .run.md."""
+    """Return a card report from the saved .md and/or working .run.md file."""
     path = reports_dir(project_id) / relative
     texts: list[str] = []
     if path.is_file():
@@ -311,7 +311,7 @@ def _collect_knowledge(project_id: str) -> list[dict]:
 
 
 def _collect_figures(project: Project, dest: Path) -> list[dict]:
-    """Скопировать png/jpg из reports/**/assets в paper/figures, вернуть список."""
+    """Copy PNG/JPEG files from reports/**/assets to paper/figures and list them."""
     rdir = reports_dir(project.id)
     dest.mkdir(parents=True, exist_ok=True)
     for old in dest.iterdir():
@@ -362,7 +362,7 @@ def collect_paper_context(
 
 
 # ---------------------------------------------------------------------------
-# LaTeX-сборка
+# LaTeX assembly
 
 
 _LATEX_ESCAPES = {
@@ -411,7 +411,7 @@ def _figures_fallback_latex(figures: list[dict], limit: int = 8) -> str:
 
 
 def build_fallback_body(context: dict) -> str:
-    """Детерминированная статья напрямую из данных графа (без LLM)."""
+    """Build a deterministic paper directly from graph data without an LLM."""
     esc = latex_escape
     parts: list[str] = []
 
@@ -457,7 +457,7 @@ def build_fallback_body(context: dict) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Агентная генерация
+# Agent generation
 
 
 def _figures_prompt_block(figures: list[dict]) -> str:
@@ -544,7 +544,7 @@ Description: {context['description']}
 
 
 def _parse_agent_response(text: str) -> Optional[tuple[str, str]]:
-    """Достать (title, latex_body) из ответа агента; None — формат не распознан."""
+    """Extract (title, latex_body) from an agent response, or None if unrecognized."""
     if LATEX_MARKER not in text:
         return None
     head, _, body = text.partition(LATEX_MARKER)
@@ -556,7 +556,7 @@ def _parse_agent_response(text: str) -> Optional[tuple[str, str]]:
     body = body.strip()
     body = re.sub(r"^```(?:latex|tex)?\s*", "", body)
     body = re.sub(r"\s*```$", "", body)
-    # Подстраховка: вырезать всё вне document, если агент прислал целый файл
+    # Defensive cleanup: discard everything outside document if the agent sent a full file.
     if "\\begin{document}" in body:
         body = body.split("\\begin{document}", 1)[1]
     if "\\end{document}" in body:
@@ -568,7 +568,7 @@ def _parse_agent_response(text: str) -> Optional[tuple[str, str]]:
 
 
 # ---------------------------------------------------------------------------
-# Компиляция
+# Compilation
 
 
 def _compile_log_tail(log_parts: list[str]) -> str:
@@ -618,14 +618,14 @@ def _finalize_pdf(tex_dir: Path, engine: str, log_parts: list[str]) -> tuple[boo
         if produced != target:
             shutil.copy2(produced, target)
         return True, engine, "\n".join(log_parts)[-1500:]
-    return False, engine, "Компиляция завершилась без PDF.\n" + "\n".join(log_parts)[-2000:]
+    return False, engine, "Compilation completed without producing a PDF.\n" + "\n".join(log_parts)[-2000:]
 
 
 def _compile_pdflatex_bibtex(tex_dir: Path) -> tuple[bool, str, str]:
     pdflatex = shutil.which("pdflatex")
     bibtex = shutil.which("bibtex")
     if not pdflatex:
-        return False, "", "Не найден pdflatex в PATH."
+        return False, "", "pdflatex was not found in PATH."
 
     base = Path(TEX_NAME).stem
     logs: list[str] = []
@@ -675,7 +675,7 @@ def _compile_pdflatex_bibtex(tex_dir: Path) -> tuple[bool, str, str]:
 
 
 def _find_engine() -> Optional[tuple[str, str]]:
-    """(name, binary). tectonic из .tools предпочтителен, затем PATH, затем pdflatex."""
+    """Return (name, binary), preferring .tools tectonic, then PATH, then pdflatex."""
     env_bin = os.environ.get("KOI_TECTONIC_BIN", "").strip()
     if env_bin and Path(env_bin).is_file():
         return "tectonic", env_bin
@@ -692,12 +692,12 @@ def _find_engine() -> Optional[tuple[str, str]]:
 
 
 def _compile_tex(tex_dir: Path) -> tuple[bool, str, str]:
-    """Скомпилировать main.tex → paper.pdf. Возвращает (ok, engine, log_tail)."""
+    """Compile main.tex → paper.pdf and return (ok, engine, log_tail)."""
     engine = _find_engine()
     if engine is None:
         return False, "", (
-            "Не найден LaTeX-движок: положите tectonic в .tools/tectonic, "
-            "задайте KOI_TECTONIC_BIN или установите pdflatex."
+            "No LaTeX engine was found: place tectonic in .tools/tectonic, "
+            "set KOI_TECTONIC_BIN, or install pdflatex."
         )
     name, bin_path = engine
     if name == "tectonic":
@@ -717,7 +717,7 @@ def _compile_tex(tex_dir: Path) -> tuple[bool, str, str]:
                 timeout=COMPILE_TIMEOUT_S,
             )
         except (OSError, subprocess.TimeoutExpired) as e:
-            return False, name, f"Компиляция не запустилась/прервана: {e}"
+            return False, name, f"Compilation could not start or was interrupted: {e}"
         log = (proc.stdout or "") + "\n" + (proc.stderr or "")
         if proc.returncode != 0:
             return False, name, _compile_log_tail([log])
@@ -735,7 +735,7 @@ def compile_paper_slot(slot_dir: Path) -> tuple[bool, str, str]:
 
 
 # ---------------------------------------------------------------------------
-# Оркестратор
+# Orchestration
 
 
 def _prepare_paper_dir(
@@ -754,7 +754,7 @@ def build_paper_from_agent_text(
     backend: str | None = None,
     paper_slug: str = DEFAULT_PAPER_SLUG,
 ) -> dict:
-    """Собрать main.tex и PDF из ответа агента (Paper Inbox или headless)."""
+    """Build main.tex and a PDF from an agent response (Paper Inbox or headless)."""
     project = load_project(project_id, sync_reports=False)
     if project is None:
         raise KeyError(f"Project not found: {project_id}")
@@ -790,9 +790,9 @@ def build_paper_from_agent_text(
         if mode == "agent":
             agent_compile_log = log_tail[-1500:]
 
-    error = "Не удалось скомпилировать статью."
+    error = "The paper could not be compiled."
     if parsed is None:
-        error += " Ответ агента не распознан (нужны TITLE: и ===LATEX===)."
+        error += " The agent response was not recognized (TITLE: and ===LATEX=== are required)."
     _write_status(
         project_id,
         paper_slug=paper_slug,
@@ -807,16 +807,16 @@ def build_paper_from_agent_text(
 
 
 def generate_paper(project_id: str, paper_slug: str = DEFAULT_PAPER_SLUG) -> dict:
-    """Полный цикл генерации. Вызывается из фоновой задачи API."""
+    """Run the full generation cycle from the API background task."""
     try:
         return _generate_paper_inner(project_id, paper_slug=paper_slug)
-    except Exception as e:  # noqa: BLE001 — фоновую задачу нельзя ронять молча
+    except Exception as e:  # noqa: BLE001 — a background task must not fail silently
         return _write_status(
             project_id,
             paper_slug=paper_slug,
             state="error",
             finished_at=_now_iso(),
-            error=f"Внутренняя ошибка генерации: {e}",
+            error=f"Internal generation error: {e}",
         )
 
 
@@ -832,7 +832,7 @@ def _generate_paper_inner(
             paper_slug=paper_slug,
             state="error",
             finished_at=_now_iso(),
-            error="Проект не найден",
+            error="Project not found",
         )
 
     d = _prepare_paper_dir(project_id, paper_slug)
@@ -866,7 +866,7 @@ def _generate_paper_inner(
             finished_at=_now_iso(),
             backend=None,
             mode="fallback",
-            error="Агент-бэкенд недоступен, fallback-вёрстка не собралась.",
+            error="The agent backend is unavailable and the fallback layout could not be built.",
             log_tail=log_tail[-2000:],
         )
 

@@ -112,7 +112,7 @@ def post_project_paper(
     slug: str | None = Query(default=None),
     body: PaperGenerateBody | None = None,
 ) -> dict:
-    """Сгенерировать (или перегенерировать) статью NeurIPS по графу исследования."""
+    """Generate or regenerate a NeurIPS paper from the research graph."""
     parse_project(project_id)
     paper_slug = normalize_paper_slug((body.slug if body else None) or slug)
     try:
@@ -159,10 +159,10 @@ def get_project_paper_pdf_legacy(
     parse_project(project_id)
     normalized, slot_dir = _resolve_slot(project_id, slug)
     if slot_dir is None:
-        raise HTTPException(404, "PDF статьи ещё не сгенерирован")
+        raise HTTPException(404, "The paper PDF has not been generated yet")
     path = find_pdf(slot_dir)
     if path is None or not path.is_file():
-        raise HTTPException(404, "PDF статьи ещё не сгенерирован")
+        raise HTTPException(404, "The paper PDF has not been generated yet")
     return FileResponse(
         path,
         media_type="application/pdf",
@@ -179,10 +179,10 @@ def get_project_paper_pdf(project_id: str, slug: str) -> FileResponse:
     normalized = normalize_paper_slug(slug)
     slot_dir = get_paper_slot_dir(project_id, normalized)
     if slot_dir is None:
-        raise HTTPException(404, f"Статья «{normalized}» не найдена")
+        raise HTTPException(404, f"Paper \"{normalized}\" not found")
     path = find_pdf(slot_dir)
     if path is None or not path.is_file():
-        raise HTTPException(404, "PDF статьи ещё не сгенерирован")
+        raise HTTPException(404, "The paper PDF has not been generated yet")
     return FileResponse(
         path,
         media_type="application/pdf",
@@ -201,10 +201,10 @@ def get_project_paper_tex_legacy(
     parse_project(project_id)
     normalized, slot_dir = _resolve_slot(project_id, slug)
     if slot_dir is None:
-        raise HTTPException(404, "main.tex ещё не сгенерирован")
+        raise HTTPException(404, "main.tex has not been generated yet")
     path = slot_dir / TEX_NAME
     if not path.is_file():
-        raise HTTPException(404, "main.tex ещё не сгенерирован")
+        raise HTTPException(404, "main.tex has not been generated yet")
     return PlainTextResponse(
         path.read_text(encoding="utf-8"),
         media_type="text/plain; charset=utf-8",
@@ -217,7 +217,7 @@ def get_project_paper_tex_meta(project_id: str, slug: str) -> dict:
     _, slot_dir = _require_paper_slot(project_id, slug)
     path = slot_dir / TEX_NAME
     if not path.is_file():
-        raise HTTPException(404, "main.tex ещё не сгенерирован")
+        raise HTTPException(404, "main.tex has not been generated yet")
     stat = path.stat()
     return {"tex_exists": True, "tex_mtime": stat.st_mtime, "size": stat.st_size}
 
@@ -227,7 +227,7 @@ def get_project_paper_versions(project_id: str, slug: str) -> dict:
     normalized, slot_dir = _require_paper_slot(project_id, slug)
     path = slot_dir / TEX_NAME
     if not path.is_file():
-        raise HTTPException(404, "main.tex ещё не сгенерирован")
+        raise HTTPException(404, "main.tex has not been generated yet")
     return list_paper_versions(project_id, path)
 
 
@@ -236,7 +236,7 @@ def post_project_paper_versions_pull(project_id: str, slug: str) -> dict:
     normalized, slot_dir = _require_paper_slot(project_id, slug)
     path = slot_dir / TEX_NAME
     if not path.is_file():
-        raise HTTPException(404, "main.tex ещё не сгенерирован")
+        raise HTTPException(404, "main.tex has not been generated yet")
     try:
         versions = pull_paper_versions(project_id, path)
     except RuntimeError as exc:
@@ -252,7 +252,7 @@ def post_project_paper_versions_push(project_id: str, slug: str) -> dict:
     normalized, slot_dir = _require_paper_slot(project_id, slug)
     path = slot_dir / TEX_NAME
     if not path.is_file():
-        raise HTTPException(404, "main.tex ещё не сгенерирован")
+        raise HTTPException(404, "main.tex has not been generated yet")
     try:
         return commit_and_push_paper(project_id, path, slug=normalized)
     except RuntimeError as exc:
@@ -269,7 +269,7 @@ def get_project_paper_tex(
     normalized = normalize_paper_slug(slug)
     slot_dir = get_paper_slot_dir(project_id, normalized)
     if slot_dir is None:
-        raise HTTPException(404, f"Статья «{normalized}» не найдена")
+        raise HTTPException(404, f"Paper \"{normalized}\" not found")
     path = slot_dir / TEX_NAME
     if at:
         try:
@@ -284,7 +284,7 @@ def get_project_paper_tex(
             headers={"Cache-Control": "no-store"},
         )
     if not path.is_file():
-        raise HTTPException(404, "main.tex ещё не сгенерирован")
+        raise HTTPException(404, "main.tex has not been generated yet")
     from koi.paper.collaboration.session import live_text
 
     text = live_text(project_id, normalized)
@@ -313,7 +313,7 @@ def put_project_paper_tex(project_id: str, slug: str, body: PaperTexUpdateBody) 
         if imported.conflict:
             raise HTTPException(
                 409,
-                imported.reason or "Не удалось применить изменение поверх collaborative session",
+                imported.reason or "Could not apply the change over the collaborative session",
             )
         flushed = session.flush()
         return {"ok": True, "tex_mtime": flushed.get("tex_mtime") or path.stat().st_mtime}
@@ -336,10 +336,10 @@ def post_project_paper_compile(project_id: str, slug: str) -> dict:
     _, slot_dir = _require_paper_slot(project_id, slug)
     tex_path = slot_dir / TEX_NAME
     if not tex_path.is_file():
-        raise HTTPException(404, "main.tex ещё не сгенерирован")
+        raise HTTPException(404, "main.tex has not been generated yet")
     ok, engine, log_tail = compile_paper_slot(slot_dir)
     if not ok:
-        raise HTTPException(422, log_tail or "Не удалось собрать PDF")
+        raise HTTPException(422, log_tail or "Could not build the PDF")
     pdf_path = find_pdf(slot_dir)
     pdf_mtime = (
         datetime.fromtimestamp(pdf_path.stat().st_mtime, tz=timezone.utc).isoformat(
@@ -363,7 +363,7 @@ def _require_paper_slot(project_id: str, slug: str) -> tuple[str, Path]:
     normalized = normalize_paper_slug(slug)
     slot_dir = get_paper_slot_dir(project_id, normalized)
     if slot_dir is None:
-        raise HTTPException(404, f"Статья «{normalized}» не найдена")
+        raise HTTPException(404, f"Paper \"{normalized}\" not found")
     return normalized, slot_dir
 
 

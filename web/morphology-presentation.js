@@ -2,29 +2,29 @@ import { KoiApi } from "./api.js?v=20260821e";
 
 const COPY = {
   ru: {
-    presentationTitle: "Презентация статьи",
-    sources: "Источники",
-    showSources: "Показать источники",
-    hideSources: "Скрыть источники",
-    fullscreen: "На весь экран",
-    previous: "Предыдущий слайд",
-    next: "Следующий слайд",
-    close: "Закрыть презентацию",
-    language: "Язык презентации",
-    noQuotes: "Для этого слайда нет дословных цитат.",
-    noSource: "без якоря",
-    figure: "Рисунок из статьи",
-    table: "Таблица из статьи",
-    math: "Формула из статьи",
-    algorithm: "Шаги метода",
-    assemble: "Собрать презентацию",
-    open: "Открыть презентацию",
-    copyPrompt: "Показать задание презентации",
-    staged: "Презентация ещё собирается. Вставьте текст задания в чат Cursor.",
-    invalid: "Проверка не приняла слайды. Соберите презентацию заново.",
-    missing: "В этом прогоне нет разбора формул. Откройте более новый прогон морфологии.",
-    copied: "Текст задания скопирован.",
-    shown: "Текст задания ниже. Скопируйте его вручную, если буфер обмена пуст.",
+    presentationTitle: "Paper presentation",
+    sources: "Sources",
+    showSources: "Show sources",
+    hideSources: "Hide sources",
+    fullscreen: "Full screen",
+    previous: "Previous slide",
+    next: "Next slide",
+    close: "Close presentation",
+    language: "Presentation language",
+    noQuotes: "This slide has no verbatim quotations.",
+    noSource: "no anchor",
+    figure: "Figure from the paper",
+    table: "Table from the paper",
+    math: "Formula from the paper",
+    algorithm: "Method steps",
+    assemble: "Build presentation",
+    open: "Open presentation",
+    copyPrompt: "Show presentation prompt",
+    staged: "The presentation is still being assembled. Paste the prompt into Cursor chat.",
+    invalid: "Validation rejected the slides. Build the presentation again.",
+    missing: "This run has no formula analysis. Open a newer morphology run.",
+    copied: "Prompt copied.",
+    shown: "The prompt is shown below. Copy it manually if the clipboard is empty.",
   },
   en: {
     presentationTitle: "Article presentation",
@@ -335,7 +335,7 @@ export function initPresentation({
     if (copy && text) copied = await writeClipboard(text);
     if (promptHint) {
       promptHint.textContent = copied
-        ? "Текст скопирован. Вставьте его в чат Cursor."
+        ? "Text copied. Paste it into Cursor chat."
         : copyText.shown;
     }
     setStatus?.(copied ? copyText.copied : copyText.shown, copied ? "ok" : "warn");
@@ -479,7 +479,7 @@ export function initPresentation({
       void refreshLatest().then((run) => {
         if (run?.status === "ready") {
           stopPolling();
-          setStatus?.(COPY.ru.copied.replace("Текст задания скопирован. ", ""), "ok");
+          setStatus?.(COPY.ru.copied.replace("Prompt copied. ", ""), "ok");
         } else if (run?.status === "invalid") {
           stopPolling();
           setStatus?.(COPY.ru.invalid, "error");

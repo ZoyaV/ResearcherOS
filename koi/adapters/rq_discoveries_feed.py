@@ -52,7 +52,7 @@ def append_discoveries(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
             "question_id": str(raw.get("question_id") or "").strip(),
             "question": str(raw.get("question") or "").strip(),
             "answer": str(raw.get("answer") or "").strip(),
-            "author": str(raw.get("author") or "коллега").strip() or "коллега",
+            "author": str(raw.get("author") or "colleague").strip() or "colleague",
             "signature": str(raw.get("signature") or "").strip(),
             "discovered_at": now,
         }

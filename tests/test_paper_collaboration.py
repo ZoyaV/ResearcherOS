@@ -61,9 +61,9 @@ def test_pycrdt_documents_converge() -> None:
 
 
 def test_pycrdt_server_edits_use_python_offsets_after_unicode() -> None:
-    doc = CollabDocument("кккABC")
-    assert doc.apply_edit(3, 3, "XYZ") == "кккXYZ"
-    expected = "% 11кккккккцца\n\nHe\n\nHello!\n"
+    doc = CollabDocument("xxxABC")
+    assert doc.apply_edit(3, 3, "XYZ") == "xxxXYZ"
+    expected = "% 11xxxxxxxxx\n\nHe\n\nHello!\n"
     assert doc.replace_with(expected)
     assert doc.to_string() == expected
 

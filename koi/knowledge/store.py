@@ -193,53 +193,53 @@ def _diff_entries(old: dict, new: dict, project: Project) -> list[str]:
             if current["verdict"] != Verdict.OPEN.value:
                 mark = VERDICT_MARK[Verdict(current["verdict"])]
                 entries.append(
-                    f"- Вердикт «{current['title']}» (`{cause_id}`): {mark}"
+                    f"- Verdict for \"{current['title']}\" (`{cause_id}`): {mark}"
                 )
         elif previous["verdict"] != current["verdict"]:
             old_mark = VERDICT_MARK[Verdict(previous["verdict"])]
             new_mark = VERDICT_MARK[Verdict(current["verdict"])]
             entries.append(
-                f"- Вердикт «{current['title']}» (`{cause_id}`): "
+                f"- Verdict for \"{current['title']}\" (`{cause_id}`): "
                 f"{old_mark} → {new_mark}"
             )
 
     old_questions, new_questions = old.get("questions", {}), new["questions"]
     for question_id, current in new_questions.items():
         previous = old_questions.get(question_id)
-        source = f"метод «{shorten(current['method_title'], 60)}»"
+        source = f"method \"{shorten(current['method_title'], 60)}\""
         if current["card_id"]:
-            source += f", карточка `{current['card_id']}`"
+            source += f", card `{current['card_id']}`"
         if previous is None:
             entries.append(
-                f"- Новый инсайт ({source}): «{shorten(current['question'], 120)}»"
+                f"- New insight ({source}): \"{shorten(current['question'], 120)}\""
             )
         elif previous.get("fp") != current["fp"]:
             entries.append(
-                f"- Обновлён инсайт ({source}): «{shorten(current['question'], 120)}»"
+                f"- Updated insight ({source}): \"{shorten(current['question'], 120)}\""
             )
     for question_id, previous in old_questions.items():
         if question_id not in new_questions:
             entries.append(
-                f"- Удалён инсайт: «{shorten(previous.get('question', question_id), 120)}»"
+                f"- Removed insight: \"{shorten(previous.get('question', question_id), 120)}\""
             )
 
     old_docs, new_docs = old.get("docs", {}), new["docs"]
     for name, title in new_docs.items():
         if name not in old_docs:
-            entries.append(f"- Новый документ: [{title}](knowledge/{name})")
+            entries.append(f"- New document: [{title}](knowledge/{name})")
     for name, title in old_docs.items():
         if name not in new_docs:
-            entries.append(f"- Удалён документ: {title} (`knowledge/{name}`)")
+            entries.append(f"- Removed document: {title} (`knowledge/{name}`)")
     return entries
 
 
 def _append_log(project: Project, entries: list[str], initial: bool) -> None:
     path = knowledge_log_path(project.id)
     header = (
-        f"# Журнал базы знаний: {project.title}\n\n"
-        "Записи добавляются автоматически при сохранении проекта: смена вердикта,\n"
-        "новый/обновлённый инсайт в research.json, новый документ в `knowledge/`.\n"
-        "Свежие записи сверху.\n"
+        f"# Knowledge base log: {project.title}\n\n"
+        "Entries are added automatically when the project is saved: verdict changes,\n"
+        "new or updated insights in research.json, and new documents in `knowledge/`.\n"
+        "Newest entries appear first.\n"
     )
     old_body = ""
     if path.exists():
@@ -250,7 +250,7 @@ def _append_log(project: Project, entries: list[str], initial: bool) -> None:
     stamp = datetime.now().strftime("%Y-%m-%d %H:%M")
     section = [f"\n## {stamp}", ""]
     if initial:
-        section.append("_Инициализация журнала — зафиксировано текущее состояние БЗ._")
+        section.append("_Log initialized with the current knowledge-base state._")
     section += entries + [""]
     path.write_text(header + "\n".join(section) + old_body, encoding="utf-8")
 

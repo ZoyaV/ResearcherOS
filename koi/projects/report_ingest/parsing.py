@@ -41,9 +41,9 @@ def parse_run_report(text: str) -> ReportClaim:
             continue
         identifiers = _BACKTICK.findall(line)
         lowered = line.lower()
-        if "гипотеза" in lowered and identifiers:
+        if "hypothesis" in lowered and identifiers:
             claim.cause_id = identifiers[0]
-        elif ("метод" in lowered or "карточка" in lowered) and identifiers:
+        elif ("method" in lowered or "card" in lowered) and identifiers:
             claim.method_id = identifiers[0]
             if len(identifiers) > 1:
                 claim.card_id = identifiers[1]
@@ -55,7 +55,9 @@ def parse_run_report(text: str) -> ReportClaim:
 
     knowledge_section = _section(text, 5)
     if not knowledge_section.strip():
-        raise ReportIngestError("В отчёте нет секции «## 5. Заявка в базу знаний»")
+        raise ReportIngestError(
+            'The report is missing the "## 5. Knowledge base submission" section'
+        )
 
     verdict_match = _VERDICT_LINE.search(knowledge_section)
     if verdict_match:
@@ -63,23 +65,26 @@ def parse_run_report(text: str) -> ReportClaim:
         claim.cause_id = verdict_match.group("node") or claim.cause_id
     else:
         claim.warnings.append(
-            "В §5.1 не найден вердикт вида «`c-…` → **supported|refuted|open**»"
+            "Section 5.1 has no verdict in the form "
+            '"`c-…` → **supported|refuted|open**"'
         )
 
     json_match = _JSON_FENCE.search(knowledge_section)
     if not json_match:
         raise ReportIngestError(
-            "В §5.2 нет fenced ```json блока с инсайтами (формат research.json) — "
-            "автоинтеграция без него невозможна"
+            "Section 5.2 has no fenced ```json block with insights "
+            "(research.json format); automatic integration requires it"
         )
     try:
         data = json.loads(json_match.group("body"))
     except json.JSONDecodeError as error:
-        raise ReportIngestError(f"§5.2: невалидный JSON: {error}") from error
+        raise ReportIngestError(f"Section 5.2: invalid JSON: {error}") from error
     if isinstance(data, dict):
         data = [data]
     if not isinstance(data, list) or not all(isinstance(item, dict) for item in data):
-        raise ReportIngestError("§5.2: ожидается JSON-массив объектов-инсайтов")
+        raise ReportIngestError(
+            "Section 5.2 must contain a JSON array of insight objects"
+        )
     claim.insights = data
 
     for item in data:
@@ -87,7 +92,8 @@ def parse_run_report(text: str) -> ReportClaim:
         claim.card_id = claim.card_id or item.get("card_id")
     if not claim.method_id or not claim.card_id:
         raise ReportIngestError(
-            "Не удалось определить method_id/card_id (ни в §0 «Привязка», ни в §5.2)"
+            "Could not determine method_id/card_id from either "
+            'Section 0 "References" or Section 5.2'
         )
     return claim
 
@@ -97,11 +103,13 @@ def build_questions(claim: ReportClaim) -> list[MethodResearchQuestion]:
     for index, item in enumerate(claim.insights, start=1):
         question = str(item.get("question", "")).strip()
         if not question:
-            raise ReportIngestError(f"§5.2: у инсайта №{index} пустой question")
+            raise ReportIngestError(
+                f"Section 5.2: insight #{index} has an empty question"
+            )
         certainty = str(item.get("certainty", "tentative")).strip().lower()
         if certainty not in ("definite", "tentative"):
             claim.warnings.append(
-                f"§5.2: инсайт №{index}: certainty «{certainty}» → tentative"
+                f'Section 5.2: insight #{index}: certainty "{certainty}" → tentative'
             )
             certainty = "tentative"
         try:

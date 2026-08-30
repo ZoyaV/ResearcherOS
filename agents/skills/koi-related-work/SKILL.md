@@ -1,61 +1,70 @@
 ---
 name: koi-related-work
 description: >-
-  Generate Related Works markdown from the ResearchOS RelatedWork page queue.
-  Use when related-work-queue.json has pending items or `koi.related_work.cli pending`
-  lists tasks.
+  Generate Related Work markdown from the ResearchOS RelatedWork page queue.
+  Use when related-work-queue.json has pending items or
+  `koi.related_work.cli pending` lists tasks.
 ---
 
-# KOI: Related Work из UI → ответ в RelatedWork
+# KOI: Related Work from the UI → RelatedWork response
 
-Пользователь нажал **Related Work** на странице RelatedWork (localhost:8080/literature.html). Задача попала в `.run/related-work-queue.json`.
+The user clicked **Related Work** on the RelatedWork page at
+localhost:8080/literature.html. The task entered `.run/related-work-queue.json`.
 
-## Когда запускать
+## When to run
 
-1. В очереди есть pending Related Work (`python -m koi.related_work.cli pending`).
-2. Literature Inbox получил `RELATED_WORK_WAKE` в `.run/logs/related-work-watch.log`.
-3. Пользователь вставил сообщение «ResearchOS Literature Inbox — Related Work `rw-…`».
+1. The queue contains pending Related Work (`python -m koi.related_work.cli pending`).
+2. Literature Inbox received `RELATED_WORK_WAKE` in `.run/logs/related-work-watch.log`.
+3. The user pasted “ResearchOS Literature Inbox — Related Work `rw-…`.”
 
 ```bash
 ReseachOS/.venv/bin/python -m koi.related_work.cli pending
 ```
 
-Или статус Literature Inbox:
+Or inspect Literature Inbox:
 
 ```bash
 ReseachOS/.venv/bin/python -m koi.related_work.inbox_cli pending
 ```
 
-## Алгоритм
+## Algorithm
 
-0. **Сразу** отметь задачу принятой — UI покажет «Агент работает» и таймер:
+0. **Immediately** claim the task so the UI shows Agent is working and starts
+   the timer:
 
 ```bash
 ReseachOS/.venv/bin/python -m koi.related_work.cli claim <queue_id>
 ```
 
-1. `context <queue_id>` — JSON с полным промптом и метаданными кластеров.
-2. Напиши раздел **Related Works** в markdown:
-   - заголовок `## Related Works`
-   - 2–5 абзацев, синтез выбранных кластеров
-   - только факты из промпта, без выдуманных статей
-3. **Обязательно** сохрани ответ в UI:
+1. Run `context <queue_id>` to obtain JSON with the full prompt and cluster metadata.
+2. Write a Markdown **Related Work** section:
+   - heading `## Related Work`
+   - 2–5 paragraphs synthesizing the selected clusters
+   - facts from the prompt only; never invent papers
+3. **Always** save the answer to the UI:
 
 ```bash
 ReseachOS/.venv/bin/python -m koi.related_work.cli answer <queue_id> -f related-work.md
 ```
 
-Без `claim` страница останется в «ждёт запрос». Без `answer` черновик не появится.
+Without `claim`, the page remains Waiting for request. Without `answer`, no draft
+appears.
 
-## Literature Inbox (рекомендуется)
+## Literature Inbox (recommended)
 
-Отдельный постоянный чат **ResearchOS Literature Inbox** в Cursor — только Related Work (не путать с Chat Inbox для вопросов).
+Use a dedicated persistent **ResearchOS Literature Inbox** Cursor chat only for
+Related Work, separate from the Chat Inbox used for questions.
 
-1. Один раз: `python -m koi.related_work.inbox_cli bootstrap` → вставить в чат **ResearchOS Literature Inbox**.
-2. В bootstrap — фоновый `tail -f` лога с `notify_on_output` по `^RELATED_WORK_WAKE` **и** fallback loop (`AGENT_LOOP_TICK_RELATED_WORK`, каждые 3 с) + `python -m koi.related_work.inbox_cli pending`.
-3. Watcher: `koi-serve.sh start` поднимает фоновый watcher (~1–3 с до wake в логе).
-4. Кнопка **Related Work** → очередь → Literature Inbox при wake → **claim → context → answer**.
+1. Once: run `python -m koi.related_work.inbox_cli bootstrap` and paste the result
+   into **ResearchOS Literature Inbox**.
+2. The bootstrap starts a background `tail -f` with `notify_on_output` matching
+   `^RELATED_WORK_WAKE`, plus a fallback loop (`AGENT_LOOP_TICK_RELATED_WORK`)
+   every three seconds and `python -m koi.related_work.inbox_cli pending`.
+3. `koi-serve.sh start` launches the watcher; wake appears in about 1–3 seconds.
+4. Clicking **Related Work** queues the task; on wake, Literature Inbox performs
+   **claim → context → answer**.
 
-Копировать сообщение вручную **не нужно**, если Literature Inbox настроен.
+Manual message copying is unnecessary after Literature Inbox is configured.
 
-Для первой настройки — кнопка «Скопировать сообщение» на literature.html (текст не показывается, только инструкция).
+For first-time setup, use Copy message on literature.html; the UI shows only the
+instructions, not the message body.

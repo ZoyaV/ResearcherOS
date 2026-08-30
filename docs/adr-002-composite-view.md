@@ -53,7 +53,7 @@ problem/cause vertices in the composite (and Hub auto-composite) view.
 id: talking-heads
 composite_id: llm-ood-decision-making
 programs:
-  - id: мультимодальное-обучение-с-подкреплением
+  - id: multimodal-reinforcement-learning
 ---
 ```
 

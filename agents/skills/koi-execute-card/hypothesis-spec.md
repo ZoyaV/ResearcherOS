@@ -1,72 +1,75 @@
-# Спецификация гипотезы (пред-регистрация)
+# Hypothesis specification (preregistration)
 
-Заполнить ДО запуска. Это «передняя дверь» харнесса: фиксирует, что именно проверяем
-и по какому правилу примем вывод, чтобы вердикт supported/refuted не был задним числом.
-Текст claim переносится в описание cause-узла в `project.md`; правило решения — то,
-по чему ревью выставит вердикт (см. `docs/research-workflow.md`).
+Complete this document BEFORE the run. It is the harness entry point: it fixes
+what is being tested and the rule for accepting a conclusion so supported or
+refuted is never assigned after seeing results. Copy the claim into the cause
+node description in `project.md`; reviewers use the decision rule to assign the
+verdict. See `docs/research-workflow.md`.
 
-> Удалить все строки с `>` при заполнении.
+> Remove every line beginning with `>` when completing this template.
 
-## Идентификатор
+## Identifier
 
-- id гипотезы: `c-…`  (= id cause-узла в project.md)
-- метод(ы): `m-…`     карточка(и): `…`
-- автор: …            дата: YYYY-MM-DD
+- hypothesis id: `c-…` (= cause node id in project.md)
+- method(s): `m-…`    card(s): `…`
+- author: …           date: YYYY-MM-DD
 
-## Утверждение (claim)
+## Claim
 
-> Одно предложение, проверяемое и с направлением эффекта. Не «изучить влияние X»,
-> а «X увеличивает Y при условии Z».
-
-…
-
-## Обоснование
-
-> Почему ждём именно такой эффект (1–2 предложения, можно ссылку на инсайт из KNOWLEDGE.md).
+> One falsifiable, directional sentence. Do not write “study the effect of X”;
+> write “X increases Y under condition Z.”
 
 …
 
-## Предсказание
+## Rationale
 
-> Конкретное, желательно с величиной/направлением: «throughput Newton > PhysX в ≥1.3×»,
-> «success_rate при равных env-шагах не зависит от num_envs в пределах разброса по сидам».
+> Why this effect is expected in 1–2 sentences; link to a KNOWLEDGE.md insight
+> when available.
 
 …
 
-## Дизайн проверки
+## Prediction
 
-- Что варьируем: …
-- Что фиксируем (контроль): …
-- Бюджет на прогон: `<объём данных / итерации / seed(ы) / backend>`
-- Команда: `<точная команда запуска>`
-- Куда пишутся метрики: `<путь к артефакту>`
+> Make it concrete and preferably quantitative/directional: “Newton throughput
+> exceeds PhysX by at least 1.3×” or “success_rate at equal environment steps
+> does not depend on num_envs beyond seed variance.”
 
-## Основная метрика и правило решения
+…
 
-> Главное поле харнесса. Назвать одну метрику и ПОРОГ, при котором гипотеза supported,
-> при котором refuted, и когда вывод остаётся open (недостаточно данных).
+## Evaluation design
 
-- Основная метрика: …  (поле из итогового артефакта)
-- supported, если: …
-- refuted, если: …
-- open, если: …
+- Varied factor: …
+- Fixed controls: …
+- Run budget: `<data volume / iterations / seeds / backend>`
+- Command: `<exact launch command>`
+- Metric destination: `<artifact path>`
 
-## Угрозы валидности
+## Primary metric and decision rule
 
-> 2–4 пункта: что может исказить вывод. Почти всегда сюда входит разброс по сидам
-> (см. гипотезу H3) и эффекты прогрева/кэша ассетов (scene_creation_s на холодном старте).
+> Name one metric and thresholds for supported, refuted, and open. The open rule
+> covers insufficient evidence.
+
+- Primary metric: … (field from the final artifact)
+- supported if: …
+- refuted if: …
+- open if: …
+
+## Threats to validity
+
+> Give 2–4 factors that may distort the conclusion. Usually include seed variance
+> and warm-up/asset-cache effects such as `scene_creation_s` on a cold start.
 
 - …
 
-## Связи
+## Links
 
-- cause-узел: `c-…`   |  отчёт: `reports/<узел>/<карточка>.md`
-- зависит от инсайтов: `rq-…` (из KNOWLEDGE.md), если есть
+- cause node: `c-…` | report: `reports/<node>/<card>.md`
+- depends on insights: `rq-…` from KNOWLEDGE.md, when available
 
-## Чеклист до запуска
+## Pre-run checklist
 
-- [ ] claim проверяем и с направлением эффекта
-- [ ] правило решения задано (порог supported/refuted/open) ДО прогона
-- [ ] бюджет и контролируемые переменные зафиксированы
-- [ ] узел cause + карточка заведены в project.md
-- [ ] учтён разброс по сидам (H3) при выборе порога
+- [ ] Claim is falsifiable and directional
+- [ ] Decision rule and supported/refuted/open thresholds fixed BEFORE the run
+- [ ] Budget and controlled variables recorded
+- [ ] Cause node and card exist in project.md
+- [ ] Threshold accounts for seed variance

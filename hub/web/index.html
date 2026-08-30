@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -28,13 +28,13 @@
         <div class="brand hub-brand">
           <a href="/" class="hub-brand__link"><span class="hub-brand__name">ResearchOS</span><span class="hub-brand__hub">Hub</span></a>
         </div>
-        <nav class="hub-nav" aria-label="Разделы">
-          <a href="/" class="hub-nav__link is-active" aria-current="page">Проекты</a>
+        <nav class="hub-nav" aria-label="Sections">
+          <a href="/" class="hub-nav__link is-active" aria-current="page">Projects</a>
           <a href="/skills" class="hub-nav__link">Skills</a>
         </nav>
       </div>
       <div class="toolbar hub-topbar__tools">
-        <button type="button" id="btn-theme" class="btn btn-theme" title="Тёмная тема" aria-label="Включить тёмную тему">
+        <button type="button" id="btn-theme" class="btn btn-theme" title="Dark theme" aria-label="Enable dark theme">
           <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"/><path fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
           <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 14.5A8.5 8.5 0 0 1 9.5 3 7 7 0 1 0 21 14.5z"/></svg>
         </button>
@@ -47,17 +47,17 @@
     <section class="hub-panel" id="hub-panel" aria-labelledby="hub-panel-title">
       <div class="hub-panel__body">
         <div class="hub-panel__copy">
-          <h1 class="hub-panel__title" id="hub-panel-title">Все проекты</h1>
-          <p class="hub-panel__desc" id="hub-panel-desc">Публичный каталог — деревья гипотез и канбан без кода.</p>
+          <h1 class="hub-panel__title" id="hub-panel-title">All projects</h1>
+          <p class="hub-panel__desc" id="hub-panel-desc">Public catalog: hypothesis trees and kanban boards without source code.</p>
         </div>
         <div class="hub-panel__cta" id="hub-panel-cta">
-          <a href="/auth/github" class="btn btn-primary hub-enter-btn">Войти в мир исследований</a>
+          <a href="/auth/github" class="btn btn-primary hub-enter-btn">Enter the world of research</a>
         </div>
       </div>
-      <nav class="hub-panel__tabs" role="tablist" aria-label="Разделы каталога">
-        <button type="button" class="hub-panel__tab is-active" role="tab" data-tab="all" aria-selected="true">Все</button>
-        <button type="button" class="hub-panel__tab" role="tab" data-tab="subscriptions" aria-selected="false">Подписки</button>
-        <button type="button" class="hub-panel__tab" role="tab" data-tab="mine" aria-selected="false">Мои</button>
+      <nav class="hub-panel__tabs" role="tablist" aria-label="Catalog sections">
+        <button type="button" class="hub-panel__tab is-active" role="tab" data-tab="all" aria-selected="true">All</button>
+        <button type="button" class="hub-panel__tab" role="tab" data-tab="subscriptions" aria-selected="false">Subscriptions</button>
+        <button type="button" class="hub-panel__tab" role="tab" data-tab="mine" aria-selected="false">Mine</button>
       </nav>
     </section>
 
@@ -68,18 +68,18 @@
   <div id="hub-link-modal" class="modal hidden" role="dialog" aria-labelledby="hub-link-modal-title">
     <div class="modal-backdrop" data-close="hub-link-modal"></div>
     <div class="modal-panel modal-panel--narrow">
-      <button type="button" class="modal-close" data-action="close-link-modal" aria-label="Закрыть">×</button>
-      <p class="modal-type">Подписки</p>
-      <h2 id="hub-link-modal-title">Добавить по ссылке</h2>
-      <p class="modal-desc">Вставьте ссылку на проект Hub — public, network или unlisted с <code>?token=</code>.</p>
+      <button type="button" class="modal-close" data-action="close-link-modal" aria-label="Close">×</button>
+      <p class="modal-type">Subscriptions</p>
+      <h2 id="hub-link-modal-title">Add by link</h2>
+      <p class="modal-desc">Paste a Hub project link: public, network, or unlisted with <code>?token=</code>.</p>
       <form id="hub-link-form" class="form">
         <label>
-          Ссылка на проект
-          <input id="hub-link-input" type="url" required placeholder="https://…/p/slug или /p/slug?token=…" />
+          Project link
+          <input id="hub-link-input" type="url" required placeholder="https://…/p/slug or /p/slug?token=…" />
         </label>
         <div class="form-actions">
-          <button type="submit" class="btn btn-primary">Добавить</button>
-          <button type="button" class="btn" data-action="close-link-modal">Отмена</button>
+          <button type="submit" class="btn btn-primary">Add</button>
+          <button type="button" class="btn" data-action="close-link-modal">Cancel</button>
         </div>
         <p id="hub-link-status" class="hub-status"></p>
       </form>

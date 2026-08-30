@@ -1,85 +1,85 @@
-# Формат файла проекта KOI (`project.md`)
+# KOI project file format (`project.md`)
 
-Проекты хранятся в `projects/<project-id>/project.md`. Формат рассчитан на чтение и правку человеком и AI-агентом.
+Projects are stored in `projects/<project-id>/project.md`. The format is designed for reading and editing by humans and AI agents.
 
 ## Frontmatter (YAML)
 
 ```yaml
 ---
 id: demo-aggregation
-title: Название проекта
-description: Краткое описание (опционально)
+title: Project title
+description: Brief description (optional)
 updated: 2026-05-20T12:00:00Z
 format: koi/1
 ---
 ```
 
-## Дерево гипотез
+## Hypothesis tree
 
-Узлы задаются заголовками Markdown. Уровень `#` = глубина в дереве.
+Nodes are represented by Markdown headings. The number of `#` characters gives the tree depth.
 
 ```markdown
 # problem: n-problem
 
-Заголовок проблемы (первая непустая строка после заголовка)
+Problem title (the first non-empty line after the heading)
 
-Описание проблемы (следующие строки до следующего заголовка или канбана).
+Problem description (subsequent lines until the next heading or kanban board).
 
 ## cause: n-cause-misfold
 
-Причина: агрегация из-за неправильного фолдинга
+Cause: aggregation due to misfolding
 
 ### cause_evidence: n-ev-fold
 
-Доказательство: ThT-флуоресценция
+Evidence: ThT fluorescence
 ```
 
-Типы узлов: `problem`, `cause`, `cause_evidence`, `remediation`, `method`, `experiment` (legacy).
+Node types: `problem`, `cause`, `cause_evidence`, `remediation`, `method`, and legacy `experiment`.
 
-Опционально сразу после заголовка:
+Optionally, immediately after a heading:
 
 ```markdown
 verdict: supported
 ```
 
-Значения: `open`, `supported`, `refuted`.
+Values: `open`, `supported`, `refuted`.
 
-## Канбан экспериментов
+## Experiment kanban
 
-Только у узлов `method`. Таблица Markdown сразу после текста метода:
+Only `method` nodes have kanban boards. Place a Markdown table immediately after the method text:
 
 ```markdown
 #### method: m-ev-fold
 
-ThT и TEM
+ThT and TEM
 
-Описание метода…
+Method description…
 ```
 
 ```markdown
 <!-- koi:kanban board-ev-fold -->
 | backlog | running | done | successful |
 | --- | --- | --- | --- |
-| TEM инклюзий <!-- id:c2 desc:n=3 повторности --> | ThT time-course <!-- id:c1 --> | |
+| Inclusion TEM <!-- id:c2 desc:n=3 replicates --> | ThT time course <!-- id:c1 --> | |
 ```
 
-- Имя доски в комментарии: `board-<node-id>` или своё.
-- Заголовки колонок — id колонок (латиница, lowercase): `backlog`, `running`, `done`, `successful` (опционально — «Успешные», после `done`).
-- Ячейки: текст карточки; метаданные в HTML-комментарии `<!-- id:... created:... updated:... desc:... tags:... deps:... -->`.
-- `created:` / `updated:` — опционально, ISO-8601 UTC (`2026-08-07T08:18:00Z`); выставляются системой при создании и любой правке карточки.
-- `tags:` — опционально, через запятую (латиница, цифры, `-`, `_`); пример: `tags:gpu,sft,ablation`.
-- `deps:` — опционально, prerequisite-карточки (id через запятую); пример: `deps:seg-pareto-groups,seg-targeting`. Без `deps` карточки в DAG view отображаются независимо.
-- Словарь тегов проекта — опциональный frontmatter `card_tags: [gpu, baseline, ...]` для подсказок в UI.
+- Board name in the comment: `board-<node-id>` or a custom name.
+- Column headings are lowercase Latin column IDs: `backlog`, `running`, `done`, and optionally `successful` after `done`.
+- Cells contain card text; metadata lives in an HTML comment: `<!-- id:... created:... updated:... desc:... tags:... deps:... -->`.
+- `created:` / `updated:` are optional ISO-8601 UTC timestamps (`2026-08-07T08:18:00Z`) set by the system when a card is created or edited.
+- `tags:` is an optional comma-separated list using Latin letters, digits, `-`, and `_`; for example, `tags:gpu,sft,ablation`.
+- `deps:` optionally lists prerequisite card IDs separated by commas; for example, `deps:seg-pareto-groups,seg-targeting`. Cards without `deps` appear independently in DAG view.
+- An optional `card_tags: [gpu, baseline, ...]` frontmatter field provides the project tag vocabulary for UI suggestions.
 
-## Исследовательские вопросы по методу
+## Method research questions
 
-Вопросы и ответы по завершённым экспериментам **не** хранятся в `project.md`. Они лежат в:
+Questions and answers from completed experiments are **not** stored in `project.md`. They live in:
 
 ```
 projects/<project-id>/research.json
 ```
 
-Формат:
+Format:
 
 ```json
 {
@@ -90,8 +90,8 @@ projects/<project-id>/research.json
       "method_id": "m-n-rem-pretrain",
       "card_id": "kb-sft",
       "question": "…",
-      "answer": "краткая техническая сводка",
-      "narrative": "человекочитаемый ответ для UI",
+      "answer": "brief technical summary",
+      "narrative": "human-readable answer for the UI",
       "certainty": "definite",
       "importance": 5
     }
@@ -99,77 +99,77 @@ projects/<project-id>/research.json
 }
 ```
 
-- `method_id` — id узла `method` из дерева.
-- `card_id` — id карточки канбана (источник вывода).
+- `method_id` — ID of a `method` node in the tree.
+- `card_id` — ID of the source kanban card.
 - `certainty`: `definite` | `tentative`.
 - `importance`: 1–5.
-- Не больше **3** вопросов на один метод.
+- No more than **three** questions per method.
 
-При загрузке проекта API читает `research.json` и подставляет вопросы в узлы-методы. При сохранении (UI или PATCH) — пишет обратно в `research.json`. Старые блоки `<!-- koi:method-questions -->` в `project.md` при первой загрузке мигрируют автоматически.
+When a project loads, the API reads `research.json` and attaches questions to method nodes. Saving through the UI or PATCH writes them back to `research.json`. Legacy `<!-- koi:method-questions -->` blocks in `project.md` migrate automatically on first load.
 
-## Правила дерева
+## Tree rules
 
-| Родитель | Дети |
+| Parent | Children |
 |----------|------|
 | — | problem |
 | problem | cause |
 | cause | cause_evidence, remediation |
 | cause_evidence, remediation | experiment |
 
-## Пример для агента
+## Example for an agent
 
-1. Прочитать `projects/<id>/project.md`.
-2. Добавить узел: новый заголовок нужного уровня под родителем.
-3. Для доказательства/устранения — блок `<!-- koi:kanban ... -->` + таблица.
-4. Сохранить файл; API при старте подхватит изменения после перезагрузки проекта (или PUT через API).
+1. Read `projects/<id>/project.md`.
+2. Add a node as a new heading at the appropriate depth below its parent.
+3. For evidence/remediation, add a `<!-- koi:kanban ... -->` block and table.
+4. Save the file. On startup, the API picks up changes when the project reloads; alternatively, use PUT through the API.
 
-## Отчёты по карточкам канбана
+## Kanban-card reports
 
-Подробные отчёты хранятся отдельно от `project.md`:
+Detailed reports are stored separately from `project.md`:
 
 ```
 projects/<project-id>/reports/
-  index.json                    # card_id → путь относительно reports/
-  Название_гипотезы/            # папка = заголовок узла с канбаном (гипотеза или доказательство)
-    Название_карточки.md
+  index.json                    # card_id → path relative to reports/
+  Hypothesis_title/             # directory = kanban node title (hypothesis or evidence)
+    Card_title.md
 ```
 
-- Имя файла строится из **заголовка карточки**: пробелы → `_` (остальной текст сохраняется; убираются только символы, недопустимые в пути).
-- При совпадении имён добавляется суффикс `_2`, `_3`, …
-- При переименовании карточки файл переименовывается; при удалении карточки — удаляется.
-- При загрузке проекта и добавлении карточки для **каждой** задачи канбана автоматически создаётся пустой `.md`, если его ещё нет.
-- API: `GET/PUT /projects/{id}/boards/{board_id}/cards/{card_id}/report` (тело PUT: `{ "content": "..." }`).
+- The filename is derived from the **card title**: spaces become `_`, all other text is preserved except path-invalid characters.
+- Name collisions receive `_2`, `_3`, and subsequent suffixes.
+- Renaming a card renames its file; deleting a card deletes the file.
+- When a project loads or a card is added, an empty `.md` is automatically created for **every** kanban task if one does not exist.
+- API: `GET/PUT /projects/{id}/boards/{board_id}/cards/{card_id}/report` (PUT body: `{ "content": "..." }`).
 
-### Содержание отчёта
+### Report content
 
-Полные правила оформления входят в skill **[koi-report-review](../../agents/skills/koi-report-review/)**:
+Complete formatting rules are part of **[koi-report-review](../../agents/skills/koi-report-review/)**:
 
-| Файл | Тема |
+| File | Topic |
 |------|------|
-| [report-skeleton.md](../../agents/skills/koi-report-review/report-skeleton.md) | Шаблон §1–§N и HOW-TODO под каждым разделом |
-| [report-rules.md](../../agents/skills/koi-report-review/report-rules.md) | Делать / не делать; оформление без «AI-markdown» |
+| [report-skeleton.md](../../agents/skills/koi-report-review/report-skeleton.md) | §§1–N template with HOW-TODO under each section |
+| [report-rules.md](../../agents/skills/koi-report-review/report-rules.md) | Do/don't rules and formatting without “AI Markdown” |
 
-Кратко: шапка → **зачем** (§1) → **метрика** (§2) → **постановка и сбор** (§3) → по прогону в §4+: **результаты** и **выводы** (без дубля постановки из §3).
+In brief: header → **why** (§1) → **metric** (§2) → **setup and collection** (§3) → for each run in §4+: **results** and **conclusions**, without repeating the §3 setup.
 
-В шапке после GPU/train-прогона можно (не обязательно) добавить строку стоимости — UI покажет чип на карточке канбана и бейдж в углу отчёта:
-
-```text
-compute_cost: wall_h=2.4; gpu_h=4.8; n_gpus=2; until=SMA SR≥0.8; source=measured
-```
-
-`source=recovered` — восстановлено из старых логов; analysis/literature без train — строку не писать.
-
-В шапке после GPU/train-прогона можно (не обязательно) добавить строку стоимости — UI покажет чип на карточке канбана и бейдж в углу отчёта:
+After a GPU/training run, the header may optionally include a cost line; the UI shows it as a kanban-card chip and report-corner badge:
 
 ```text
 compute_cost: wall_h=2.4; gpu_h=4.8; n_gpus=2; until=SMA SR≥0.8; source=measured
 ```
 
-`source=recovered` — восстановлено из старых логов; analysis/literature без train — строку не писать.
+`source=recovered` means recovered from old logs. Do not add this line for analysis/literature work without training.
 
-Примеры финального теста (см. также стили):
+After a GPU/training run, the header may optionally include a cost line; the UI shows it as a kanban-card chip and report-corner badge:
 
-- **SFT:** согласованная метрика diversity на **train** и **test** для чекпоинтов LoRA (база vs адаптер); промежуточный probe на `fork_prompts.json` не является финальным тестом.
-- **RL (закрытие гипотезы):** таблица SR для BASE, SFT до RL, BASE+RL, SFT+RL; минимум `SR(SFT+RL) > SR(BASE+RL)`.
+```text
+compute_cost: wall_h=2.4; gpu_h=4.8; n_gpus=2; until=SMA SR≥0.8; source=measured
+```
 
-Эталонный отчёт в репозитории: `projects/ai-agents-embodied/reports/.../Запустить_обучение_SFT_на_наборе.md`.
+`source=recovered` means recovered from old logs. Do not add this line for analysis/literature work without training.
+
+Examples of a final test (also see the style rules):
+
+- **SFT:** a consistent diversity metric on **train** and **test** for LoRA checkpoints (base vs. adapter); an intermediate probe on `fork_prompts.json` is not a final test.
+- **RL (closing a hypothesis):** an SR table for BASE, pre-RL SFT, BASE+RL, and SFT+RL; at minimum, `SR(SFT+RL) > SR(BASE+RL)`.
+
+Reference report in the repository: `projects/ai-agents-embodied/reports/.../Run_SFT_training_on_dataset.md`.

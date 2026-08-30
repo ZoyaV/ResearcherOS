@@ -55,15 +55,15 @@ def _request_json(
         detail = error.read().decode("utf-8", errors="replace")
         if error.code in {401, 403}:
             raise ZoteroAuthError(
-                "Zotero отклонил ключ. Проверьте API Key и доступ к библиотеке (library access)."
+                "Zotero rejected the key. Check the API key and library access."
             ) from error
         if error.code == 404:
             raise ZoteroAuthError(
-                "Zotero не нашёл библиотеку. Проверьте User ID или создайте новый API Key."
+                "Zotero could not find the library. Check User ID or create a new API key."
             ) from error
         raise ZoteroApiError(f"Zotero API error {error.code}: {detail[:240]}") from error
     except urllib.error.URLError as error:
-        raise ZoteroApiError(f"Не удалось связаться с Zotero API: {error}") from error
+        raise ZoteroApiError(f"Could not reach the Zotero API: {error}") from error
 
 
 def verify_zotero_credentials(
@@ -73,24 +73,24 @@ def verify_zotero_credentials(
 ) -> dict[str, object]:
     key = _normalize_spaces(api_key)
     if not key:
-        raise ZoteroAuthError("Укажите Zotero API Key.")
+        raise ZoteroAuthError("Enter a Zotero API key.")
 
     payload, _headers = _request_json(f"/keys/{urllib.parse.quote(key)}", api_key=key)
     if not isinstance(payload, dict):
-        raise ZoteroApiError("Неожиданный ответ Zotero при проверке ключа.")
+        raise ZoteroApiError("Unexpected Zotero response while validating the key.")
 
     resolved_user_id = str(payload.get("userID") or payload.get("userId") or "").strip()
     if user_id:
         provided = str(user_id).strip()
         if resolved_user_id and provided and provided != resolved_user_id:
             raise ZoteroAuthError(
-                f"User ID не совпадает с ключом (ожидался {resolved_user_id})."
+                f"User ID does not match the key (expected {resolved_user_id})."
             )
         if not resolved_user_id:
             resolved_user_id = provided
     if not resolved_user_id:
         raise ZoteroAuthError(
-            "Не удалось определить User ID. Укажите его вручную со страницы zotero.org/settings/keys."
+            "Could not determine User ID. Enter it from zotero.org/settings/keys."
         )
 
     access = payload.get("access") if isinstance(payload.get("access"), dict) else {}
@@ -107,7 +107,7 @@ def verify_zotero_credentials(
             library_ok = True
         except ZoteroAuthError:
             raise ZoteroAuthError(
-                "У ключа нет доступа к личной библиотеке. Создайте ключ с «Allow library access»."
+                "The key cannot access the personal library. Create one with Allow library access."
             ) from None
 
     username = str(payload.get("username") or "").strip()
@@ -207,7 +207,7 @@ def _item_to_paper(item: dict[str, Any], *, user_id: str) -> dict[str, object] |
 
 
 def _collection_name(data: dict[str, Any]) -> str:
-    return _normalize_spaces(str(data.get("name") or "")) or "(без названия)"
+    return _normalize_spaces(str(data.get("name") or "")) or "(untitled)"
 
 
 def _flatten_collections(raw: list[dict[str, Any]]) -> list[dict[str, object]]:
@@ -296,7 +296,7 @@ def list_zotero_collections(
             },
         )
         if not isinstance(payload, list):
-            raise ZoteroApiError("Неожиданный ответ Zotero при загрузке папок.")
+            raise ZoteroApiError("Unexpected Zotero response while loading folders.")
         for item in payload:
             if isinstance(item, dict):
                 raw.append(item)
@@ -350,7 +350,7 @@ def fetch_zotero_papers(
         },
     )
     if not isinstance(payload, list):
-        raise ZoteroApiError("Неожиданный ответ Zotero при загрузке статей.")
+        raise ZoteroApiError("Unexpected Zotero response while loading papers.")
 
     papers: list[dict[str, object]] = []
     seen_urls: set[str] = set()

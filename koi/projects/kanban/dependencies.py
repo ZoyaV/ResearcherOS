@@ -97,7 +97,7 @@ def _card_text(card: ExperimentCard, report: str = "") -> str:
 
 
 def _tokenize(text: str) -> set[str]:
-    return {t for t in re.split(r"[^\wа-яё]+", text.lower()) if len(t) >= 4}
+    return {t for t in re.split(r"[^\w]+", text.lower()) if len(t) >= 4}
 
 
 def _overlap_score(a: str, b: str) -> float:
@@ -184,7 +184,7 @@ def suggest_board_dag(
                 add(
                     done_card.id,
                     open_card.id,
-                    "Backlog-карточка пересекается по теме с завершённым экспериментом",
+                    "The backlog card overlaps with a completed experiment",
                     min(0.95, 0.45 + score),
                 )
             for rq_text in rq_by_card.get(done_card.id, []):
@@ -193,7 +193,7 @@ def suggest_board_dag(
                     add(
                         done_card.id,
                         open_card.id,
-                        "Карточка продолжает вопрос из вывода завершённого эксперимента",
+                        "The card continues a question from a completed experiment",
                         min(0.98, 0.5 + rq_score),
                     )
 
@@ -207,7 +207,7 @@ def suggest_board_dag(
                 add(
                     other.id,
                     card.id,
-                    f"В описании упоминается «{other.title}»",
+                    f"The description mentions \"{other.title}\"",
                     0.72,
                 )
 
@@ -217,7 +217,7 @@ def suggest_board_dag(
                 add(
                     dep,
                     card.id,
-                    "Уже заданная связь",
+                    "Existing dependency",
                     1.0,
                 )
 

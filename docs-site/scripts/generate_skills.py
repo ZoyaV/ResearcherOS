@@ -24,17 +24,17 @@ FONT = """  <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />"""
 
-THEME_BTN = """        <button type="button" id="btn-theme" class="btn-theme" title="Тёмная тема" aria-label="Тёмная тема">
+THEME_BTN = """        <button type="button" id="btn-theme" class="btn-theme" title="Dark theme" aria-label="Dark theme">
           <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"/><path fill="currentColor" d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" stroke-width="2"/></svg>
           <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 14.5A8.5 8.5 0 0 1 9.5 3 7 7 0 1 0 21 14.5z"/></svg>
         </button>"""
 
 HEADER = f"""  <header class="site-header site-header--detail">
     <div class="site-header__inner">
-      <a class="brand" href="../index.html" aria-label="ResearcherOS — на главную">
+      <a class="brand" href="../index.html" aria-label="ResearcherOS — home">
         <img class="brand__logo" src="../assets/logo.png?v=6" alt="ResearcherOS" height="27" />
       </a>
-      <nav class="nav" aria-label="Основное">
+      <nav class="nav" aria-label="Main navigation">
         <a href="../index.html#about">About</a>
         <a href="../index.html#start">How to start</a>
         <a href="../index.html#skills" aria-current="page">Skills</a>
@@ -78,7 +78,7 @@ def skill_page(s: dict) -> str:
     scenarios_html = _ul(scenarios) if scenarios else ""
 
     return f"""<!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -99,23 +99,23 @@ def skill_page(s: dict) -> str:
     </div>
     <p class="article__lead">{summary}</p>
 
-    <h2>Что делает</h2>
+    <h2>What it does</h2>
     <p>{what}</p>
 
-    <h2>Зачем</h2>
+    <h2>Why use it</h2>
     <p>{why}</p>
 
-    <h2>Когда вызывать</h2>
+    <h2>When to use it</h2>
 {scenarios_html}
 
-    <h2>Как вызвать</h2>
+    <h2>How to invoke it</h2>
     <p>{how}</p>
     <div class="example">
-      <p>Пример фразы AI-помощнику в редакторе:</p>
+      <p>Example request for the AI assistant in your editor:</p>
       <pre><code>{example}</code></pre>
     </div>
 
-    <h2>Схема работы</h2>
+    <h2>Workflow diagram</h2>
     <p class="diagram-caption">{diagram}</p>
     <div class="graph">
       <pre class="mermaid">
@@ -124,8 +124,8 @@ def skill_page(s: dict) -> str:
     </div>
 
     <div class="article__actions">
-      <a class="btn btn-ghost" href="https://github.com/ZoyaV/ResearcherOS/tree/main/agents/skills/{sid}">Исходник на GitHub</a>
-      <a class="btn btn-primary" href="../index.html#skills">К списку Skills</a>
+      <a class="btn btn-ghost" href="https://github.com/ZoyaV/ResearcherOS/tree/main/agents/skills/{sid}">Source on GitHub</a>
+      <a class="btn btn-primary" href="../index.html#skills">Back to Skills</a>
     </div>
   </main>
 {FOOTER}
@@ -136,7 +136,7 @@ def skill_page(s: dict) -> str:
 
 def index_page(skills: list[dict]) -> str:
     return """<!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="refresh" content="0;url=../index.html#skills" />

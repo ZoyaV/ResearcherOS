@@ -29,7 +29,7 @@
     var downloadUrl = skill.download_url || "";
     var list =
       files.length === 0
-        ? '<p class="hub-skill-files__empty">Список файлов появится после следующего sync проекта.</p>'
+        ? '<p class="hub-skill-files__empty">The file list will appear after the next project sync.</p>'
         : "<ul class=\"hub-skill-files__list\">" +
           files
             .map(function (f) {
@@ -47,11 +47,11 @@
     return (
       '<aside class="hub-skill-files">' +
       '<div class="hub-skill-files__head">' +
-      "<h2>Файлы в пакете</h2>" +
+      "<h2>Files in the package</h2>" +
       (downloadUrl
         ? '<a class="btn btn-primary hub-skill-download" href="' +
           esc(downloadUrl) +
-          '">Скачать ZIP</a>'
+          '">Download ZIP</a>'
         : "") +
       "</div>" +
       list +
@@ -63,7 +63,7 @@
     var article = document.getElementById("skill-article");
     var parts = pathParts();
     if (!parts) {
-      article.innerHTML = '<p class="hub-status">Некорректный URL</p>';
+      article.innerHTML = '<p class="hub-status">Invalid URL</p>';
       return;
     }
     try {
@@ -73,7 +73,7 @@
         "/" +
         encodeURIComponent(parts.skillId);
       var skill = await fetch(url, { credentials: "same-origin" }).then(function (r) {
-        if (!r.ok) throw new Error(r.status === 404 ? "Skill не найден" : r.statusText);
+        if (!r.ok) throw new Error(r.status === 404 ? "Skill not found" : r.statusText);
         return r.json();
       });
       document.title = (skill.title || skill.id) + " — ResearchOS Hub";
@@ -95,7 +95,7 @@
           ? '<p class="hub-skill-header__summary">' + esc(skill.summary) + "</p>"
           : "") +
         '<p class="hub-skill-header__meta">' +
-        'из проекта <a href="' +
+        'from project <a href="' +
         esc(skill.project_url) +
         '">' +
         esc(skill.project_title || skill.project_slug) +

@@ -95,7 +95,7 @@ def _normalize_paper_state(status: dict, *, pdf_exists: bool) -> tuple[str, str 
     error = status.get("error")
     if state == "running" and not _is_running(status):
         state = "error"
-        error = error or "Генерация прервана (устаревший running-статус)."
+        error = error or "Generation stopped because its running status became stale."
     return str(state), error
 
 
@@ -173,7 +173,7 @@ def read_paper_status(slot_dir: Path) -> dict[str, Any]:
 
 def _default_title(slug: str) -> str:
     if slug == DEFAULT_PAPER_SLUG:
-        return "Основная статья"
+        return "Main paper"
     return _humanize_slug(slug)
 
 

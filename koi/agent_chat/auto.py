@@ -10,14 +10,14 @@ from koi.core.models import NodeType
 from koi.adapters.repository import load_project
 
 _STOP = {
-    "и", "в", "во", "на", "с", "со", "по", "для", "что", "как", "не", "ли", "это",
-    "а", "то", "же", "из", "у", "к", "о", "от", "до", "при", "или", "если", "можно",
-    "ли", "бы", "еще", "ещё", "все", "всё", "его", "ее", "её", "их", "мы", "вы",
+    "and", "the", "a", "an", "in", "on", "at", "to", "for", "from", "of",
+    "is", "are", "was", "were", "be", "been", "with", "by", "or", "if",
+    "that", "this", "it", "its", "we", "you", "they", "our", "your", "can",
 }
 
 
 def _tokenize(text: str) -> set[str]:
-    words = re.findall(r"[a-zа-яё0-9]+", text.lower())
+    words = re.findall(r"[a-z0-9]+", text.lower())
     return {w for w in words if len(w) > 2 and w not in _STOP}
 
 
@@ -43,9 +43,9 @@ def _score(user_q: str, record: dict) -> float:
     scores.append(_jaccard(u, _tokenize(blob)) * 0.85)
     u_low = user_q.lower()
     method = (record.get("method_title") or "").lower()
-    if "sft" in u_low and ("sft" in method or "пример" in method):
+    if "sft" in u_low and ("sft" in method or "example" in method):
         scores.append(0.35)
-    if "разнообраз" in u_low and "разнообраз" in blob.lower():
+    if "variety" in u_low and "variety" in blob.lower():
         scores.append(0.25)
     if "diversity" in u_low and "diversity" in method:
         scores.append(0.3)
@@ -78,25 +78,25 @@ def _compose_body(matches: list[dict]) -> str:
         if narrative:
             chunk_parts.append(narrative)
         if answer and answer not in narrative:
-            chunk_parts.append(f"По данным эксперимента: {answer}.")
+            chunk_parts.append(f"Experiment data: {answer}.")
 
         if not chunk_parts:
             continue
 
         if certainty == "tentative" and len(matches) == 1:
             chunk_parts.append(
-                "Следует учитывать, что этот вывод пока предварительный — "
-                "данных может быть недостаточно для окончательного заключения."
+                "This conclusion is preliminary; the available evidence may be "
+                "insufficient for a final conclusion."
             )
         elif certainty == "tentative" and rid != matches[0].get("id"):
-            chunk_parts.append("Это уточнение основано на предварительных данных.")
+            chunk_parts.append("This qualification is based on preliminary evidence.")
 
         paragraphs.append(" ".join(chunk_parts))
 
     if len(paragraphs) > 1:
         lead = paragraphs[0]
         rest = " ".join(paragraphs[1:])
-        return f"{lead}\n\nПри этом важный нюанс: {rest}"
+        return f"{lead}\n\nAn important qualification is that {rest}"
 
     return paragraphs[0] if paragraphs else ""
 

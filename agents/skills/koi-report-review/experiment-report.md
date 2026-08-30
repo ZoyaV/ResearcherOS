@@ -1,111 +1,117 @@
-# Отчёт о прогоне эксперимента (рабочий)
+# Experiment run report (working copy)
 
-Это деливерабл АГЕНТА, который провёл прогон. Заполняется сразу после прогона,
-по одному файлу на карточку канбана. Назначение — двойное, поэтому формат строгий:
+This is the deliverable of the AGENT that ran the experiment. Complete it
+immediately after the run, one file per kanban card. It serves two purposes, so
+the format is strict:
 
-1. из него человек/агент-ревьюер делает публичный `.md`-отчёт в
-   `projects/<id>/reports/<узел>/<карточка>.md` (по `report-skeleton.md`);
-2. из его блока «Заявка в базу знаний» ревьюер принимает решение, **в каком виде**
-   результат попадёт в базу знаний (см. матрицу в `docs/research-workflow.md`).
+1. a human or review agent turns it into a public `.md` report in
+   `projects/<id>/reports/<node>/<card>.md` using `report-skeleton.md`;
+2. the reviewer uses its Knowledge base submission to decide **how** the result
+   enters the knowledge base (see the matrix in `docs/research-workflow.md`).
 
-Поэтому здесь — операционные детали (пути, сырые метрики, команды); в публичном
-отчёте они заменяются на публичные имена. Файл кладётся рядом: рекомендуемое имя
-`projects/<id>/reports/<узел>/<карточка>.run.md` (суффикс `.run` = рабочий слой).
+This working report therefore contains operational details such as paths, raw
+metrics, and commands. The public report replaces them with public names. Save
+the file beside the public report; the recommended name is
+`projects/<id>/reports/<node>/<card>.run.md` (`.run` denotes the working layer).
 
-> Все строки с `>` — подсказки, удалить при заполнении.
+> Every line beginning with `>` is guidance; remove it when completing the report.
 
-## 0. Привязка
+## 0. References
 
-| Поле | Значение |
+| Field | Value |
 |------|----------|
-| Гипотеза (cause) | `c-…` — короткое имя |
-| Метод / карточка | `m-…` / `…` |
-| Спека гипотезы | заполнена ДО прогона: да/нет |
-| Дата прогона | YYYY-MM-DD |
-| Агент-исполнитель | модель/чел. |
-| Статус прогона | завершён успешно / упал / частично |
-| Compute cost (опц.) | `wall_h=…; gpu_h=…; n_gpus=…` — продублировать строкой `compute_cost:` в шапке публичного отчёта |
+| Hypothesis (cause) | `c-…` — short name |
+| Method / card | `m-…` / `…` |
+| Hypothesis specification | completed BEFORE the run: yes/no |
+| Run date | YYYY-MM-DD |
+| Run owner | model/person |
+| Run status | completed successfully / failed / partial |
+| Compute cost (optional) | `wall_h=…; gpu_h=…; n_gpus=…` — repeat as `compute_cost:` in the public report header |
 
-> Опционально в шапке `.md` отчёта (не в таблице):  
-> `compute_cost: wall_h=2.4; gpu_h=4.8; n_gpus=2; until=SMA SR≥0.8; source=measured`  
-> Если нет GPU/train — строку не писать.
+> Optional in the `.md` report header (not in the table):
+> `compute_cost: wall_h=2.4; gpu_h=4.8; n_gpus=2; until=SMA SR≥0.8; source=measured`
+> Omit this line when the work used no GPU or training run.
 
-## 1. Что запущено (воспроизводимость)
+## 1. What was run (reproducibility)
 
-> Точные факты прогона. Здесь можно и нужно указывать локальные пути и команды —
-> в публичный отчёт они не пойдут.
+> Record exact run facts. Local paths and commands belong here and must not be
+> copied into the public report.
 
-- Команда: `<точная команда запуска>`
-- Прогонов в этой карточке: N (перечислить идентификаторы)
-- Окружение/железо: `<runtime, версии, оборудование, commit>`
-- Сырые метрики: `<путь к артефакту>`
-- Логи: `<путь к логам>`
+- Command: `<exact launch command>`
+- Runs in this card: N (list identifiers)
+- Environment/hardware: `<runtime, versions, hardware, commit>`
+- Raw metrics: `<artifact path>`
+- Logs: `<log path>`
 
-## 2. Основная метрика и результаты
+## 2. Primary metric and results
 
-> Та же метрика, что в «правиле решения» спеки. Таблица — сырые числа из jsonl.
-> Если прогонов несколько (sweep / сиды) — строка на прогон.
+> Use the same metric as the specification's decision rule. The table contains
+> raw numbers from jsonl. For multiple runs (sweep or seeds), use one row per run.
 
-| прогон | условия | seed | бюджет | основная метрика | время | прочее |
-|--------|---------|------|--------|-------------------|-------|--------|
+| run | conditions | seed | budget | primary metric | time | other |
+|-----|------------|------|--------|----------------|------|-------|
 | … | … | … | … | … | … | … |
 
-Сводка одной фразой: …
+One-sentence summary: …
 
-## 3. Проверка правила решения
+## 3. Decision-rule evaluation
 
-> Дословно перенести правило из спеки и подставить числа. Это мост к вердикту —
-> вердикт обязан следовать из этой подстановки, а не из общего впечатления.
+> Copy the rule from the specification verbatim and substitute the measured
+> values. This connects evidence to the verdict: the verdict must follow from
+> this substitution, not from a general impression.
 
-- Правило (из спеки): supported если …; refuted если …; open если …
-- Факт: метрика = значение (порог = значение)
-- → правило даёт: **supported / refuted / open**
+- Rule (from the specification): supported if …; refuted if …; open if …
+- Observation: metric = value (threshold = value)
+- → the rule yields: **supported / refuted / open**
 
-## 4. Угрозы и оговорки (что этот прогон НЕ доказывает)
+## 4. Threats and caveats (what this run does NOT establish)
 
-> 2–4 пункта. Почти всегда сюда входят: разброс по сидам (эффект внутри разброса →
-> вывод неустойчив), прогрев/кэш (`scene_creation_s` на холодном старте — разовый,
-> не относить к throughput тренировки), потолок метрики (success_rate=1.0 на коротком
-> бюджете не различает варианты — мерить reward / position_error).
+> Give 2–4 items. Typical examples include seed variance (an effect within the
+> variance is not robust), warm-up/cache effects (`scene_creation_s` on a cold
+> start is a one-time cost and not training throughput), and metric ceilings
+> (`success_rate=1.0` on a short budget cannot distinguish variants; measure
+> reward or position_error).
 
 - …
 
-## 5. Заявка в базу знаний
+## 5. Knowledge base submission
 
-> Главный блок. Это ПРЕДЛОЖЕНИЕ агента, что и как занести. Решение — за ревьюером
-> по матрице в `docs/research-workflow.md`; он может принять как есть, понизить уверенность,
-> разбить, отклонить или оставить только методический инсайт.
+> This is the agent's PROPOSAL for what to record and how. The reviewer decides
+> using the matrix in `docs/research-workflow.md` and may accept it, lower its
+> certainty, split it, reject it, or retain only a methodological insight.
 
-### 5.1 Предлагаемый вердикт cause-узла
+### 5.1 Proposed cause-node verdict
 
 - `c-…` → **open | supported | refuted**
-- обоснование (1 строка, со ссылкой на §3): …
+- rationale (one line referring to Section 3): …
 
-### 5.2 Предлагаемые инсайты (≤3 на метод, формат research.json)
+### 5.2 Proposed insights (at most 3 per method; research.json format)
 
-> Готовые поля для `research.json`. narrative — человекочитаемо для UI;
-> answer — техсводка; certainty=definite ТОЛЬКО если порог пройден с запасом и
-> вывод устойчив к §4; иначе tentative.
+> These fields are ready for `research.json`. `narrative` is the readable UI
+> answer and `answer` is the technical summary. Use `certainty=definite` ONLY
+> when the threshold is exceeded by a clear margin and the conclusion is robust
+> to the caveats in Section 4; otherwise use `tentative`.
 
 ```json
 [
   {
     "method_id": "m-…",
     "card_id": "…",
-    "question": "Вопрос, на который отвечает прогон?",
-    "answer": "краткая техническая сводка с числами",
-    "narrative": "человекочитаемый ответ для UI",
+    "question": "What question does this run answer?",
+    "answer": "concise technical summary with measured values",
+    "narrative": "readable answer for the UI",
     "certainty": "definite | tentative",
     "importance": 3
   }
 ]
 ```
 
-### 5.3 Рекомендация по форме интеграции
+### 5.3 Recommended integration form
 
-> Один из вариантов матрицы решения (`docs/research-workflow.md`), с одной строкой почему:
-> принять как есть / принять с понижением до tentative+open / разбить на N инсайтов /
-> отклонить (методическая ошибка, перезапуск) / только методический инсайт.
+> Choose one option from the decision matrix in `docs/research-workflow.md` and
+> explain why in one line: accept as written / accept after lowering to
+> tentative+open / split into N insights / reject (methodological error; rerun) /
+> methodological insight only.
 
-- Рекомендация: …
-- Почему: …
+- Recommendation: …
+- Reason: …

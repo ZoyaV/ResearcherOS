@@ -163,7 +163,7 @@ function escapeHtml(s) {
 }
 
 function truncateTitle(title, max = 28) {
-  const t = String(title || "Эксперимент").trim();
+  const t = String(title || "Experiment").trim();
   if (t.length <= max) return t;
   return `${t.slice(0, max - 1)}…`;
 }
@@ -172,7 +172,7 @@ function subtasksHtml(subtasks) {
   const open = subtasks?.open || [];
   const done = subtasks?.done || [];
   if (!open.length && !done.length) {
-    return `<p class="card-live-empty">Подзадачи не заданы в description карточки.</p>`;
+    return `<p class="card-live-empty">No subtasks are defined in the card description.</p>`;
   }
   const rows = [
     ...open.map(
@@ -189,17 +189,17 @@ function subtasksHtml(subtasks) {
 
 function metricsHtml(metrics, projectId) {
   if (!metrics?.configured) {
-    return `<p class="card-live-empty">Укажите <code>metrics_dir: …</code> в description карточки или отчёте.</p>`;
+    return `<p class="card-live-empty">Specify <code>metrics_dir: …</code> in the card description or report.</p>`;
   }
   if (metrics.error) {
     return `<p class="card-live-error">${escapeHtml(metrics.error)}</p>`;
   }
   if (!metrics.exists) {
-    return `<p class="card-live-empty">Папка не найдена: <code>${escapeHtml(metrics.path)}</code></p>`;
+    return `<p class="card-live-empty">Directory not found: <code>${escapeHtml(metrics.path)}</code></p>`;
   }
   const images = metrics.images || [];
   if (!images.length) {
-    return `<p class="card-live-empty">В <code>${escapeHtml(metrics.path)}</code> пока нет png/jpg.</p>`;
+    return `<p class="card-live-empty"><code>${escapeHtml(metrics.path)}</code> does not contain any PNG/JPEG files yet.</p>`;
   }
   const base = (metrics.resolved_path || metrics.path || "").replace(/\/$/, "");
   const tiles = images
@@ -218,13 +218,13 @@ function metricsHtml(metrics, projectId) {
 
 function logHtml(liveLog) {
   if (!liveLog?.configured) {
-    return `<p class="card-live-empty">Укажите <code>live_log: …</code> в description карточки или отчёте.</p>`;
+    return `<p class="card-live-empty">Specify <code>live_log: …</code> in the card description or report.</p>`;
   }
   if (liveLog.error) {
     return `<p class="card-live-error">${escapeHtml(liveLog.error)}</p>`;
   }
   if (!liveLog.exists) {
-    return `<p class="card-live-empty">Файл не найден: <code>${escapeHtml(liveLog.path)}</code></p>`;
+    return `<p class="card-live-empty">File not found: <code>${escapeHtml(liveLog.path)}</code></p>`;
   }
   const tail = liveLog.tail || "";
   return `<pre class="card-live-log" aria-live="polite">${escapeHtml(tail)}</pre>`;
@@ -233,7 +233,7 @@ function logHtml(liveLog) {
 function noteHtml(data) {
   const note = String(data?.live_note || "").trim();
   if (!note) {
-    return `<p class="card-live-empty">Агент ещё не написал <code>live_note:</code> — краткий комментарий о ходе эксперимента (шаг, loss, статус).</p>`;
+    return `<p class="card-live-empty">The agent has not written a <code>live_note:</code> yet—a brief experiment update with the step, loss, and status.</p>`;
   }
   return `<div class="card-live-note-block"><p class="card-live-note-text">${escapeHtml(note)}</p></div>`;
 }
@@ -256,10 +256,10 @@ function paneHtml(view, data, projectId) {
 function statusLine(entry) {
   const data = entry.data;
   if (entry.error) return entry.error;
-  if (!data) return "Загрузка…";
+  if (!data) return "Loading…";
   const current = data.subtasks?.open?.[0];
-  if (current) return `Сейчас: ${current}`;
-  if (data.column_id === "running") return "Эксперимент в работе";
+  if (current) return `Now: ${current}`;
+  if (data.column_id === "running") return "Experiment in progress";
   return "";
 }
 
@@ -268,7 +268,7 @@ function renderCardTabs() {
   if (!tabsEl) return;
 
   if (!monitored.size) {
-    tabsEl.innerHTML = `<p class="card-live-empty card-live-empty--tabs">Нет активных экспериментов</p>`;
+    tabsEl.innerHTML = `<p class="card-live-empty card-live-empty--tabs">No active experiments</p>`;
     return;
   }
 
@@ -303,14 +303,14 @@ function renderActiveCard() {
   if (!entry) {
     if (methodEl) methodEl.textContent = "";
     if (statusEl) statusEl.textContent = "";
-    if (paneHost) paneHost.innerHTML = `<p class="card-live-empty">Выберите карточку на карте (🔍) или вкладку выше.</p>`;
+    if (paneHost) paneHost.innerHTML = `<p class="card-live-empty">Select a card on the map (🔍) or a tab above.</p>`;
     renderNav(DEFAULT_VIEW);
     return;
   }
 
   const { ctx, data, view } = entry;
   if (methodEl) {
-    methodEl.textContent = ctx.methodTitle ? `Метод: ${ctx.methodTitle}` : "";
+    methodEl.textContent = ctx.methodTitle ? `Method: ${ctx.methodTitle}` : "";
   }
   if (statusEl) statusEl.textContent = statusLine(entry);
   renderNav(view);
@@ -423,7 +423,7 @@ async function refreshAll() {
   pruneInactiveCards();
   renderUI();
   const stamp = document.getElementById("card-live-updated");
-  if (stamp) stamp.textContent = `обновлено ${new Date().toLocaleTimeString()}`;
+  if (stamp) stamp.textContent = `updated ${new Date().toLocaleTimeString("en-US")}`;
 }
 
 function stopPolling() {
@@ -454,7 +454,7 @@ export async function openCardLiveDrawer(ctx, ui) {
   pinnedKey = cardKey(focusCtx);
   await syncRunningTabs(
     focusCtx,
-    seedCards.length ? seedCards : [{ ...focusCtx, cardTitle: focusCtx.cardTitle || "Эксперимент" }]
+    seedCards.length ? seedCards : [{ ...focusCtx, cardTitle: focusCtx.cardTitle || "Experiment" }]
   );
   activeKey = cardKey(focusCtx);
   if (!monitored.has(activeKey)) {

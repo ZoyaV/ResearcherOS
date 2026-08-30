@@ -20,14 +20,14 @@ from koi.projects.discoveries import (
 
 
 def test_answer_signature_changes_when_narrative_changes() -> None:
-    a = {"narrative": "Первый ответ", "answer": "raw"}
-    b = {"narrative": "Второй ответ", "answer": "raw"}
+    a = {"narrative": "First answer", "answer": "raw"}
+    b = {"narrative": "Second answer", "answer": "raw"}
     assert _answer_signature(a) != _answer_signature(b)
 
 
 def test_answer_signature_uses_narrative_over_answer() -> None:
-    item = {"narrative": "Текст", "answer": "другое"}
-    assert _answer_signature(item) == _answer_signature({"narrative": "Текст"})
+    item = {"narrative": "Text", "answer": "different"}
+    assert _answer_signature(item) == _answer_signature({"narrative": "Text"})
 
 
 def test_questions_from_json_indexed_by_id() -> None:
@@ -176,8 +176,8 @@ def test_filesystem_detects_new_question_with_answer(tmp_path, monkeypatch) -> N
                 "questions": [
                     {
                         "id": "rq-new",
-                        "question": "Новый вопрос?",
-                        "narrative": "Готовый ответ",
+                        "question": "New question?",
+                        "narrative": "Complete answer",
                     }
                 ],
             }
@@ -202,7 +202,7 @@ def test_filesystem_detects_new_question_with_answer(tmp_path, monkeypatch) -> N
     items, _sigs = detect_filesystem_rq_discoveries({}, initialized=True)
     assert len(items) == 1
     assert items[0]["question_id"] == "rq-new"
-    assert items[0]["answer"] == "Готовый ответ"
+    assert items[0]["answer"] == "Complete answer"
 
 
 def test_pending_initializes_snapshots_without_historical_discoveries(

@@ -98,7 +98,7 @@ function renderHubViewerAccount(slot, me) {
   if (!slot) return;
   if (!me?.authenticated || !me.user) {
     slot.innerHTML =
-      '<a class="hub-nav-link hub-nav-link--accent" href="/auth/github">Войти</a>';
+      '<a class="hub-nav-link hub-nav-link--accent" href="/auth/github">Sign in</a>';
     return;
   }
   const u = me.user;
@@ -114,8 +114,8 @@ function renderHubViewerAccount(slot, me) {
     '<span class="hub-account__chevron" aria-hidden="true">▾</span>' +
     "</button>" +
     '<div class="hub-account__menu hidden" id="hub-account-menu" role="menu">' +
-    '<a class="hub-account__item" href="/connect" role="menuitem">Подключить репозиторий</a>' +
-    '<button type="button" class="hub-account__item hub-account__item--danger" data-action="logout" role="menuitem">Выйти</button>' +
+    '<a class="hub-account__item" href="/connect" role="menuitem">Connect repository</a>' +
+    '<button type="button" class="hub-account__item hub-account__item--danger" data-action="logout" role="menuitem">Sign out</button>' +
     "</div>" +
     "</div>";
   bindHubAccountMenu(slot);
@@ -163,7 +163,7 @@ function applyHubReadonlyChrome() {
     }
     wrap.className = "hub-toolbar-links";
     wrap.innerHTML =
-      '<a class="hub-nav-link" href="/" title="К каталогу Hub">← Каталог</a>' +
+      '<a class="hub-nav-link" href="/" title="Back to Hub catalog">← Catalog</a>' +
       '<span class="hub-toolbar-sep" aria-hidden="true"></span>' +
       '<div id="hub-viewer-account" class="hub-viewer-account">' +
       '<span class="hub-nav-link hub-nav-link--muted">…</span>' +
@@ -173,7 +173,7 @@ function applyHubReadonlyChrome() {
   const tagline = document.getElementById("brand-tagline");
   if (tagline && window.__HUB__?.meta?.owner_login) {
     tagline.textContent =
-      "Hub · @" + window.__HUB__.meta.owner_login + " · только просмотр";
+      "Hub · @" + window.__HUB__.meta.owner_login + " · read-only";
   }
 }
 
@@ -186,7 +186,7 @@ async function resolveHubProjectId() {
     (token ? "?token=" + encodeURIComponent(token) : "");
   const res = await fetch(url, { credentials: "same-origin" });
   if (!res.ok) {
-    const detail = res.status === 403 ? "Нет доступа к проекту" : "Проект не найден";
+    const detail = res.status === 403 ? "Project access denied" : "Project not found";
     throw new Error(detail);
   }
   const snap = await res.json();
@@ -194,19 +194,19 @@ async function resolveHubProjectId() {
   return snap.project?.id || null;
 }
 
-/** Бейдж вердикта на узле-гипотезе (cause): подтверждена / опровергнута. */
+/** Verdict badge on a hypothesis (cause) node: supported / refuted. */
 const VERDICT_BADGES = {
-  supported: { mark: "✔", label: "Гипотеза подтверждена" },
-  refuted: { mark: "✗", label: "Гипотеза опровергнута" },
+  supported: { mark: "✔", label: "Hypothesis supported" },
+  refuted: { mark: "✗", label: "Hypothesis refuted" },
 };
 
 const TYPE_LABELS = {
-  problem: "Проблема",
-  cause: "Причина",
-  cause_evidence: "Доказательство",
-  remediation: "Гипотеза",
-  method: "Метод",
-  experiment: "Эксперимент",
+  problem: "Problem",
+  cause: "Cause",
+  cause_evidence: "Evidence",
+  remediation: "Hypothesis",
+  method: "Method",
+  experiment: "Experiment",
 };
 
 const LAYOUT = {
@@ -218,7 +218,7 @@ const LAYOUT = {
   kanbanExtra: 28,
 };
 
-/** Высота блока «канбан» + статистика + progress bar под карточкой (вне узла). */
+/** Height of the kanban block, statistics, and progress bar below a card. */
 const KANBAN_BELOW_H = 34;
 const KANBAN_BELOW_W = 88;
 
@@ -275,7 +275,7 @@ const TEXT_METRICS = {
   labelFont: "700 8px Outfit, system-ui, sans-serif",
 };
 
-/** Компактные прямоугольники для гипотез (remediation). */
+/** Compact rectangles for remediation hypotheses. */
 const HYPOTHESIS_METRICS = {
   maxW: 210,
   minW: 128,
@@ -291,16 +291,16 @@ const RQ_BADGE_HOLD_MS = 2500;
 const RQ_BADGE_FADE_MS = 5_000;
 const RQ_IMPORTANCE_FILTER_KEY = "koi-rq-importance-min";
 const RQ_IMPORTANCE_FILTER_OPTIONS = [
-  { min: 1, label: "Все", title: "Показать все выводы" },
-  { min: 2, label: "≥2", title: "Важность 2 и выше" },
-  { min: 3, label: "≥3", title: "Важность 3 и выше" },
-  { min: 4, label: "≥4", title: "Важность 4 и выше" },
-  { min: 5, label: "★5", title: "Только ключевые выводы" },
+  { min: 1, label: "All", title: "Show all findings" },
+  { min: 2, label: "≥2", title: "Importance 2 or higher" },
+  { min: 3, label: "≥3", title: "Importance 3 or higher" },
+  { min: 4, label: "≥4", title: "Importance 4 or higher" },
+  { min: 5, label: "★5", title: "Key findings only" },
 ];
 
 const RESEARCH_CERTAINTY_LABELS = {
-  definite: "С чётким ответом",
-  tentative: "Предварительные выводы",
+  definite: "Definite answers",
+  tentative: "Tentative findings",
 };
 
 let state = {
@@ -460,7 +460,7 @@ function escapeHtml(s) {
   return d.innerHTML;
 }
 
-/** Drop redundant «Причина:» / «Доказательство:» prefix when label is already shown. */
+/** Drop a redundant “Cause:” / “Evidence:” prefix when the label is already shown. */
 function getBoard(project, boardId) {
   if (!project?.boards || !boardId) return null;
   const boards = project.boards;
@@ -719,7 +719,7 @@ async function ensureRunningAuthors(projectId, { force = false } = {}) {
     } else {
       const data = await KoiApi.getKanbanRunningActivity(projectId);
       authors = Object.fromEntries(
-        (data.items || []).map((item) => [item.card_id, item.author || "коллега"])
+        (data.items || []).map((item) => [item.card_id, item.author || "a colleague"])
       );
     }
     runningAuthorsByProject.set(projectId, authors);
@@ -732,9 +732,9 @@ async function ensureRunningAuthors(projectId, { force = false } = {}) {
 }
 
 function formatRunningAuthorHint(author, task) {
-  const who = String(author || "коллега").trim() || "коллега";
-  const what = String(task || "эксперимент").trim() || "эксперимент";
-  return `${who} и агент работают над задачей «${what}»`;
+  const who = String(author || "a colleague").trim() || "a colleague";
+  const what = String(task || "experiment").trim() || "experiment";
+  return `${who} and the agent are working on “${what}”`;
 }
 
 function applyRunningCardAuthorTitles(root, projectId) {
@@ -842,7 +842,7 @@ function runningWorkersUnderNode(project, nodeId) {
     const board = getBoardForNode(project, node);
     for (const card of board?.cards || []) {
       if (card.column_id !== "running") continue;
-      const login = resolveRunningAuthor(project, card.id) || "коллега";
+      const login = resolveRunningAuthor(project, card.id) || "a colleague";
       const task = String(card.title || card.id).trim();
       if (!byAuthor.has(login)) byAuthor.set(login, []);
       if (task) byAuthor.get(login).push(task);
@@ -860,7 +860,7 @@ function runningWorkersForCard(project, cardId) {
     if (card) break;
   }
   if (!card || card.column_id !== "running") return [];
-  const login = resolveRunningAuthor(project, cardId) || "коллега";
+  const login = resolveRunningAuthor(project, cardId) || "a colleague";
   return [{ login, tasks: [String(card.title || cardId).trim()].filter(Boolean) }];
 }
 
@@ -903,7 +903,7 @@ function positionNodeWorkersPanel(anchor) {
 
 function githubAvatarUrl(login) {
   const who = String(login || "").trim().replace(/^@/, "");
-  if (!who || who === "коллега") return "";
+  if (!who || who === "a colleague") return "";
   // Direct avatars host (no redirect). github.com/{user}.png is flaky with no-referrer.
   return `https://avatars.githubusercontent.com/${encodeURIComponent(who)}?s=64&v=4`;
 }
@@ -926,11 +926,11 @@ function workerInitials(login) {
 function renderNodeWorkersPanel(workers, _scopeLabel) {
   const panel = ensureNodeWorkersPanel();
   panel.innerHTML =
-    `<p class="node-workers-panel__head">Тут работают:</p>` +
+    `<p class="node-workers-panel__head">Working here:</p>` +
     `<ul class="node-workers-panel__list" role="list">` +
     workers
       .map((w) => {
-        const login = String(w.login || "коллега").trim() || "коллега";
+        const login = String(w.login || "a colleague").trim() || "a colleague";
         const avatar = resolveWorkerAvatar(login);
         const initials = escapeHtml(workerInitials(login));
         const avatarHtml = avatar
@@ -1005,7 +1005,7 @@ function hideNodeWorkersPanel(immediate = false) {
 function wireNodeWorkersHover(wrap, project, node) {
   if (!wrap || !project || !node || wrap.dataset.workersBound === "1") return;
   wrap.dataset.workersBound = "1";
-  const scopeLabel = TYPE_LABELS[node.node_type] || "узел";
+  const scopeLabel = TYPE_LABELS[node.node_type] || "node";
 
   const show = () => {
     const reveal = () => {
@@ -1057,7 +1057,7 @@ function wireCardWorkersHover(root, project) {
     const workers = runningWorkersForCard(proj, cardId);
     if (!workers.length) return;
     if (proj.id) void ensureRunningAuthors(proj.id);
-    showNodeWorkersPanel(card, workers, "карточкой");
+    showNodeWorkersPanel(card, workers, "card");
   });
 
   root.addEventListener("pointerout", (e) => {
@@ -1228,7 +1228,7 @@ function appendKanbanBelow(wrap, node, project = state.project) {
   below.title = "exp_tot / in proc / done";
   below.innerHTML = `
     <div class="node-kanban-compact">
-      <span class="node-kanban-label">канбан</span>
+      <span class="node-kanban-label">kanban</span>
       <span class="node-kanban-stats">tot ${s.tot} · proc ${s.inProc} · done ${s.done}</span>
       ${kanbanProgressBarHtml(s)}
     </div>`;
@@ -1358,9 +1358,9 @@ function refreshKanbanBelowForNode(nodeId) {
 function displayTitle(node) {
   let t = (node.title || "").trim();
   const prefixes = {
-    cause: /^причина:\s*/i,
-    cause_evidence: /^доказательство:\s*/i,
-    remediation: /^устранение:\s*/i,
+    cause: /^cause:\s*/i,
+    cause_evidence: /^evidence:\s*/i,
+    remediation: /^remediation:\s*/i,
   };
   const re = prefixes[node.node_type];
   if (re) t = t.replace(re, "");
@@ -1390,8 +1390,8 @@ function updatePaperReviewLink() {
   const needsBranch = isCompositeView() && !pid;
   link.classList.toggle("is-needs-branch", needsBranch);
   link.title = needsBranch
-    ? "Сначала выберите ветку проекта в Laboratory"
-    : "Related work — литература и обзор статей";
+    ? "Select a project branch in Laboratory first"
+    : "Related Work — literature and paper review";
 }
 
 /** Project id that Related Work / literature should bind to. */
@@ -1657,7 +1657,7 @@ async function createReviewSetFromResults() {
   }
 }
 
-/** Эксперименты живут в канбане, на карте не показываем. */
+/** Experiments live on kanban boards and are not shown on the map. */
 function isVisualNode(node) {
   return node.node_type !== "experiment";
 }
@@ -2232,7 +2232,7 @@ function layoutLaboratory(grouped, projectsById) {
   if (grouped.ungrouped?.length) {
     groups.push({
       id: "",
-      title: grouped.groups?.length ? "Без программы" : "Проекты",
+      title: grouped.groups?.length ? "No program" : "Projects",
       description: "",
       projects: grouped.ungrouped,
       composites: [],
@@ -2400,9 +2400,9 @@ function mountMapNode(pos, layer, project, node, nodeSizes) {
     qBtn.className = "method-questions-trigger";
     qBtn.setAttribute(
       "aria-label",
-      `Выводы: ${counts.definite} с чётким ответом, ${counts.tentative} предварительных`
+      `Findings: ${counts.definite} definite, ${counts.tentative} tentative`
     );
-    qBtn.title = "Выводы по экспериментам";
+    qBtn.title = "Experiment findings";
     qBtn.innerHTML = `<span class="rq-badge-q">?</span><span class="rq-badge-def">${counts.definite}</span><span class="rq-badge-sep">|</span><span class="rq-badge-tent">${counts.tentative}</span>`;
     qBtn.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -2561,7 +2561,7 @@ function renderLabMindmap(options = {}) {
     frame.style.width = `${region.width}px`;
     frame.style.height = `${region.height}px`;
     frame.title = region.title;
-    frame.setAttribute("aria-label", `Проект: ${region.title}`);
+    frame.setAttribute("aria-label", `Project: ${region.title}`);
     frame.addEventListener("click", (e) => {
       e.stopPropagation();
       void focusLabProject(placement.project.id, { animate: true });
@@ -2825,7 +2825,7 @@ function renderMindmap(options = {}) {
   const trees = buildTree(state.project.nodes);
   const root = trees[0];
   if (!root) {
-    setStatus("В проекте нет корневого узла (problem)", true);
+    setStatus("The project has no root problem node", true);
     return;
   }
 
@@ -2921,9 +2921,9 @@ function renderMindmap(options = {}) {
       qBtn.className = "method-questions-trigger";
       qBtn.setAttribute(
         "aria-label",
-        `Выводы: ${counts.definite} с чётким ответом, ${counts.tentative} предварительных`
+        `Findings: ${counts.definite} definite, ${counts.tentative} tentative`
       );
-      qBtn.title = "Выводы по экспериментам";
+      qBtn.title = "Experiment findings";
       qBtn.innerHTML = `<span class="rq-badge-q">?</span><span class="rq-badge-def">${counts.definite}</span><span class="rq-badge-sep">|</span><span class="rq-badge-tent">${counts.tentative}</span>`;
       qBtn.addEventListener("click", (e) => {
         e.stopPropagation();
@@ -3078,7 +3078,7 @@ async function openLinkedReportMarkdown(knowledgePath) {
   if (!state.project?.id) return;
   const editor = document.getElementById("card-report-editor");
   if (!editor) return;
-  setStatus("Загрузка отчёта…");
+  setStatus("Loading report…");
   try {
     const content = await KoiApi.getKnowledgeFile(state.project.id, knowledgePath);
     editor.value = content;
@@ -3158,7 +3158,7 @@ async function onReportEditorPaste(e) {
   const selStart = editor.selectionStart ?? editor.value.length;
   const selEnd = editor.selectionEnd ?? selStart;
 
-  setStatus("Загрузка изображения…");
+  setStatus("Uploading image…");
   try {
     const data = await KoiApi.uploadReportAsset(
       reportWriteProjectId(),
@@ -3170,13 +3170,13 @@ async function onReportEditorPaste(e) {
       data.markdown_path ||
       (data.filename ? `assets/${data.filename}` : null);
     if (!mdPath) {
-      throw new Error("Сервер не вернул путь к картинке");
+      throw new Error("The server did not return an image path");
     }
     const snippet = `\n![image](${mdPath})\n`;
     insertReportMarkdown(editor, selStart, selEnd, snippet);
     state.reportDirty = true;
     scheduleReportPreview();
-    setStatus("Изображение вставлено");
+    setStatus("Image inserted");
   } catch (err) {
     setStatus(err.message, true);
   }
@@ -3201,7 +3201,7 @@ async function saveCardReport(force = false) {
   if (!state.reportCardId || !state.reportBoardId || !state.project) return;
   const editor = document.getElementById("card-report-editor");
   if (!force && !state.reportDirty) return;
-  setStatus("Сохранение отчёта…");
+  setStatus("Saving report…");
   try {
     const data = await KoiApi.saveCardReport(
       reportWriteProjectId(),
@@ -3212,7 +3212,7 @@ async function saveCardReport(force = false) {
     document.getElementById("card-report-filename").textContent =
       data.relative_path;
     state.reportDirty = false;
-    setStatus("Отчёт сохранён");
+    setStatus("Report saved");
   } catch (err) {
     setStatus(err.message, true);
   }
@@ -3220,7 +3220,7 @@ async function saveCardReport(force = false) {
 
 async function openCardReport(card, board) {
   if (!state.project?.id) {
-    setStatus("Сначала выберите проект", true);
+    setStatus("Select a project first", true);
     return;
   }
   state.reportCardId = card.id;
@@ -3228,7 +3228,7 @@ async function openCardReport(card, board) {
   state.reportProjectId = boardWriteProjectId(board);
   const editor = document.getElementById("card-report-editor");
   if (!editor) {
-    setStatus("Модалка отчёта не найдена в DOM", true);
+    setStatus("Report modal not found in the DOM", true);
     return;
   }
   editor.value = "";
@@ -3237,7 +3237,7 @@ async function openCardReport(card, board) {
   document.getElementById("card-report-filename").textContent = "…";
   syncReportComputeCostBadge("");
   showModal("card-report-modal");
-  setStatus("Загрузка отчёта…");
+  setStatus("Loading report…");
   try {
     const data = await KoiApi.getCardReport(
       reportWriteProjectId(),
@@ -3247,7 +3247,7 @@ async function openCardReport(card, board) {
     const content = typeof data?.content === "string" ? data.content : "";
     if (!content.trim()) {
       setStatus(
-        `Отчёт пуст (${data?.source || "unknown"}). Проверьте файл ${data?.relative_path || ""}`,
+        `The report is empty (${data?.source || "unknown"}). Check ${data?.relative_path || ""}`,
         true
       );
     } else {
@@ -3257,9 +3257,9 @@ async function openCardReport(card, board) {
     state.reportRelativePath = data.relative_path || null;
     const fnameEl = document.getElementById("card-report-filename");
     if (data.source === "run") {
-      fnameEl.textContent = `${data.run_relative_path || data.relative_path} — рабочий отчёт (основание вердикта и инсайтов); сохранение создаст публичную версию в ${data.relative_path}`;
+      fnameEl.textContent = `${data.run_relative_path || data.relative_path} — working report (basis for verdict and insights); saving creates a public version at ${data.relative_path}`;
     } else if (data.source === "template") {
-      fnameEl.textContent = `${data.relative_path} — преднаполненный шаблон: заполните и сохраните`;
+      fnameEl.textContent = `${data.relative_path} — prefilled template: complete and save it`;
     } else {
       fnameEl.textContent = data.relative_path || "reports/";
     }
@@ -3268,9 +3268,9 @@ async function openCardReport(card, board) {
     updateReportPreview();
     if (!content.trim()) editor.focus();
   } catch (err) {
-    const msg = String(err?.message || err || "Не удалось загрузить отчёт");
+    const msg = String(err?.message || err || "Could not load the report");
     editor.value = "";
-    document.getElementById("card-report-filename").textContent = `Ошибка загрузки: ${msg}`;
+    document.getElementById("card-report-filename").textContent = `Load error: ${msg}`;
     updateReportPreview();
     setStatus(msg, true);
   }
@@ -3318,10 +3318,10 @@ function fillAddChildTypeSelect(parent) {
   const formatHint = document.getElementById("add-child-format-hint");
   const titleInput = document.querySelector("#add-child-form input[name=title]");
   const defaults = {
-    cause: "Причина: …",
-    cause_evidence: "Доказательство: …",
-    remediation: "Устранение: …",
-    method: "Название метода",
+    cause: "Cause: …",
+    cause_evidence: "Evidence: …",
+    remediation: "Remediation: …",
+    method: "Method name",
   };
 
   if (!allowed.length) {
@@ -3350,7 +3350,7 @@ function fillAddChildTypeSelect(parent) {
       formatHint.innerHTML = formatAddChildFormatHint(nodeType);
     }
     if (titleInput) {
-      titleInput.placeholder = defaults[nodeType] || "Заголовок";
+      titleInput.placeholder = defaults[nodeType] || "Title";
     }
   };
 
@@ -3387,10 +3387,10 @@ function renderCardDescDisplay(descEl, description, columnId) {
   syncCardDescTodoOnlyState(descEl, description);
 }
 
-const CARD_DESC_PLACEHOLDER_PLAN = "План / заметка (двойной клик)";
+const CARD_DESC_PLACEHOLDER_PLAN = "Plan / note (double-click)";
 const CARD_DESC_PLACEHOLDER_RUNNING =
-  "Заметка или подзадачи: - [ ] пункт, - [x] готово (двойной клик)";
-const CARD_DESC_PLACEHOLDER_CONCLUSION = "Краткий вывод (двойной клик)";
+  "Note or subtasks: - [ ] item, - [x] done (double-click)";
+const CARD_DESC_PLACEHOLDER_CONCLUSION = "Brief conclusion (double-click)";
 const KANBAN_CONCLUSION_COLUMNS = new Set(["done", "successful"]);
 
 function isKanbanConclusionColumn(columnId) {
@@ -3432,12 +3432,12 @@ function syncCardDescConclusionClass(descEl, columnId) {
 async function patchNodeFields(nodeId, fields) {
   const node = state.project.nodes.find((n) => n.id === nodeId);
   if (!node) return null;
-  setStatus("Сохранение…");
+  setStatus("Saving…");
   try {
     await KoiApi.patchNode(nodeWriteProjectId(node), nodeId, fields);
     state.project = await reloadProjectView();
     syncLabProject(state.project);
-    setStatus("Сохранено в project.md");
+    setStatus("Saved to project.md");
     renderMindmap();
     return state.project.nodes.find((n) => n.id === nodeId);
   } catch (err) {
@@ -3526,7 +3526,7 @@ function setupInlineEdits() {
       renderInlineDisplay(
         document.getElementById("kanban-node-desc-display"),
         v,
-        "Описание (двойной клик)"
+        "Description (double-click)"
       );
       syncKanbanDescClamp();
     },
@@ -3562,7 +3562,7 @@ function setupInlineEdits() {
       renderInlineDisplay(
         document.getElementById("node-desc-display"),
         v,
-        "Описание (двойной клик)"
+        "Description (double-click)"
       ),
     onCommit: async (description) => {
       const updated = await patchNodeFields(state.activeNodeId, {
@@ -3582,7 +3582,7 @@ function fillKanbanNodeMeta(node) {
   renderInlineDisplay(
     document.getElementById("kanban-node-desc-display"),
     node.description || "",
-    "Описание (двойной клик)"
+    "Description (double-click)"
   );
   syncKanbanDescClamp();
 }
@@ -3594,7 +3594,7 @@ function syncKanbanDescClamp() {
   const expanded = desc.classList.contains("is-expanded");
   if (expanded) {
     toggle.classList.remove("hidden");
-    toggle.textContent = "свернуть";
+    toggle.textContent = "collapse";
     toggle.setAttribute("aria-expanded", "true");
     return;
   }
@@ -3603,7 +3603,7 @@ function syncKanbanDescClamp() {
     !!desc.textContent.trim() &&
     (desc.scrollHeight > desc.clientHeight + 2 || desc.textContent.length > 120);
   toggle.classList.toggle("hidden", !needsToggle);
-  toggle.textContent = "развернуть";
+  toggle.textContent = "expand";
   toggle.setAttribute("aria-expanded", "false");
 }
 
@@ -3615,7 +3615,7 @@ function initKanbanModalChrome() {
     const expand = !desc.classList.contains("is-expanded");
     desc.classList.toggle("is-expanded", expand);
     desc.classList.toggle("is-clamped", !expand);
-    toggle.textContent = expand ? "свернуть" : "развернуть";
+    toggle.textContent = expand ? "collapse" : "expand";
     toggle.setAttribute("aria-expanded", expand ? "true" : "false");
     if (!expand) syncKanbanDescClamp();
   });
@@ -3637,8 +3637,8 @@ function fillNodeEdit(node) {
   );
   updateNodeContentHint(node.node_type);
   const descPlaceholder = NODE_TYPE_HELP[node.node_type]
-    ? "Подробности (двойной клик)"
-    : "Описание (двойной клик)";
+    ? "Details (double-click)"
+    : "Description (double-click)";
   renderInlineDisplay(
     document.getElementById("node-desc-display"),
     node.description || "",
@@ -3672,8 +3672,8 @@ function mountNodePageIcons(wrap, project, node, activateProject) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "node-page-trigger";
-    btn.title = pin.title || "Мастер-отчёт";
-    btn.setAttribute("aria-label", `Открыть мастер-отчёт «${pin.title || ""}»`);
+    btn.title = pin.title || "Master report";
+    btn.setAttribute("aria-label", `Open master report “${pin.title || ""}”`);
     btn.innerHTML = PAGE_ICON_SVG;
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -3687,7 +3687,7 @@ function mountNodePageIcons(wrap, project, node, activateProject) {
         pin.project_id ||
         (!isCompositeVirtualId(project.id) ? project.id : null);
       if (!ownerId) {
-        setStatus("Не удалось открыть мастер-отчёт: нет project_id", true);
+        setStatus("Could not open master report: project_id is missing", true);
         return;
       }
       openMasterPageView(ownerId, pin.id, pin.title);
@@ -3702,7 +3702,7 @@ function mountNodePageIcons(wrap, project, node, activateProject) {
 function openMasterPageView(projectId, pageId, title) {
   const url = KoiApi.pageFileUrl(projectId, pageId, "index.html");
   document.getElementById("master-page-view-title").textContent =
-    title || "Мастер-отчёт";
+    title || "Master report";
   const frame = document.getElementById("master-page-view-frame");
   const link = document.getElementById("master-page-view-open");
   if (frame) frame.src = url;
@@ -3736,7 +3736,7 @@ async function refreshNodePagesPanel(nodeId, { tableId, addBtnId }) {
     addBtn.classList.remove("hidden");
     addBtn.onclick = () => openMasterPagePickModal(nodeId);
   }
-  table.innerHTML = `<p class="node-pages-empty">Загрузка…</p>`;
+  table.innerHTML = `<p class="node-pages-empty">Loading…</p>`;
   try {
     const attachments = await listMergedNodePageAttachments(nodeId);
     renderNodePagesTable(table, nodeId, attachments);
@@ -3747,7 +3747,7 @@ async function refreshNodePagesPanel(nodeId, { tableId, addBtnId }) {
 
 function renderNodePagesTable(table, nodeId, attachments) {
   if (!attachments.length) {
-    table.innerHTML = `<p class="node-pages-empty">Нет прикреплённых мастер-отчётов.</p>`;
+    table.innerHTML = `<p class="node-pages-empty">No attached master reports.</p>`;
     return;
   }
   table.innerHTML = "";
@@ -3769,7 +3769,7 @@ function renderNodePagesTable(table, nodeId, attachments) {
     const openBtn = document.createElement("button");
     openBtn.type = "button";
     openBtn.className = "node-pages-icon-btn";
-    openBtn.title = "Открыть";
+    openBtn.title = "Open";
     openBtn.innerHTML = OPEN_SVG;
     openBtn.addEventListener("click", () => {
       const ownerId =
@@ -3777,7 +3777,7 @@ function renderNodePagesTable(table, nodeId, attachments) {
         pagesWriteProjectId(nodeId) ||
         (!isCompositeVirtualId(state.project?.id) ? state.project.id : null);
       if (!ownerId) {
-        setStatus("Не удалось открыть мастер-отчёт: нет project_id", true);
+        setStatus("Could not open master report: project_id is missing", true);
         return;
       }
       openMasterPageView(ownerId, item.page_id, item.title);
@@ -3786,7 +3786,7 @@ function renderNodePagesTable(table, nodeId, attachments) {
     const eyeBtn = document.createElement("button");
     eyeBtn.type = "button";
     eyeBtn.className = `node-pages-icon-btn${item.visible ? " is-on" : ""}`;
-    eyeBtn.title = item.visible ? "Скрыть с карты" : "Показать на карте";
+    eyeBtn.title = item.visible ? "Hide from map" : "Show on map";
     eyeBtn.innerHTML = item.visible ? EYE_ON_SVG : EYE_OFF_SVG;
     eyeBtn.disabled = isHubMode();
     eyeBtn.addEventListener("click", () =>
@@ -3801,7 +3801,7 @@ function renderNodePagesTable(table, nodeId, attachments) {
     const detachBtn = document.createElement("button");
     detachBtn.type = "button";
     detachBtn.className = "node-pages-icon-btn";
-    detachBtn.title = "Открепить от узла";
+    detachBtn.title = "Detach from node";
     detachBtn.innerHTML = DETACH_SVG;
     detachBtn.disabled = isHubMode();
     detachBtn.addEventListener("click", () =>
@@ -3861,13 +3861,13 @@ async function toggleNodePageVisible(nodeId, pageId, visible, projectId) {
     setStatus("Project not found", true);
     return;
   }
-  setStatus(visible ? "Показываем на карте…" : "Скрываем с карты…");
+  setStatus(visible ? "Showing on map…" : "Hiding from map…");
   try {
     await KoiApi.setNodePageVisible(ownerId, nodeId, pageId, visible);
     await reloadProjectPagePins();
     await refreshOpenNodePagesPanels(nodeId);
     renderMindmap();
-    setStatus(visible ? "Мастер-отчёт виден на карте" : "Скрыт с карты");
+    setStatus(visible ? "Master report is visible on the map" : "Hidden from map");
   } catch (err) {
     setStatus(err.message, true);
   }
@@ -3880,13 +3880,13 @@ async function detachNodePage(nodeId, pageId, projectId) {
     setStatus("Project not found", true);
     return;
   }
-  setStatus("Открепление…");
+  setStatus("Detaching…");
   try {
     await KoiApi.detachNodePage(ownerId, nodeId, pageId);
     await reloadProjectPagePins();
     await refreshOpenNodePagesPanels(nodeId);
     renderMindmap();
-    setStatus("Откреплено от узла");
+    setStatus("Detached from node");
   } catch (err) {
     setStatus(err.message, true);
   }
@@ -3911,13 +3911,13 @@ async function openMasterPagePickModal(nodeId) {
   if (!state.project || isHubMode()) return;
   _masterPagePickNodeId = nodeId;
   const list = document.getElementById("master-page-pick-list");
-  if (list) list.innerHTML = `<p class="node-pages-empty">Загрузка…</p>`;
+  if (list) list.innerHTML = `<p class="node-pages-empty">Loading…</p>`;
   showModal("master-page-pick-modal");
   try {
     const { available } = await listMergedPagesCatalog(nodeId);
     if (!list) return;
     if (!available.length) {
-      list.innerHTML = `<p class="node-pages-empty">В <code>pages/</code> нет свободных отчётов — создайте пустой HTML.</p>`;
+      list.innerHTML = `<p class="node-pages-empty">There are no unattached reports in <code>pages/</code>; create an empty HTML file.</p>`;
       return;
     }
     list.innerHTML = "";
@@ -3949,14 +3949,14 @@ async function attachExistingMasterPage(nodeId, pageId, projectId) {
     setStatus("Project not found", true);
     return;
   }
-  setStatus("Прикрепление…");
+  setStatus("Attaching…");
   try {
     await KoiApi.attachNodePage(ownerId, nodeId, { page_id: pageId });
     hideModal("master-page-pick-modal");
     await reloadProjectPagePins();
     await refreshOpenNodePagesPanels(nodeId);
     renderMindmap();
-    setStatus("Мастер-отчёт прикреплён");
+    setStatus("Master report attached");
   } catch (err) {
     setStatus(err.message, true);
   }
@@ -3968,16 +3968,16 @@ async function createEmptyMasterPage(nodeId) {
   if (!ownerId) {
     setStatus(
       isCompositeView()
-        ? "Выберите ветку проекта (Related Work) или откройте verl-agent-craftext"
+        ? "Select a project branch (Related Work) or open verl-agent-craftext"
         : "Project not found",
       true
     );
     return;
   }
-  const title = window.prompt("Название мастер-отчёта", "Мастер-отчёт");
+  const title = window.prompt("Master report title", "Master report");
   if (title == null) return;
-  const trimmed = title.trim() || "Мастер-отчёт";
-  setStatus("Создание…");
+  const trimmed = title.trim() || "Master report";
+  setStatus("Creating…");
   try {
     await KoiApi.attachNodePage(ownerId, nodeId, {
       create: true,
@@ -3987,7 +3987,7 @@ async function createEmptyMasterPage(nodeId) {
     await reloadProjectPagePins();
     await refreshOpenNodePagesPanels(nodeId);
     renderMindmap();
-    setStatus(`Создан пустой HTML в ${ownerId}/pages/`);
+    setStatus(`Created empty HTML in ${ownerId}/pages/`);
   } catch (err) {
     setStatus(err.message, true);
   }
@@ -3995,7 +3995,7 @@ async function createEmptyMasterPage(nodeId) {
 
 function openAddChildModal(parent) {
   if (isHubMode()) {
-    setStatus("В Hub нельзя добавлять узлы — только просмотр", true);
+    setStatus("Nodes cannot be added in Hub; it is read-only", true);
     return;
   }
   state.activeNodeId = parent.id;
@@ -4008,10 +4008,10 @@ function openAddChildModal(parent) {
   const pt = parent.node_type;
   document.getElementById("node-modal-title").textContent =
     pt === "problem"
-      ? "Добавить причину"
+      ? "Add cause"
       : pt === "cause"
-        ? "Добавить доказательство или гипотезу"
-        : "Добавить метод";
+        ? "Add evidence or hypothesis"
+        : "Add method";
   fillAddChildTypeSelect(parent);
   document.querySelector("#add-child-form").reset();
   fillAddChildTypeSelect(parent);
@@ -4057,14 +4057,14 @@ async function onAddChildSubmit(e) {
   const nodeType = fd.get("node_type") || allowed[0];
   const title = fd.get("title").toString().trim();
   if (!nodeType) {
-    setStatus("Нельзя добавить узел: неизвестный тип родителя", true);
+    setStatus("Cannot add node: unknown parent type", true);
     return;
   }
   if (!title) {
-    setStatus("Введите заголовок", true);
+    setStatus("Enter a title", true);
     return;
   }
-  setStatus("Добавление…");
+  setStatus("Adding…");
   try {
     await KoiApi.addNode(nodeWriteProjectId(parent), {
       parent_id: parentId,
@@ -4075,7 +4075,7 @@ async function onAddChildSubmit(e) {
     state.project = await reloadProjectView();
     syncLabProject(state.project);
     e.target.reset();
-    setStatus("Сохранено в project.md");
+    setStatus("Saved to project.md");
     hideModal("node-modal");
     resetNodeModal();
     renderMindmap();
@@ -4133,7 +4133,7 @@ function askDeleteNodeConfirm(node) {
   const submit = document.getElementById("btn-delete-node-confirm");
   if (!titleEl || !phraseEl || !input || !submit) {
     return Promise.resolve(
-      window.confirm(`Удалить узел «${title}» и всех потомков?`)
+      window.confirm(`Delete node “${title}” and all descendants?`)
     );
   }
 
@@ -4162,7 +4162,7 @@ function syncDeleteNodeConfirmInput() {
   const ok = typed === _deleteNodeConfirm.phrase;
   submit.disabled = !ok;
   if (err && typed && !ok) {
-    err.textContent = "Введите фразу точно, как показано выше";
+    err.textContent = "Enter the phrase exactly as shown above";
   } else if (err) {
     err.textContent = "";
   }
@@ -4172,12 +4172,12 @@ async function requestDeleteNode(node) {
   if (!node || node.node_type === "problem" || isHubMode()) return;
   const ok = await askDeleteNodeConfirm(node);
   if (!ok) return;
-  setStatus("Удаление…");
+  setStatus("Deleting…");
   try {
     await KoiApi.deleteNode(nodeWriteProjectId(node), node.id);
     state.project = await reloadProjectView();
     syncLabProject(state.project);
-    setStatus("Сохранено в project.md");
+    setStatus("Saved to project.md");
     hideModal("node-modal");
     hideModal("kanban-modal");
     hideModal("method-questions-modal");
@@ -4193,10 +4193,10 @@ function appendNodeDeleteButton(wrap, project, node) {
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "node-delete";
-  btn.title = "Удалить узел";
+  btn.title = "Delete node";
   btn.setAttribute(
     "aria-label",
-    `Удалить узел «${displayTitle(node)}»`
+    `Delete node “${displayTitle(node)}”`
   );
   btn.textContent = "×";
   btn.addEventListener("click", (e) => {
@@ -4266,7 +4266,7 @@ function sortResearchQuestionsByImportance(questions) {
 function importanceBadgeHtml(importance) {
   const n = normalizeResearchImportance(importance);
   const stars = formatImportance(n);
-  return `<span class="method-question-importance" title="Важность ${n} из 5" aria-label="Важность ${n} из 5"><span class="method-question-importance-stars" aria-hidden="true">${stars}</span><span class="method-question-importance-num">${n}</span></span>`;
+  return `<span class="method-question-importance" title="Importance ${n} of 5" aria-label="Importance ${n} of 5"><span class="method-question-importance-stars" aria-hidden="true">${stars}</span><span class="method-question-importance-num">${n}</span></span>`;
 }
 
 function researchQuestionCardLabel(q, node) {
@@ -4280,12 +4280,12 @@ function researchQuestionCardLabel(q, node) {
 function researchQuestionCardSourceHtml(q, node) {
   const title = researchQuestionCardLabel(q, node);
   if (!q.card_id) {
-    return `<p class="method-question-source method-question-source--missing">Эксперимент не привязан</p>`;
+    return `<p class="method-question-source method-question-source--missing">No experiment linked</p>`;
   }
   if (!title) {
-    return `<p class="method-question-source method-question-source--missing">Эксперимент: карточка не найдена</p>`;
+    return `<p class="method-question-source method-question-source--missing">Experiment: card not found</p>`;
   }
-  return `<p class="method-question-source">Эксперимент: <button type="button" class="method-question-card-link" data-card-id="${escapeHtml(q.card_id)}">${escapeHtml(title)}</button></p>`;
+  return `<p class="method-question-source">Experiment: <button type="button" class="method-question-card-link" data-card-id="${escapeHtml(q.card_id)}">${escapeHtml(title)}</button></p>`;
 }
 
 function renderMethodQuestionItem(q, node) {
@@ -4297,7 +4297,7 @@ function renderMethodQuestionItem(q, node) {
         <p class="method-question-q">${escapeHtml(q.question)}</p>
         ${importanceBadgeHtml(q.importance)}
       </div>
-      <p class="method-question-narrative">${escapeHtml(narrative || "Ответ пока не сформулирован.")}</p>
+      <p class="method-question-narrative">${escapeHtml(narrative || "No answer has been formulated yet.")}</p>
     </article>`;
 }
 
@@ -4338,8 +4338,8 @@ function renderMethodQuestionsToolbar(node, { totalCount, filteredCount, minImpo
         : `${filteredCount} / ${totalCount}`;
     countEl.title =
       filteredCount === totalCount
-        ? `${totalCount} выводов`
-        : `Показано ${filteredCount} из ${totalCount}`;
+        ? `${totalCount} findings`
+        : `Showing ${filteredCount} of ${totalCount}`;
   }
 
   chipsEl.querySelectorAll(".method-questions-filter-chip").forEach((btn) => {
@@ -4366,13 +4366,13 @@ function renderMethodQuestionsBody(node, { minImportance } = {}) {
 
   if (!allQuestions.length) {
     body.innerHTML =
-      '<p class="method-questions-empty">Пока нет выводов по экспериментам этого метода.</p>';
+      '<p class="method-questions-empty">There are no experiment findings for this method yet.</p>';
     document.getElementById("method-questions-toolbar")?.classList.add("hidden");
     return;
   }
 
   if (!questions.length) {
-    body.innerHTML = `<p class="method-questions-empty method-questions-empty--filter">Нет выводов с важностью ≥ ${min}. <button type="button" class="method-questions-filter-reset" data-reset-min="1">Показать все</button></p>`;
+    body.innerHTML = `<p class="method-questions-empty method-questions-empty--filter">No findings with importance ≥ ${min}. <button type="button" class="method-questions-filter-reset" data-reset-min="1">Show all</button></p>`;
     body.querySelector(".method-questions-filter-reset")?.addEventListener("click", () => {
       setRqImportanceMin(1);
       renderMethodQuestionsBody(node, { minImportance: 1 });
@@ -4412,7 +4412,7 @@ function resetMethodQuestionsEditMode() {
     .querySelector("#method-questions-modal .modal-panel--questions")
     ?.classList.remove("is-editing");
   const toggle = document.getElementById("btn-toggle-rq-edit");
-  if (toggle) toggle.textContent = "Редактировать";
+  if (toggle) toggle.textContent = "Edit";
 }
 
 function updateAddResearchQuestionButton() {
@@ -4423,7 +4423,7 @@ function updateAddResearchQuestionButton() {
 function buildResearchQuestionCardOptions(node, selectedId) {
   const board = getBoardForNode(state.project, node);
   const cards = board?.cards || [];
-  const opts = ['<option value="">— не выбран —</option>'];
+  const opts = ['<option value="">— not selected —</option>'];
   for (const c of cards) {
     const sel = c.id === selectedId ? " selected" : "";
     opts.push(
@@ -4434,8 +4434,8 @@ function buildResearchQuestionCardOptions(node, selectedId) {
 }
 
 const RQ_EDIT_CERTAINTY_LABELS = {
-  definite: "Точный ответ",
-  tentative: "Неточный / предварительный",
+  definite: "Definite answer",
+  tentative: "Uncertain / tentative",
 };
 
 const RQ_EDIT_PENCIL_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>`;
@@ -4447,7 +4447,7 @@ const RQ_CERTAINTY_TENTATIVE_SVG = `<svg viewBox="0 0 12 12" aria-hidden="true">
 function rqCertaintyBadgeHtml(certainty) {
   const kind = certainty === "tentative" ? "tentative" : "definite";
   const label =
-    kind === "definite" ? "Точный ответ" : "Предварительный вывод";
+    kind === "definite" ? "Definite answer" : "Tentative finding";
   const icon =
     kind === "definite" ? RQ_CERTAINTY_CHECK_SVG : RQ_CERTAINTY_TENTATIVE_SVG;
   return `<span class="method-rq-certainty-badge method-rq-certainty-badge--${kind}" title="${label}" aria-label="${label}">${icon}</span>`;
@@ -4457,7 +4457,7 @@ function syncRqRowCertaintyBadge(row) {
   const certainty = row.querySelector(".rq-certainty")?.value || "definite";
   const kind = certainty === "tentative" ? "tentative" : "definite";
   const label =
-    kind === "definite" ? "Точный ответ" : "Предварительный вывод";
+    kind === "definite" ? "Definite answer" : "Tentative finding";
   const badge = row.querySelector(".method-rq-certainty-badge");
   if (!badge) return;
   badge.className = `method-rq-certainty-badge method-rq-certainty-badge--${kind}`;
@@ -4468,10 +4468,10 @@ function syncRqRowCertaintyBadge(row) {
 }
 
 function rqCardDisplayLabel(node, cardId) {
-  if (!cardId) return "— не выбран —";
+  if (!cardId) return "— not selected —";
   const board = getBoardForNode(state.project, node);
   const card = board?.cards?.find((c) => c.id === cardId);
-  return card?.title || "— не выбран —";
+  return card?.title || "— not selected —";
 }
 
 function rqFieldBlockHtml(label, displayText, inputHtml, placeholder) {
@@ -4480,7 +4480,7 @@ function rqFieldBlockHtml(label, displayText, inputHtml, placeholder) {
     <div class="method-rq-edit-field-block">
       <span class="method-rq-field-label">${label}</span>
       <div class="method-rq-field-value">
-        <p class="rq-editable-display${empty ? " is-empty" : ""}" data-placeholder="${escapeHtml(placeholder)}" title="Двойной клик — редактировать">${escapeHtml(displayText)}</p>
+        <p class="rq-editable-display${empty ? " is-empty" : ""}" data-placeholder="${escapeHtml(placeholder)}" title="Double-click to edit">${escapeHtml(displayText)}</p>
         ${inputHtml}
         <span class="rq-edit-pencil" aria-hidden="true">${RQ_EDIT_PENCIL_SVG}</span>
       </div>
@@ -4541,7 +4541,7 @@ function wireRqEditableSelect(block) {
     const opt = select.options[select.selectedIndex];
     const label = opt?.textContent?.trim() || "";
     display.textContent = label;
-    display.classList.toggle("is-empty", !label || label === "— не выбран —");
+    display.classList.toggle("is-empty", !label || label === "— not selected —");
   };
 
   const showEdit = (e) => {
@@ -4613,49 +4613,49 @@ function createResearchQuestionEditRow(q, node, { expand = false } = {}) {
   if (q.id) row.dataset.id = q.id;
   row.innerHTML = `
     <div class="method-rq-edit-summary">
-      <button type="button" class="method-rq-edit-toggle" aria-expanded="${expand}" aria-label="Развернуть вопрос">
+      <button type="button" class="method-rq-edit-toggle" aria-expanded="${expand}" aria-label="Expand question">
         <svg class="method-rq-chevron" viewBox="0 0 12 12" aria-hidden="true"><path fill="currentColor" d="M4.2 2.4 8.4 6 4.2 9.6 3.3 8.7 6.6 6 3.3 3.3z"/></svg>
       </button>
       ${rqCertaintyBadgeHtml(certainty)}
       ${rqFieldBlockHtml(
-        "Вопрос",
+        "Question",
         questionText,
-        `<textarea class="rq-editable-input rq-question inline-edit-field hidden" rows="2" placeholder="Формулировка понятна без знания метрик…">${escapeHtml(questionText)}</textarea>`,
-        "Вопрос (без жаргона: SFT, RL, diversity…)"
+        `<textarea class="rq-editable-input rq-question inline-edit-field hidden" rows="2" placeholder="Wording that is clear without knowing the metrics…">${escapeHtml(questionText)}</textarea>`,
+        "Question (without jargon such as SFT, RL, diversity…)"
       )}
-      <button type="button" class="btn btn-danger btn-remove-rq" aria-label="Удалить вопрос">×</button>
+      <button type="button" class="btn btn-danger btn-remove-rq" aria-label="Delete question">×</button>
     </div>
     <div class="method-rq-edit-details${expand ? "" : " hidden"}">
       ${rqFieldBlockHtml(
-        "Эксперимент (карточка канбана)",
+        "Experiment (kanban card)",
         cardLabel,
         `<select class="rq-editable-input rq-card-id inline-edit-field hidden">${buildResearchQuestionCardOptions(node, q.card_id || "")}</select>`,
-        "— не выбран —"
+        "— not selected —"
       )}
       ${rqFieldBlockHtml(
-        "Ответ (человеческим языком)",
+        "Answer (plain language)",
         narrativeText,
-        `<textarea class="rq-editable-input rq-narrative inline-edit-field hidden" rows="3" placeholder="Развёрнутый ответ без жаргона и сырых цифр…">${escapeHtml(narrativeText)}</textarea>`,
-        "Развёрнутый ответ…"
+        `<textarea class="rq-editable-input rq-narrative inline-edit-field hidden" rows="3" placeholder="Detailed answer without jargon or raw numbers…">${escapeHtml(narrativeText)}</textarea>`,
+        "Detailed answer…"
       )}
       ${rqFieldBlockHtml(
-        "Заметка (техническая, не показывается)",
+        "Note (technical, hidden)",
         answerText,
         `<textarea class="rq-editable-input rq-answer inline-edit-field hidden" rows="2" placeholder="mean diversity 2.02 vs 1.46…">${escapeHtml(answerText)}</textarea>`,
-        "Техническая заметка…"
+        "Technical note…"
       )}
       <div class="method-rq-edit-meta">
         ${rqFieldBlockHtml(
-          "Тип ответа",
+          "Answer type",
           RQ_EDIT_CERTAINTY_LABELS[certainty] || RQ_EDIT_CERTAINTY_LABELS.definite,
           `<select class="rq-editable-input rq-certainty inline-edit-field hidden">
-            <option value="definite"${certainty === "definite" ? " selected" : ""}>Точный ответ</option>
-            <option value="tentative"${certainty === "tentative" ? " selected" : ""}>Неточный / предварительный</option>
+            <option value="definite"${certainty === "definite" ? " selected" : ""}>Definite answer</option>
+            <option value="tentative"${certainty === "tentative" ? " selected" : ""}>Uncertain / tentative</option>
           </select>`,
-          "Точный ответ"
+          "Definite answer"
         )}
         ${rqFieldBlockHtml(
-          "Важность (1–5)",
+          "Importance (1–5)",
           String(importance),
           `<select class="rq-editable-input rq-importance inline-edit-field hidden">
             ${[1, 2, 3, 4, 5]
@@ -4678,9 +4678,9 @@ function renderMethodQuestionsEdit(node) {
   const edit = document.getElementById("method-questions-edit");
   if (!edit) return;
   edit.innerHTML = `
-    <p class="method-questions-edit-hint">▶ развернуть детали · двойной клик — редактировать поле</p>
+    <p class="method-questions-edit-hint">▶ expand details · double-click to edit a field</p>
     <div id="method-rq-edit-list" class="method-rq-edit-list"></div>
-    <button type="button" id="btn-add-rq-row" class="btn">+ Вопрос</button>`;
+    <button type="button" id="btn-add-rq-row" class="btn">+ Question</button>`;
   const list = edit.querySelector("#method-rq-edit-list");
   for (const q of node.research_questions || []) {
     list.appendChild(createResearchQuestionEditRow(q, node));
@@ -4742,7 +4742,7 @@ function toggleMethodQuestionsEdit() {
   document
     .querySelector("#method-questions-modal .modal-panel--questions")
     ?.classList.add("is-editing");
-  toggle.textContent = "Отмена";
+  toggle.textContent = "Cancel";
 }
 
 async function saveMethodQuestions() {
@@ -4835,10 +4835,10 @@ function setKanbanViewMode(mode) {
   filtersBar?.classList.toggle("is-filtering", hasActiveKanbanFilters());
   if (hint) {
     hint.textContent = isHubMode()
-      ? "Только просмотр · ↗ — отчёт · фильтр · DAG — связи между карточками"
+      ? "Read-only · ↗ — report · filter · DAG — links between cards"
       : isBoard
-        ? "⠿ — перетащить · + — новая карточка · двойной клик — правка · ↗ — отчёт"
-        : "DAG — → зажать на карточке, отпустить на цели · двойной клик на стрелке — удалить";
+        ? "⠿ — drag · + — new card · double-click — edit · ↗ — report"
+        : "DAG — hold → on a card and release on the target · double-click an arrow to delete";
   }
 }
 
@@ -4879,7 +4879,7 @@ function getKanbanDagContext(board, node) {
     onStatus: (msg, isError = false) => setStatus(msg, isError),
     onRefresh: refreshDag,
     onSuggestDag: async () => {
-      if (!writeProjectId) throw new Error("Не удалось определить проект");
+      if (!writeProjectId) throw new Error("Could not determine the project");
       return KoiApi.suggestBoardDag(writeProjectId, boardId, { apply: false });
     },
     onApplySuggestions: async (selected) => {
@@ -4903,19 +4903,19 @@ function getKanbanDagContext(board, node) {
       const b = liveBoard();
       const writeProjectId = boardWriteProjectId(b);
       if (!writeProjectId) {
-        setStatus("Не удалось определить проект для сохранения связи", true);
+        setStatus("Could not determine the project for saving the link", true);
         throw new Error("No write project id");
       }
       const card = getBoardCard(b, toCardId);
       if (!card) {
-        setStatus("Целевая карточка не найдена", true);
+        setStatus("Target card not found", true);
         throw new Error("Target card not found");
       }
       if ((card.depends_on || []).includes(fromCardId)) return;
       const deps = [...new Set([...(card.depends_on || []), fromCardId])];
       const updated = await persistCard(b, toCardId, { depends_on: deps }, { rerenderKanban: false });
       if (!updated) {
-        setStatus("Ошибка сохранения связи в project.md", true);
+        setStatus("Error saving the link to project.md", true);
         throw new Error("Persist failed");
       }
       const dagEl = document.getElementById("kanban-dag-view");
@@ -4927,18 +4927,18 @@ function getKanbanDagContext(board, node) {
       const b = liveBoard();
       const writeProjectId = boardWriteProjectId(b);
       if (!writeProjectId) {
-        setStatus("Не удалось определить проект для удаления связи", true);
+        setStatus("Could not determine the project for deleting the link", true);
         throw new Error("No write project id");
       }
       const card = getBoardCard(b, toCardId);
       if (!card) {
-        setStatus("Целевая карточка не найдена", true);
+        setStatus("Target card not found", true);
         throw new Error("Target card not found");
       }
       const deps = (card.depends_on || []).filter((d) => d !== fromCardId);
       const updated = await persistCard(b, toCardId, { depends_on: deps }, { rerenderKanban: false });
       if (!updated) {
-        setStatus("Не удалось удалить связь в project.md", true);
+        setStatus("Could not delete the link from project.md", true);
         throw new Error("Persist failed");
       }
       const dagEl = document.getElementById("kanban-dag-view");
@@ -5034,7 +5034,7 @@ function fillCardDisplay(cardEl, card) {
 
 async function persistCard(board, cardId, fields, opts = {}) {
   const { rerenderKanban = false, refreshMapStats = false } = opts;
-  setStatus("Сохранение…");
+  setStatus("Saving…");
   try {
     // Partial PATCH only — do not re-send depends_on/tags/etc. unless the
     // caller changed them. Re-posting existing DAG edges fails when the board
@@ -5043,7 +5043,7 @@ async function persistCard(board, cardId, fields, opts = {}) {
     await KoiApi.patchCard(boardWriteProjectId(board), board.id, cardId, payload);
     state.project = await reloadProjectView();
     syncLabProject(state.project);
-    setStatus("Сохранено в project.md");
+    setStatus("Saved to project.md");
     if (rerenderKanban) {
       const node = state.project.nodes.find((n) => n.id === state.kanbanNodeId);
       if (node?.board_id) {
@@ -5263,13 +5263,13 @@ function bindKanbanCardEvents(boardEl, board, context = {}) {
 
     cardEl.querySelector(".card-delete")?.addEventListener("click", async () => {
       if (state.reportCardId === cardId) closeCardReport();
-      if (!confirm("Удалить карточку?")) return;
-      setStatus("Удаление…");
+      if (!confirm("Delete card?")) return;
+      setStatus("Deleting…");
       try {
         await KoiApi.deleteCard(boardWriteProjectId(board), board.id, cardId);
         state.project = await reloadProjectView();
         syncLabProject(state.project);
-        setStatus("Сохранено в project.md");
+        setStatus("Saved to project.md");
         const node = state.project.nodes.find((n) => n.id === state.kanbanNodeId);
         if (node?.board_id) renderKanbanBoard(state.project.boards[node.board_id]);
         if (state.kanbanNodeId) refreshKanbanBelowForNode(state.kanbanNodeId);
@@ -5307,12 +5307,12 @@ function normalizeCardTagName(raw) {
 function validateCardTagName(raw) {
   const t = String(raw || "").trim();
   if (!t) {
-    return { tag: null, error: "Введите название тега" };
+    return { tag: null, error: "Enter a tag name" };
   }
   if (!CARD_TAG_NAME_RE.test(t)) {
     return {
       tag: null,
-      error: "Недопустимый формат: только латиница, цифры, дефис и подчёркивание (например gpu, sft_v2)",
+      error: "Invalid format: use only Latin letters, digits, hyphens, and underscores (for example, gpu or sft_v2)",
     };
   }
   return { tag: t, error: null };
@@ -5366,10 +5366,10 @@ function boardCardTagSuggestions(board, project) {
 const KANBAN_TAG_FILTER_KEY = "koi-kanban-tag-filter-disabled";
 const KANBAN_DATE_FILTER_KEY = "koi-kanban-date-filter";
 const KANBAN_DATE_FILTER_OPTIONS = [
-  { id: "all", label: "Все" },
-  { id: "today", label: "Сегодня" },
-  { id: "7d", label: "7 дней" },
-  { id: "30d", label: "30 дней" },
+  { id: "all", label: "All" },
+  { id: "today", label: "Today" },
+  { id: "7d", label: "7 days" },
+  { id: "30d", label: "30 days" },
 ];
 
 function kanbanTagFilterStorageKey(projectId, boardId) {
@@ -5513,9 +5513,9 @@ function kanbanCardTimeHtml(card) {
   const absUpdated = formatCardAbsoluteTime(updated);
   const absCreated = formatCardAbsoluteTime(created);
   const tipParts = [];
-  if (absCreated) tipParts.push(`создана ${absCreated}`);
-  if (absUpdated) tipParts.push(`изменена ${absUpdated}`);
-  const label = updated ? `изм. ${relative}` : `созд. ${relative}`;
+  if (absCreated) tipParts.push(`created ${absCreated}`);
+  if (absUpdated) tipParts.push(`updated ${absUpdated}`);
+  const label = updated ? `upd. ${relative}` : `created ${relative}`;
   return `<time class="kanban-card-time" datetime="${escapeHtml(primary)}" title="${escapeHtml(tipParts.join(" · ") || label)}">${escapeHtml(label)}</time>`;
 }
 
@@ -5537,7 +5537,7 @@ function cardMatchesKanbanFilters(card, disabledFilters = state.kanbanDisabledTa
 function kanbanTagFilterChipHtml(tag, isEnabled) {
   const activeClass = isEnabled ? " is-active" : "";
   const pressed = isEnabled ? "true" : "false";
-  return `<button type="button" class="kanban-tag-filter-chip card-tag--hue${activeClass}" style="${cardTagHueStyle(tag)}" data-tag="${escapeHtml(tag)}" aria-pressed="${pressed}" title="${escapeHtml(tag)} — ${isEnabled ? "скрыть карточки с тегом" : "показать карточки с тегом"}">
+  return `<button type="button" class="kanban-tag-filter-chip card-tag--hue${activeClass}" style="${cardTagHueStyle(tag)}" data-tag="${escapeHtml(tag)}" aria-pressed="${pressed}" title="${escapeHtml(tag)} — ${isEnabled ? "hide cards with this tag" : "show cards with this tag"}">
     <span class="kanban-tag-filter-dot" aria-hidden="true"></span>
     <span class="kanban-tag-filter-label">${escapeHtml(tag)}</span>
   </button>`;
@@ -5608,8 +5608,8 @@ function renderKanbanTagFilter(project, board) {
   el.classList.remove("hidden");
   el.innerHTML = `
     <div class="kanban-tag-filter-row">
-      <span class="kanban-tag-filter-title">Теги</span>
-      <div class="kanban-tag-filter-chips" role="group" aria-label="Фильтр по тегам">${chips}</div>
+      <span class="kanban-tag-filter-title">Tags</span>
+      <div class="kanban-tag-filter-chips" role="group" aria-label="Tag filter">${chips}</div>
     </div>`;
 
   bindKanbanTagFilter(project, board);
@@ -5695,7 +5695,7 @@ function cardTagsRowHtml(tags, { kanban = false, dag = false } = {}) {
     const chips = visible
       .map(
         (t) =>
-          `<button type="button" class="card-tag-kanban card-tag--hue" style="${cardTagHueStyle(t)}" data-tag="${escapeHtml(t)}" title="${escapeHtml(t)} — изменить теги">
+          `<button type="button" class="card-tag-kanban card-tag--hue" style="${cardTagHueStyle(t)}" data-tag="${escapeHtml(t)}" title="${escapeHtml(t)} — edit tags">
             <span class="card-tag-kanban-dot" aria-hidden="true"></span>
             <span class="card-tag-kanban-label">${escapeHtml(t)}</span>
           </button>`
@@ -5706,19 +5706,19 @@ function cardTagsRowHtml(tags, { kanban = false, dag = false } = {}) {
         ? `<span class="card-tag-kanban-overflow" title="${escapeHtml(hidden.join(", "))}">+${hidden.length}</span>`
         : "";
     const addBtn =
-      '<button type="button" class="card-tag-add card-tag-add--kanban" title="Добавить тег" aria-label="Добавить тег">+</button>';
+      '<button type="button" class="card-tag-add card-tag-add--kanban" title="Add tag" aria-label="Add tag">+</button>';
     return `<div class="card-tags card-tags--kanban">${chips}${overflowHtml}${addBtn}</div>`;
   }
   const chips = list
     .map(
       (t) =>
-        `<span class="card-tag-chip card-tag--hue" style="${cardTagHueStyle(t)}" data-tag="${escapeHtml(t)}" title="Клик по названию — изменить теги">
-        <span class="card-tag-chip-label">${escapeHtml(t)}</span><span class="card-tag-chip-x" title="Снять">×</span>
+        `<span class="card-tag-chip card-tag--hue" style="${cardTagHueStyle(t)}" data-tag="${escapeHtml(t)}" title="Click the name to edit tags">
+        <span class="card-tag-chip-label">${escapeHtml(t)}</span><span class="card-tag-chip-x" title="Remove">×</span>
       </span>`
     )
     .join("");
   const addBtn =
-    '<button type="button" class="card-tag-add" title="Добавить тег" aria-label="Добавить тег">+</button>';
+    '<button type="button" class="card-tag-add" title="Add tag" aria-label="Add tag">+</button>';
   return `<div class="card-tags">${chips}${addBtn}</div>`;
 }
 
@@ -5771,13 +5771,13 @@ function renderCardTagPopoverContent(pop, vocabulary, selectedTags) {
     ? selectedTags
         .map(
           (t) =>
-            `<button type="button" class="card-tag-popover-chip is-selected card-tag--hue" style="${cardTagHueStyle(t)}" data-tag="${escapeHtml(t)}" title="Снять с карточки">
+            `<button type="button" class="card-tag-popover-chip is-selected card-tag--hue" style="${cardTagHueStyle(t)}" data-tag="${escapeHtml(t)}" title="Remove from card">
               <span class="card-tag-popover-chip-label">${escapeHtml(t)}</span>
               <span class="card-tag-popover-chip-x" aria-hidden="true">×</span>
             </button>`
         )
         .join("")
-    : '<span class="card-tag-popover-empty">Тегов нет — выберите ниже или создайте новый</span>';
+    : '<span class="card-tag-popover-empty">No tags; select one below or create a new tag</span>';
 
   const optionsHtml = vocabulary.length
     ? vocabulary
@@ -5786,24 +5786,24 @@ function renderCardTagPopoverContent(pop, vocabulary, selectedTags) {
           return `<button type="button" class="card-tag-popover-option card-tag--hue${active}" style="${cardTagHueStyle(t)}" data-tag="${escapeHtml(t)}">${escapeHtml(t)}</button>`;
         })
         .join("")
-    : '<span class="card-tag-popover-empty">Создайте первый тег ниже</span>';
+    : '<span class="card-tag-popover-empty">Create the first tag below</span>';
 
   pop.innerHTML = `
     <div class="card-tag-popover-section">
-      <p class="card-tag-popover-label">На карточке <span class="card-tag-popover-label-hint">клик × — снять</span></p>
+      <p class="card-tag-popover-label">On card <span class="card-tag-popover-label-hint">click × to remove</span></p>
       <div class="card-tag-popover-selected">${selectedHtml}</div>
     </div>
     <div class="card-tag-popover-section">
-      <p class="card-tag-popover-label">Теги проекта <span class="card-tag-popover-label-hint">клик — добавить или снять</span></p>
+      <p class="card-tag-popover-label">Project tags <span class="card-tag-popover-label-hint">click to add or remove</span></p>
       <div class="card-tag-popover-options">${optionsHtml}</div>
     </div>
     <div class="card-tag-popover-new">
-      <input type="text" class="card-tag-popover-input" placeholder="Новый тег" maxlength="32" />
-      <button type="button" class="btn btn-small card-tag-popover-add">Добавить</button>
+      <input type="text" class="card-tag-popover-input" placeholder="New tag" maxlength="32" />
+      <button type="button" class="btn btn-small card-tag-popover-add">Add</button>
     </div>
-    <p class="card-tag-popover-hint">Латиница, цифры, дефис и подчёркивание — например gpu, ablation_v2</p>
+    <p class="card-tag-popover-hint">Latin letters, digits, hyphens, and underscores—for example, gpu or ablation_v2</p>
     <div class="card-tag-popover-actions">
-      <button type="button" class="btn btn-small card-tag-popover-done">Готово</button>
+      <button type="button" class="btn btn-small card-tag-popover-done">Done</button>
     </div>
   `;
 }
@@ -6042,13 +6042,13 @@ function cardTodoProgressHtml(description, reportContent = "") {
   const current = open[0] || "";
   const currentHtml = current
     ? `<p class="kanban-card-todo-current" title="${escapeHtml(current)}">${escapeHtml(current.length > 56 ? `${current.slice(0, 55)}…` : current)}</p>`
-    : `<p class="kanban-card-todo-current kanban-card-todo-current--done">Все подзадачи выполнены</p>`;
+    : `<p class="kanban-card-todo-current kanban-card-todo-current--done">All subtasks completed</p>`;
   return `<div class="kanban-card-todo">
     <div class="kanban-card-todo-head">
-      <span class="kanban-card-todo-label">Подзадачи</span>
+      <span class="kanban-card-todo-label">Subtasks</span>
       <span class="kanban-card-todo-meta">${done.length}/${total}</span>
     </div>
-    <div class="kanban-card-todo-progress" role="progressbar" aria-valuenow="${done.length}" aria-valuemin="0" aria-valuemax="${total}" aria-label="${done.length} из ${total} подзадач выполнено">
+    <div class="kanban-card-todo-progress" role="progressbar" aria-valuenow="${done.length}" aria-valuemin="0" aria-valuemax="${total}" aria-label="${done.length} of ${total} subtasks completed">
       <div class="kanban-card-todo-fill" style="width:${donePct}%"></div>
     </div>
     ${currentHtml}
@@ -6168,7 +6168,7 @@ async function hydrateKanbanCardTodoFromReports(boardEl, board, project, liveCtx
 }
 
 function kanbanCardLiveInspectBtnHtml(cardId) {
-  return `<button type="button" class="card-live-inspect" data-card-id="${escapeHtml(cardId)}" title="Live монитор" aria-label="Live монитор">
+  return `<button type="button" class="card-live-inspect" data-card-id="${escapeHtml(cardId)}" title="Live monitor" aria-label="Live monitor">
               <svg class="card-live-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/></svg>
             </button>`;
 }
@@ -6204,10 +6204,10 @@ function kanbanCardHtml(c, col, variant = "modal") {
   const map = variant === "map" || isHubMode();
   const deleteBtn = map
     ? ""
-    : `<button type="button" class="card-delete" title="Удалить" aria-label="Удалить карточку">×</button>`;
+    : `<button type="button" class="card-delete" title="Delete" aria-label="Delete card">×</button>`;
   const copyBtn = map
     ? ""
-    : `<button type="button" class="card-copy-path card-action-btn" title="Скопировать путь к файлу отчёта" aria-label="Скопировать путь к файлу отчёта">
+    : `<button type="button" class="card-copy-path card-action-btn" title="Copy report file path" aria-label="Copy report file path">
               <svg class="card-action-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="2"/><path fill="none" stroke="currentColor" stroke-width="2" d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
             </button>`;
   const liveBtn =
@@ -6226,15 +6226,15 @@ function kanbanCardHtml(c, col, variant = "modal") {
   const titleBlock = liveBtn
     ? `<div class="kanban-card-title-row">
                 ${liveBtn}
-                <p class="card-title-display inline-edit-text" title="Двойной клик — редактировать">${escapeHtml(c.title)}</p>
+                <p class="card-title-display inline-edit-text" title="Double-click to edit">${escapeHtml(c.title)}</p>
                 <input type="text" class="card-title-input inline-edit-field hidden" />
               </div>`
-    : `<p class="card-title-display inline-edit-text" title="Двойной клик — редактировать">${escapeHtml(c.title)}</p>
+    : `<p class="card-title-display inline-edit-text" title="Double-click to edit">${escapeHtml(c.title)}</p>
               <input type="text" class="card-title-input inline-edit-field hidden" />`;
   return `
         <div class="kanban-card${hasTags ? " has-tag-accent" : ""}${liveBtn ? " has-live" : ""}${costChip ? " has-compute-cost" : ""}" data-card-id="${c.id}"${accentStyle ? ` style="${accentStyle}"` : ""}>
           <div class="kanban-card-head">
-            <span class="card-drag-handle" draggable="true" title="Перетащить в другую колонку" aria-label="Перетащить">${gripIcon}</span>
+            <span class="card-drag-handle" draggable="true" title="Drag to another column" aria-label="Drag">${gripIcon}</span>
             <div class="card-text-block">
               ${titleBlock}
               <p class="card-desc-display inline-edit-text card-desc-text${descEmpty ? " is-empty" : ""}${descTodoOnly ? " has-todo-only" : ""}${descConclusion}" data-placeholder="${escapeHtml(descPlaceholder)}">${escapeHtml(displayDesc)}</p>
@@ -6249,7 +6249,7 @@ function kanbanCardHtml(c, col, variant = "modal") {
             ${kanbanCardTimeHtml(c)}
             <div class="kanban-card-actions">
               ${copyBtn}
-              <button type="button" class="card-expand-report card-action-btn" title="Открыть отчёт" aria-label="Открыть отчёт">
+              <button type="button" class="card-expand-report card-action-btn" title="Open report" aria-label="Open report">
                 <svg class="card-action-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M15 3h6v6M10 14L21 3M21 14v7h-7"/></svg>
               </button>
             </div>
@@ -6273,8 +6273,8 @@ function kanbanBoardHtml(board, variant = "modal", { tagFilters = [] } = {}) {
       const cardsHtml = cards.map((c) => kanbanCardHtml(c, col, variant)).join("");
       const emptyHtml =
         filtering && totalInCol > 0
-          ? '<span class="col-empty col-empty--filtered">Нет совпадений — смягчите фильтр</span>'
-          : '<span class="col-empty">Перетащите сюда</span>';
+          ? '<span class="col-empty col-empty--filtered">No matches — relax the filter</span>'
+          : '<span class="col-empty">Drag here</span>';
       return `
         <div class="kanban-col" data-col="${col.id}">
           <div class="kanban-col-head">
@@ -6282,7 +6282,7 @@ function kanbanBoardHtml(board, variant = "modal", { tagFilters = [] } = {}) {
               <span class="col-title">${escapeHtml(col.title)}</span>
               ${countHtml}
             </h3>
-            <button type="button" class="col-add-btn" title="Добавить карточку" aria-label="Добавить карточку в ${escapeHtml(col.title)}">+</button>
+            <button type="button" class="col-add-btn" title="Add card" aria-label="Add card to ${escapeHtml(col.title)}">+</button>
           </div>
           <div class="kanban-col-body">
             ${cardsHtml || emptyHtml}
@@ -6348,7 +6348,7 @@ function bindKanbanColumnActions(boardEl, board, context = {}) {
 
 async function addCardToColumn(board, columnId, context = {}) {
   if (!board?.id) {
-    setStatus("Не удалось определить доску", true);
+    setStatus("Could not determine the board", true);
     return;
   }
   if (context.project) state.project = context.project;
@@ -6356,22 +6356,22 @@ async function addCardToColumn(board, columnId, context = {}) {
     state.project?.nodes?.find((n) => n.id === state.kanbanNodeId);
   const writeProjectId = boardWriteProjectId(board);
   if (!writeProjectId) {
-    setStatus("Не удалось определить проект для сохранения карточки", true);
+    setStatus("Could not determine the project for saving the card", true);
     return;
   }
   const beforeIds = new Set((board.cards || []).map((c) => c.id));
   const project = context.project || state.project;
-  setStatus("Добавление…");
+  setStatus("Adding…");
   try {
     await KoiApi.addCard(writeProjectId, board.id, {
-      title: "Новый эксперимент",
+      title: "New experiment",
       column_id: columnId,
       description: "",
       tags: [],
     });
     state.project = await reloadProjectView();
     syncLabProject(state.project);
-    setStatus("Сохранено в project.md");
+    setStatus("Saved to project.md");
     const updatedBoard = getBoard(state.project, board.id);
     if (updatedBoard) renderKanbanBoard(updatedBoard);
     if (state.kanbanNodeId) refreshKanbanBelowForNode(state.kanbanNodeId);
@@ -6401,19 +6401,19 @@ const VIEW_MODES = {
     id: "chief",
     label: "Chief researcher",
     shortLabel: "Chief",
-    hint: "На экране — вся лаборатория · колёсико — масштаб до карточек метода · перетаскивание — панорама",
+    hint: "Entire laboratory on screen · mouse wheel zooms to method cards · drag to pan",
   },
   teamlead: {
     id: "teamlead",
     label: "Team lead researcher",
     shortLabel: "Lead",
-    hint: "На экране — программа выбранного проекта · список слева — полный",
+    hint: "Selected project's program on screen · full list on the left",
   },
   researcher: {
     id: "researcher",
     label: "Researcher",
     shortLabel: "Focus",
-    hint: "На экране — один проект · зум до карточек метода · двойной клик по методу — приблизить",
+    hint: "One project on screen · zoom to method cards · double-click a method to zoom in",
   },
 };
 
@@ -6487,7 +6487,7 @@ function ensureLabTreeVisible(id) {
 
 function renderProjectListEye(treeId) {
   const hidden = isLabTreeHidden(treeId);
-  const title = hidden ? "Показать дерево на карте" : "Скрыть дерево с карты";
+  const title = hidden ? "Show tree on map" : "Hide tree from map";
   return (
     `<button type="button" class="project-list__eye${hidden ? "" : " is-on"}"` +
     ` data-tree-id="${escapeHtml(treeId)}"` +
@@ -6538,7 +6538,7 @@ function renderCompositeMemberBranch(member, currentId, selectedBranchId) {
     `<li class="project-list__item project-list__item--branch">` +
     `<button type="button" class="project-list__btn project-list__btn--branch${active ? " is-active" : ""}"` +
     ` data-branch-id="${escapeHtml(member.id)}"` +
-    ` title="Выбрать ветку для Related Work (дерево остаётся общим)"` +
+    ` title="Select branch for Related Work (the tree remains shared)"` +
     (active ? ' aria-current="true"' : "") +
     `><span class="project-list__branch-mark" aria-hidden="true">↳</span> ${escapeHtml(member.title)}</button>` +
     `</li>`
@@ -6593,7 +6593,7 @@ function renderProgramGroup(group, currentId, selectedBranchId = state.literatur
     (projects.length
       ? projects.map((p) => renderProjectListButton(p, currentId)).join("")
       : !composites.length
-        ? `<li class="program-group__empty">Нет проектов</li>`
+        ? `<li class="program-group__empty">No projects</li>`
         : "") +
     `</ul>` +
     `</li>`
@@ -6828,7 +6828,7 @@ async function loadProjectList(activeId) {
     const flat = await KoiApi.listProjects();
     if (ul) {
       ul.innerHTML = renderProgramGroup(
-        { id: "", title: "Проекты", description: "", projects: flat },
+        { id: "", title: "Projects", description: "", projects: flat },
         currentId
       );
     }
@@ -6857,7 +6857,7 @@ async function loadProjectList(activeId) {
         renderProgramGroup(
           {
             id: "",
-            title: grouped.groups?.length ? "Без программы" : "Проекты",
+            title: grouped.groups?.length ? "No program" : "Projects",
             description: "",
             projects: grouped.ungrouped,
           },
@@ -6895,7 +6895,7 @@ function setProjectsSidebarOpen(open) {
   workspace?.classList.toggle("is-projects-open", open);
   if (toggle) {
     toggle.setAttribute("aria-expanded", open ? "true" : "false");
-    toggle.setAttribute("aria-label", open ? "Свернуть панель проектов" : "смотреть все проекты");
+    toggle.setAttribute("aria-label", open ? "Collapse project panel" : "view all projects");
   }
 }
 
@@ -6903,9 +6903,9 @@ const PROJECT_TAG_RE = /^[a-zA-Z][a-zA-Z0-9_-]*$/;
 
 function validateProjectTag(tag) {
   const value = String(tag || "").trim();
-  if (!value) return "Введите тег проекта";
+  if (!value) return "Enter a project tag";
   if (!PROJECT_TAG_RE.test(value)) {
-    return "Тег: только латиница, цифры, _ и -; без пробелов; начинается с буквы";
+    return "Tag: Latin letters, digits, _ and - only; no spaces; must start with a letter";
   }
   return "";
 }
@@ -6914,7 +6914,7 @@ function populateCreateProjectPrograms() {
   const select = document.getElementById("create-project-program-select");
   if (!select) return;
   const groups = state.lab?.grouped?.groups || [];
-  const options = ['<option value="">— без программы —</option>'];
+  const options = ['<option value="">— no program —</option>'];
   for (const group of groups) {
     if (!group?.id) continue;
     options.push(
@@ -6969,7 +6969,7 @@ async function submitCreateProjectForm(event) {
 
   if (!title) {
     if (errorEl) {
-      errorEl.textContent = "Введите название проекта";
+      errorEl.textContent = "Enter a project title";
       errorEl.classList.remove("hidden");
     }
     return;
@@ -6991,7 +6991,7 @@ async function submitCreateProjectForm(event) {
     programTitle = form.program_title.value.trim();
     if (!programTitle) {
       if (errorEl) {
-        errorEl.textContent = "Введите название новой программы";
+        errorEl.textContent = "Enter a new program title";
         errorEl.classList.remove("hidden");
       }
       return;
@@ -7000,7 +7000,7 @@ async function submitCreateProjectForm(event) {
 
   const submitBtn = document.getElementById("create-project-submit");
   if (submitBtn) submitBtn.disabled = true;
-  setStatus("Создание проекта…");
+  setStatus("Creating project…");
   try {
     const p = await KoiApi.createProject({
       title,
@@ -7017,13 +7017,13 @@ async function submitCreateProjectForm(event) {
     await loadProjectList(p.id);
     await switchProject(p.id);
     setProjectsSidebarOpen(true);
-    setStatus("Проект создан");
+    setStatus("Project created");
   } catch (err) {
     if (errorEl) {
-      errorEl.textContent = err.message || "Не удалось создать проект";
+      errorEl.textContent = err.message || "Could not create the project";
       errorEl.classList.remove("hidden");
     }
-    setStatus(err.message || "Не удалось создать проект", true);
+    setStatus(err.message || "Could not create the project", true);
   } finally {
     if (submitBtn) submitBtn.disabled = false;
   }
@@ -7052,7 +7052,7 @@ function initCreateProjectModal() {
     if (hint) {
       hint.textContent = err && input.value.trim()
         ? err
-        : "Латиница, цифры, _ и -; без пробелов; с буквы.";
+        : "Latin letters, digits, _ and -; no spaces; start with a letter.";
     }
     if (errorEl && !errorEl.textContent) {
       errorEl.classList.add("hidden");
@@ -7120,7 +7120,7 @@ function initProjectsSidebar() {
 
 async function switchComposite(compositeId) {
   const virtualId = compositeVirtualId(compositeId);
-  setStatus("Загрузка…");
+  setStatus("Loading…");
   try {
     if (state.lab?.projectsById) {
       await focusLabProject(virtualId, { animate: true, reload: true });
@@ -7139,7 +7139,7 @@ async function switchComposite(compositeId) {
 }
 
 async function switchProject(id) {
-  setStatus("Загрузка…");
+  setStatus("Loading…");
   try {
     if (state.lab?.projectsById) {
       await focusLabProject(id, { animate: true, reload: true });
@@ -7202,18 +7202,18 @@ async function copyInboxBootstrap(targetStatusEl) {
   const text =
     appSettings.chat_inbox_bootstrap_prompt ||
     appSettings.inbox_bootstrap_prompt ||
-    "Загрузите настройки (обновите страницу) или выполните: python -m koi.agent_chat.inbox_cli bootstrap";
+    "Load settings (refresh the page) or run: python -m koi.agent_chat.inbox_cli bootstrap";
   try {
     await navigator.clipboard.writeText(text);
     if (targetStatusEl) {
-      targetStatusEl.textContent = "Скопировано — вставьте в новый чат «ResearchOS Chat Inbox» в Cursor.";
+      targetStatusEl.textContent = "Copied — paste into a new “ResearchOS Chat Inbox” chat in Cursor.";
       setTimeout(() => {
-        if (targetStatusEl.textContent.startsWith("Скопировано")) targetStatusEl.textContent = "";
+        if (targetStatusEl.textContent.startsWith("Copied")) targetStatusEl.textContent = "";
       }, 5000);
     }
     return true;
   } catch {
-    if (targetStatusEl) targetStatusEl.textContent = "Не удалось скопировать — попробуйте ещё раз.";
+    if (targetStatusEl) targetStatusEl.textContent = "Could not copy — try again.";
     return false;
   }
 }
@@ -7242,14 +7242,14 @@ async function copyAgentChatInboxPrompt(statusEl) {
   try {
     await navigator.clipboard.writeText(text);
     if (statusEl) {
-      statusEl.textContent = "Скопировано — вставьте в чат ResearchOS Chat Inbox.";
+      statusEl.textContent = "Copied — paste into ResearchOS Chat Inbox.";
       setTimeout(() => {
-        if (statusEl.textContent.startsWith("Скопировано")) statusEl.textContent = "";
+        if (statusEl.textContent.startsWith("Copied")) statusEl.textContent = "";
       }, 5000);
     }
     return true;
   } catch {
-    if (statusEl) statusEl.textContent = "Не удалось скопировать.";
+    if (statusEl) statusEl.textContent = "Could not copy.";
     return false;
   }
 }
@@ -7358,8 +7358,8 @@ function updateAgentChatInboxNotice() {
   const label = box.querySelector(".agent-chat-inbox-title");
   if (label) {
     label.textContent = isInboxConfigured()
-      ? "Chat Inbox: watcher не запущен"
-      : "Chat Inbox не настроен";
+      ? "Chat Inbox: watcher is not running"
+      : "Chat Inbox is not configured";
   }
 
   if (dismissed) return;
@@ -7369,31 +7369,31 @@ function updateAgentChatInboxNotice() {
     watcherEl.classList.remove("is-ok", "is-warn");
     if (isInboxConfigured()) {
       watcherEl.textContent =
-        "Inbox отмечен, но watcher не запущен. Выполните ./scripts/koi-serve.sh start и loop в ResearchOS Chat Inbox.";
+        "Inbox is marked ready, but the watcher is not running. Run ./scripts/koi-serve.sh start and the loop in ResearchOS Chat Inbox.";
       watcherEl.classList.add("is-warn");
     } else {
       watcherEl.textContent =
-        "Один раз: скопируйте сообщение → ResearchOS Chat Inbox → tail -f agent-chat-watch.log → «Inbox готов».";
+        "One-time setup: copy the message → ResearchOS Chat Inbox → tail -f agent-chat-watch.log → “Inbox ready.”";
     }
   }
 }
 
 function agentChatPendingLabel(item) {
   if (item?.status === "processing") return "";
-  if (isApiAgentMode()) return "Агент обрабатывает…";
+  if (isApiAgentMode()) return "Agent processing…";
   if (isInboxAgentMode()) {
-    if (!isInboxConfigured()) return "Отправлено — настройте Chat Inbox";
-    if (!isChatInboxWatcherRunning()) return "Watcher не запущен — koi-serve.sh start";
-    return "В очереди — ждём ResearchOS Chat Inbox…";
+    if (!isInboxConfigured()) return "Sent — configure Chat Inbox";
+    if (!isChatInboxWatcherRunning()) return "Watcher is not running — koi-serve.sh start";
+    return "Queued — waiting for ResearchOS Chat Inbox…";
   }
-  return "Ожидает агента в Cursor (hooks)…";
+  return "Waiting for an agent in Cursor (hooks)…";
 }
 
 function agentChatDeliveryHtml(item) {
   const status = item?.status || "pending";
   if (status === "answered") return "";
   const read = status === "processing";
-  const title = read ? "Прочитано агентом" : "Отправлено";
+  const title = read ? "Read by agent" : "Sent";
   return (
     `<span class="agent-chat-delivery" title="${title}" aria-label="${title}">` +
     `<span class="agent-chat-check is-sent" aria-hidden="true">✓</span>` +
@@ -7422,10 +7422,10 @@ function agentChatContext() {
   let label = null;
   if (methodId) {
     const m = project.nodes?.find((x) => x.id === methodId);
-    if (m) label = `Контекст: метод «${m.title}»`;
+    if (m) label = `Context: method “${m.title}”`;
   } else if (nodeId) {
     const n = project.nodes?.find((x) => x.id === nodeId);
-    if (n) label = `Контекст: ${TYPE_LABELS[n.node_type] || n.node_type} «${n.title}»`;
+    if (n) label = `Context: ${TYPE_LABELS[n.node_type] || n.node_type} “${n.title}”`;
   }
   return { method_id: methodId || null, node_id: nodeId, label };
 }
@@ -7458,7 +7458,7 @@ function renderAgentChatLog({ scrollToBottom = false } = {}) {
   const prevScrollTop = log.scrollTop;
   const items = [...agentChatItems].reverse();
   if (!items.length) {
-    log.innerHTML = '<p class="agent-chat-empty">Задайте вопрос по проекту — ответ появится здесь.</p>';
+    log.innerHTML = '<p class="agent-chat-empty">Ask a question about the project; the answer will appear here.</p>';
     return;
   }
   log.innerHTML = items
@@ -7485,7 +7485,7 @@ function renderAgentChatLog({ scrollToBottom = false } = {}) {
         `<div class="agent-chat-q-row">` +
         `<p class="agent-chat-q">${escapeHtml(item.question)}</p>` +
         agentChatDeliveryHtml(item) +
-        `<button type="button" class="btn btn-small btn-danger agent-chat-delete" title="Удалить" aria-label="Удалить вопрос">×</button>` +
+        `<button type="button" class="btn btn-small btn-danger agent-chat-delete" title="Delete" aria-label="Delete question">×</button>` +
         `</div>` +
         answerHtml +
         `<time>${escapeHtml(formatAgentChatTime(item.enqueued_at))}</time>` +
@@ -7566,7 +7566,7 @@ function toggleAgentChatPanel(open) {
 async function submitAgentQuestion(e) {
   e.preventDefault();
   if (!state.project?.id) {
-    setStatus("Сначала выберите проект", true);
+    setStatus("Select a project first", true);
     return;
   }
   const input = document.getElementById("agent-chat-input");
@@ -7576,7 +7576,7 @@ async function submitAgentQuestion(e) {
   const { method_id, node_id } = agentChatContext();
   const btn = document.getElementById("btn-agent-chat-send");
   if (btn) btn.disabled = true;
-  setStatus("Отправка вопроса агенту…");
+  setStatus("Sending question to agent…");
 
   try {
     const res = await KoiApi.sendAgentQuestion({
@@ -7602,7 +7602,7 @@ async function submitAgentQuestion(e) {
     input.value = "";
     void refreshAgentChat();
     syncAgentChatPolling();
-    setStatus("Вопрос отправлен — ждём ответ в панели");
+    setStatus("Question sent — waiting for the answer in the panel");
   } catch (err) {
     setStatus(err.message, true);
   } finally {
@@ -7627,14 +7627,14 @@ function updateAgentChatKeyNotice() {
     const url = appSettings.cursor_api_key_url || "https://cursor.com/dashboard/integrations";
     el.classList.remove("hidden");
     el.innerHTML =
-      'Режим API: укажите <button type="button" class="agent-chat-key-link" id="agent-chat-open-settings">ключ Cursor API</button> в настройках. ' +
-      `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">Как получить ключ</a>`;
+      'API mode: set a <button type="button" class="agent-chat-key-link" id="agent-chat-open-settings">Cursor API key</button> in settings. ' +
+      `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">How to get a key</a>`;
     return;
   }
   el.classList.remove("hidden");
   el.innerHTML =
-    'Режим hooks: откройте чат агента в IDE — вопросы подхватятся при старте/stop сессии. ' +
-    '<button type="button" class="agent-chat-key-link" id="agent-chat-open-settings">Настройки</button>';
+    'Hooks mode: open an agent chat in the IDE; questions are picked up when a session starts or stops. ' +
+    '<button type="button" class="agent-chat-key-link" id="agent-chat-open-settings">Settings</button>';
 }
 
 async function refreshAppSettings() {
@@ -7706,20 +7706,20 @@ function applySettingsToForm(data = appSettings) {
   if (status) {
     if (mode === "api") {
       status.textContent = data.cursor_api_key_configured
-        ? `Ключ сохранён (${data.cursor_api_key_masked || "••••"}). Оставьте поле пустым, чтобы не менять.`
-        : "Укажите ключ — без него фоновый агент не запустится.";
+        ? `Key saved (${data.cursor_api_key_masked || "••••"}). Leave the field empty to keep it unchanged.`
+        : "Enter a key; the background agent cannot start without it.";
       status.classList.toggle("is-ok", Boolean(data.cursor_api_key_configured));
     } else if (mode === "cursor_inbox") {
       status.textContent = isChatInboxOperational()
-        ? "Inbox работает — watcher пишет в agent-chat-watch.log."
+        ? "Inbox is running; the watcher writes to agent-chat-watch.log."
         : isInboxConfigured()
-          ? "Inbox отмечен, но watcher не запущен — ./scripts/koi-serve.sh start."
-          : "Скопируйте bootstrap и отправьте в чат «ResearchOS Chat Inbox» в Cursor.";
+          ? "Inbox is marked ready, but the watcher is not running — ./scripts/koi-serve.sh start."
+          : "Copy the bootstrap message into “ResearchOS Chat Inbox” in Cursor.";
       status.classList.toggle("is-ok", isChatInboxOperational());
     } else {
       status.textContent = data.agent_worker_running
-        ? "Фоновый воркер ещё запущен — перезапустите KOI после смены режима."
-        : "Ключ API не нужен — вопросы через hooks.";
+        ? "The background worker is still running; restart KOI after changing modes."
+        : "No API key is needed; questions use hooks.";
       status.classList.toggle("is-ok", !data.agent_worker_running);
     }
   }
@@ -7727,7 +7727,7 @@ function applySettingsToForm(data = appSettings) {
     if (mode === "api" && data.cursor_sdk_installed === false) {
       sdkHint.classList.remove("hidden");
       sdkHint.textContent =
-        "Пакет cursor-sdk не установлен в .venv — после сохранения ключа выполните: pip install cursor-sdk";
+        "The cursor-sdk package is not installed in .venv; after saving the key, run: pip install cursor-sdk";
     } else {
       sdkHint.classList.add("hidden");
       sdkHint.textContent = "";
@@ -7735,7 +7735,7 @@ function applySettingsToForm(data = appSettings) {
   }
   if (input && !input.matches(":focus")) {
     input.value = "";
-    input.placeholder = data.cursor_api_key_configured ? "Новый ключ (необязательно)" : "crsr_…";
+    input.placeholder = data.cursor_api_key_configured ? "New key (optional)" : "crsr_…";
   }
   document
     .getElementById("btn-settings-clear-key")
@@ -7758,13 +7758,13 @@ async function saveSettings(e) {
   const mode = selectedAgentChatMode();
   const key = input?.value?.trim() || "";
   if (mode === "api" && !key && !appSettings.cursor_api_key_configured) {
-    showSettingsSaveNotice("В режиме API нужен ключ Cursor", { error: true });
-    setStatus("Введите ключ Cursor API", true);
+    showSettingsSaveNotice("API mode requires a Cursor key", { error: true });
+    setStatus("Enter a Cursor API key", true);
     return;
   }
   hideSettingsSaveNotice();
   if (btn) btn.disabled = true;
-  setStatus("Сохранение настроек…");
+  setStatus("Saving settings…");
   try {
     const body = { agent_chat_mode: mode };
     if (key) body.cursor_api_key = key;
@@ -7776,10 +7776,10 @@ async function saveSettings(e) {
     updateAgentChatInboxNotice();
     const msg =
       mode === "api"
-        ? "Режим API сохранён" + (key ? ", ключ обновлён" : "")
+        ? "API mode saved" + (key ? ", key updated" : "")
         : mode === "cursor_inbox"
-          ? "Режим Inbox-чат сохранён — откройте панель «Спросить агента» для инструкции"
-          : "Режим hooks сохранён";
+          ? "Inbox chat mode saved; open Ask Agent for instructions"
+          : "Hooks mode saved";
     showSettingsSaveNotice(msg);
     setStatus(msg);
   } catch (err) {
@@ -7793,14 +7793,14 @@ async function saveSettings(e) {
 async function clearCursorApiKey() {
   const btn = document.getElementById("btn-settings-clear-key");
   if (btn) btn.disabled = true;
-  setStatus("Удаление ключа…");
+  setStatus("Deleting key…");
   try {
     const data = await KoiApi.saveAgentChatSettings({ cursor_api_key: "" });
     appSettings = data;
     applySettingsToForm(data);
     updateAgentChatKeyNotice();
-    showSettingsSaveNotice("Ключ удалён");
-    setStatus("Ключ Cursor API удалён");
+    showSettingsSaveNotice("Key deleted");
+    setStatus("Cursor API key deleted");
   } catch (err) {
     showSettingsSaveNotice(err.message, { error: true });
     setStatus(err.message, true);
@@ -7877,9 +7877,9 @@ function formatRqDiscoveryWhen(iso) {
   const dt = new Date(iso);
   if (Number.isNaN(dt.getTime())) return "";
   const diff = Date.now() - dt.getTime();
-  if (diff < 60_000) return "только что";
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} мин назад`;
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} ч назад`;
+  if (diff < 60_000) return "just now";
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} min ago`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} hr ago`;
   return dt.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
 }
 
@@ -7892,11 +7892,11 @@ function updateRqBellBadge() {
     badge.textContent = unread > 9 ? "+9" : `+${unread}`;
     badge.classList.remove("hidden");
     btn.classList.add("has-unread");
-    btn.title = `Открытия: ${unread} новых`;
+    btn.title = `Discoveries: ${unread} new`;
   } else {
     badge.classList.add("hidden");
     btn.classList.remove("has-unread");
-    btn.title = "Открытия — новые ответы на исследовательские вопросы";
+    btn.title = "Discoveries — new answers to research questions";
   }
 }
 
@@ -7914,7 +7914,7 @@ function renderRqBellList() {
   empty.classList.add("hidden");
   list.innerHTML = rqDiscoveryFeed
     .map((d) => {
-      const author = escapeHtml((d.author || "коллега").trim());
+      const author = escapeHtml((d.author || "a colleague").trim());
       const unread = d.key && !read.has(d.key);
       const when = formatRqDiscoveryWhen(d.discovered_at);
       const project = d.project_id
@@ -7927,7 +7927,7 @@ function renderRqBellList() {
             ${project}
             ${when ? `<time class="rq-bell-item__when">${escapeHtml(when)}</time>` : ""}
           </div>
-          <p class="rq-bell-item__title">ответил(а) на исследовательский вопрос</p>
+          <p class="rq-bell-item__title">answered a research question</p>
           <p class="rq-bell-item__q">${escapeHtml(d.question || "")}</p>
           <p class="rq-bell-item__a">${escapeHtml(d.answer || "")}</p>
         </li>`;
@@ -7957,14 +7957,14 @@ function showRqDiscoveryToast(discovery) {
   const stack = document.getElementById("rq-discovery-stack");
   if (!stack || !discovery) return;
 
-  const author = (discovery.author || "коллега").trim();
+  const author = (discovery.author || "a colleague").trim();
   const el = document.createElement("article");
   el.className = "rq-discovery-toast";
   el.setAttribute("role", "status");
   el.innerHTML = `
-    <button type="button" class="rq-discovery-toast__close" aria-label="Закрыть">×</button>
-    <p class="rq-discovery-toast__badge">Новое открытие</p>
-    <p class="rq-discovery-toast__title">${escapeHtml(author)} ответил(а) на исследовательский вопрос!</p>
+    <button type="button" class="rq-discovery-toast__close" aria-label="Close">×</button>
+    <p class="rq-discovery-toast__badge">New discovery</p>
+    <p class="rq-discovery-toast__title">${escapeHtml(author)} answered a research question!</p>
     <p class="rq-discovery-toast__q">${escapeHtml(discovery.question || "")}</p>
     <p class="rq-discovery-toast__a">${escapeHtml(discovery.answer || "")}</p>
   `;
@@ -8102,7 +8102,7 @@ function applySyncStatus(data) {
 
   if (!data?.ok) {
     btn.classList.remove("has-updates");
-    setSyncError(data?.error || "Git недоступен");
+    setSyncError(data?.error || "Git is unavailable");
     if (badge) badge.classList.add("hidden");
     return;
   }
@@ -8112,8 +8112,8 @@ function applySyncStatus(data) {
   if (!btn.classList.contains("has-error")) {
     btn.title =
       behind > 0
-        ? `Синхронизировать: на origin ${behind} новых коммитов`
-        : "Синхронизировать с git";
+        ? `Synchronize: origin has ${behind} new commits`
+        : "Synchronize with Git";
   }
   if (badge) {
     if (behind > 0) {
@@ -8131,7 +8131,7 @@ async function refreshSyncStatus() {
     applySyncStatus(data);
     return data;
   } catch {
-    applySyncStatus({ ok: false, error: "Не удалось проверить git" });
+    applySyncStatus({ ok: false, error: "Could not check Git" });
     return null;
   }
 }
@@ -8169,7 +8169,7 @@ async function runProjectSync() {
       result.action === "blocked" ||
       result.needs_console;
     if (isError) {
-      setSyncError(result.message || "Синхронизация не выполнена");
+      setSyncError(result.message || "Synchronization did not complete");
     }
   } catch (err) {
     setSyncError(err.message);
@@ -8228,8 +8228,8 @@ async function refreshProjectDiscovery() {
     }
 
     for (const item of added) {
-      const title = (item.title || item.id || "проект").trim();
-      setStatus(`Новый проект на диске: ${title}`);
+      const title = (item.title || item.id || "project").trim();
+      setStatus(`New project on disk: ${title}`);
     }
   } catch (err) {
     console.warn("Project discovery poll failed:", err.message);
@@ -8270,7 +8270,7 @@ function initSettings() {
     void markInboxConfigured().then(() => {
       showAgentChatInboxPrompt("");
       const status = document.getElementById("agent-chat-inbox-copy-status");
-      if (status) status.textContent = "Inbox отмечен как настроенный.";
+      if (status) status.textContent = "Inbox marked as configured.";
     });
   });
   document.getElementById("agent-chat-inbox-prompt-copy")?.addEventListener("click", async () => {
@@ -8314,7 +8314,7 @@ function initAgentChat() {
 }
 
 async function deleteAgentChatItem(itemId) {
-  if (!confirm("Удалить вопрос и ответ из чата?")) return;
+  if (!confirm("Delete the question and answer from chat?")) return;
   try {
     await KoiApi.deleteAgentChatItem(itemId);
     agentChatItems = agentChatItems.filter((i) => i.id !== itemId);
@@ -8389,11 +8389,11 @@ function initTheme() {
   });
 }
 
-/* ------------------------- База знаний проекта ------------------------- */
+/* ------------------------- Project knowledge base ------------------------- */
 
 const knowledgeState = { tab: "index", docPath: null };
 
-/** Относительная ссылка из markdown → путь от корня проекта (с обработкой «..»). */
+/** Resolve a relative Markdown link to a project-root path, including .. segments. */
 function resolveKbPath(fromDoc, href) {
   const clean = href.split(/[?#]/)[0];
   const parts = fromDoc ? fromDoc.split("/").slice(0, -1) : [];
@@ -8423,7 +8423,7 @@ function updateKnowledgeChrome() {
   if (title && state.project) title.textContent = state.project.title;
 }
 
-/** Перехват ссылок в контейнере: внутренние .md открываем в этой же модалке. */
+/** Intercept container links so internal .md files open in the same modal. */
 function hookKnowledgeLinks(container) {
   container.querySelectorAll("a[href]").forEach((a) => {
     const href = a.getAttribute("href") || "";
@@ -8448,8 +8448,8 @@ function hookKnowledgeLinks(container) {
 function renderKnowledgeMarkdown(md) {
   const body = document.getElementById("knowledge-body");
   if (!body) return;
-  // Медиа в отчётах ссылаются на assets/… относительно папки документа —
-  // переписываем в URL ассет-эндпоинта, иначе графики и видео не грузятся.
+  // Report media uses assets/… relative to the document directory. Rewrite it to
+  // the asset endpoint URL so plots and videos load correctly.
   const docPath = knowledgeState.docPath;
   const assetUrlFn =
     docPath && state.project
@@ -8465,9 +8465,9 @@ function renderKnowledgeMarkdown(md) {
 }
 
 const KB_VERDICTS = {
-  supported: { mark: "✔", word: "подтверждена", cls: "supported" },
-  refuted: { mark: "✗", word: "опровергнута", cls: "refuted" },
-  open: { mark: "…", word: "открыта", cls: "open" },
+  supported: { mark: "✔", word: "supported", cls: "supported" },
+  refuted: { mark: "✗", word: "refuted", cls: "refuted" },
+  open: { mark: "…", word: "open", cls: "open" },
 };
 
 function kbInsightHtml(ins) {
@@ -8475,25 +8475,25 @@ function kbInsightHtml(ins) {
   const dots = "●".repeat(imp) + "○".repeat(5 - imp);
   const cert =
     ins.certainty === "definite"
-      ? '<span class="kb-cert kb-cert--definite" title="certainty: definite">точно</span>'
-      : '<span class="kb-cert kb-cert--tentative" title="certainty: tentative">предварительно</span>';
+      ? '<span class="kb-cert kb-cert--definite" title="certainty: definite">definite</span>'
+      : '<span class="kb-cert kb-cert--tentative" title="certainty: tentative">tentative</span>';
   const report = ins.report
-    ? `<a href="${escapeHtml(ins.report)}" class="kb-link">отчёт</a>`
+    ? `<a href="${escapeHtml(ins.report)}" class="kb-link">report</a>`
     : "";
   return `
     <li class="kb-insight">
       <div class="kb-insight-q">${escapeHtml(ins.question)}</div>
       <div class="kb-insight-a">${escapeHtml(ins.narrative || ins.answer || "—")}</div>
       <div class="kb-insight-meta">
-        <span class="kb-dots" title="Важность ${imp}/5">${dots}</span>
+        <span class="kb-dots" title="Importance ${imp}/5">${dots}</span>
         ${cert}
-        ${ins.card_id ? `<code title="Карточка эксперимента">${escapeHtml(ins.card_id)}</code>` : ""}
+        ${ins.card_id ? `<code title="Experiment card">${escapeHtml(ins.card_id)}</code>` : ""}
         ${report}
       </div>
     </li>`;
 }
 
-/** Вкладка «База» — структурированный дашборд из /knowledge/summary. */
+/** Knowledge tab: structured dashboard from /knowledge/summary. */
 function renderKnowledgeDashboard(s) {
   const body = document.getElementById("knowledge-body");
   if (!body) return;
@@ -8504,15 +8504,15 @@ function renderKnowledgeDashboard(s) {
       : "";
   const chips = `
     <div class="kb-chips">
-      <span class="kb-chip kb-chip--supported" title="Подтверждённые гипотезы">✔ подтверждено: ${st.supported ?? 0}</span>
-      <span class="kb-chip kb-chip--refuted" title="Опровергнутые гипотезы">✗ опровергнуто: ${st.refuted ?? 0}</span>
-      <span class="kb-chip kb-chip--open" title="Открытые гипотезы">… открыто: ${st.open ?? 0}</span>
-      <span class="kb-chip" title="Инсайтов в research.json">инсайтов: ${st.insights ?? 0}</span>
-      <span class="kb-chip" title="Документов в knowledge/">документов: ${st.docs ?? 0}</span>
-      <span class="kb-chip" title="Отчётов по карточкам экспериментов">отчётов: ${st.reports ?? 0}</span>
-      <span class="kb-chip" title="Мастер-отчёты в pages/">pages: ${st.pages ?? 0}</span>
+      <span class="kb-chip kb-chip--supported" title="Supported hypotheses">✔ supported: ${st.supported ?? 0}</span>
+      <span class="kb-chip kb-chip--refuted" title="Refuted hypotheses">✗ refuted: ${st.refuted ?? 0}</span>
+      <span class="kb-chip kb-chip--open" title="Open hypotheses">… open: ${st.open ?? 0}</span>
+      <span class="kb-chip" title="Insights in research.json">insights: ${st.insights ?? 0}</span>
+      <span class="kb-chip" title="Documents in knowledge/">documents: ${st.docs ?? 0}</span>
+      <span class="kb-chip" title="Experiment-card reports">reports: ${st.reports ?? 0}</span>
+      <span class="kb-chip" title="Master reports in pages/">pages: ${st.pages ?? 0}</span>
     </div>
-    <div class="kb-progress" title="Гипотезы: ${st.supported ?? 0} ✔ · ${st.refuted ?? 0} ✗ · ${st.open ?? 0} открыто">
+    <div class="kb-progress" title="Hypotheses: ${st.supported ?? 0} ✔ · ${st.refuted ?? 0} ✗ · ${st.open ?? 0} open">
       ${seg(st.supported, "supported")}${seg(st.refuted, "refuted")}${seg(st.open, "open")}
     </div>`;
   const problem = s.problem
@@ -8523,10 +8523,10 @@ function renderKnowledgeDashboard(s) {
       const v = KB_VERDICTS[h.verdict] || KB_VERDICTS.open;
       const insights = h.insights.length
         ? `<details class="kb-hyp-insights"${h.verdict === "open" ? " open" : ""}>
-             <summary>инсайты (${h.insights.length})</summary>
+             <summary>insights (${h.insights.length})</summary>
              <ul>${h.insights.map(kbInsightHtml).join("")}</ul>
            </details>`
-        : '<p class="kb-hyp-none">Инсайтов пока нет — эксперимент не закрыт.</p>';
+        : '<p class="kb-hyp-none">No insights yet; the experiment is not closed.</p>';
       return `
         <article class="kb-hyp kb-hyp--${v.cls}">
           <header class="kb-hyp-head">
@@ -8542,7 +8542,7 @@ function renderKnowledgeDashboard(s) {
     .map(
       (d) => `
       <a href="${escapeHtml(d.path)}" class="kb-doc">
-        <span class="kb-doc-title">${escapeHtml(d.title)}${d.generated ? ' <span class="kb-doc-auto">автоген</span>' : ""}</span>
+        <span class="kb-doc-title">${escapeHtml(d.title)}${d.generated ? ' <span class="kb-doc-auto">generated</span>' : ""}</span>
         ${d.summary ? `<span class="kb-doc-summary">${escapeHtml(d.summary)}</span>` : ""}
       </a>`
     )
@@ -8570,14 +8570,14 @@ function renderKnowledgeDashboard(s) {
     <div class="kb-dash">
       ${chips}
       ${problem}
-      <h3 class="kb-h">Гипотезы</h3>
-      <div class="kb-hyps">${hyps || '<p class="md-empty">Гипотез пока нет.</p>'}</div>
-      <h3 class="kb-h">Документы знаний</h3>
-      <div class="kb-docs">${docs || '<p class="md-empty">Документов пока нет — положите .md в <code>knowledge/</code>.</p>'}</div>
-      <h3 class="kb-h">Мастер-отчёты (pages)</h3>
-      <div class="kb-docs">${pages || '<p class="md-empty">Нет pages — создайте HTML в <code>pages/</code> или через узел дерева.</p>'}</div>
-      <h3 class="kb-h">Последние пополнения <button type="button" class="btn kb-log-all" id="kb-open-log">весь журнал</button></h3>
-      <div class="kb-log">${log || '<p class="md-empty">Журнал пуст.</p>'}</div>
+      <h3 class="kb-h">Hypotheses</h3>
+      <div class="kb-hyps">${hyps || '<p class="md-empty">No hypotheses yet.</p>'}</div>
+      <h3 class="kb-h">Knowledge documents</h3>
+      <div class="kb-docs">${docs || '<p class="md-empty">No documents yet; add a .md file to <code>knowledge/</code>.</p>'}</div>
+      <h3 class="kb-h">Master reports (pages)</h3>
+      <div class="kb-docs">${pages || '<p class="md-empty">No pages; create HTML in <code>pages/</code> or from a tree node.</p>'}</div>
+      <h3 class="kb-h">Recent updates <button type="button" class="btn kb-log-all" id="kb-open-log">full log</button></h3>
+      <div class="kb-log">${log || '<p class="md-empty">The log is empty.</p>'}</div>
     </div>`;
   hookKnowledgeLinks(body);
   body.querySelectorAll(".kb-page[data-page-id]").forEach((btn) => {
@@ -8602,7 +8602,7 @@ async function loadKnowledgeTab() {
   if (!state.project) return;
   updateKnowledgeChrome();
   const body = document.getElementById("knowledge-body");
-  if (body) body.innerHTML = '<p class="md-empty">Загрузка…</p>';
+  if (body) body.innerHTML = '<p class="md-empty">Loading…</p>';
   try {
     if (knowledgeState.tab === "log") {
       renderKnowledgeMarkdown(await KoiApi.getKnowledgeLog(state.project.id));
@@ -8614,7 +8614,7 @@ async function loadKnowledgeTab() {
       renderKnowledgeDashboard(await KoiApi.getKnowledgeSummary(state.project.id));
     }
   } catch (err) {
-    if (body) body.innerHTML = `<p class="md-empty">Не удалось загрузить базу знаний: ${escapeHtml(err.message)}</p>`;
+    if (body) body.innerHTML = `<p class="md-empty">Could not load the knowledge base: ${escapeHtml(err.message)}</p>`;
   }
 }
 
@@ -8678,7 +8678,7 @@ function paperCommentStatusHtml(comment, stale = false) {
     return `<span class="paper-comment-card__status is-resolved">Resolved</span>`;
   }
   if (stale) {
-    return `<span class="paper-comment-card__status is-stale">Устарел</span>`;
+    return `<span class="paper-comment-card__status is-stale">Stale</span>`;
   }
   return `<span class="paper-comment-card__status is-open">Review</span>`;
 }
@@ -8692,13 +8692,13 @@ function markPaperCopyButton(btn, copied = true) {
   if (!btn) return;
   const iconEl = btn.querySelector(".paper-comment-btn__icon");
   if (!btn.dataset.originalLabel) {
-    btn.dataset.originalLabel = btn.getAttribute("aria-label") || "Копировать";
+    btn.dataset.originalLabel = btn.getAttribute("aria-label") || "Copy";
   }
   if (iconEl && !btn.dataset.originalIcon) {
     btn.dataset.originalIcon = iconEl.innerHTML;
   }
   btn.classList.toggle("is-copied", copied);
-  const label = copied ? "Скопировано" : btn.dataset.originalLabel;
+  const label = copied ? "Copied" : btn.dataset.originalLabel;
   btn.setAttribute("aria-label", label);
   btn.setAttribute("title", label);
   if (iconEl) {
@@ -8714,7 +8714,7 @@ function markPaperCopyButton(btn, copied = true) {
   }
 }
 
-/* --------------------- Статья по проекту (NeurIPS PDF) --------------------- */
+/* --------------------- Project paper (NeurIPS PDF) --------------------- */
 
 const paperState = {
   pollTimer: null,
@@ -8779,11 +8779,11 @@ const paperCollab = createPaperCollabClient({
     void applyRemotePaperComments(payload);
   },
   onConflict: (conflict) => {
-    const reason = conflict?.reason || "конфликт с правкой на диске";
+    const reason = conflict?.reason || "conflict with an edit on disk";
     showPaperToast(`Collaboration: ${reason}`, { variant: "error" });
     const status = paperEls().texCollab;
     if (status) {
-      status.textContent = "конфликт — оставьте текущий текст или перезагрузите";
+      status.textContent = "conflict — keep the current text or reload";
       status.dataset.collabConflict = "true";
       status.classList.add("is-conflict");
       status.classList.remove("hidden");
@@ -8794,9 +8794,9 @@ const paperCollab = createPaperCollabClient({
     paperState.collabProposalResolving = false;
     renderPaperCollabProposal();
     if (!proposal && resolution === "accepted") {
-      showPaperToast("Предложение принято");
+      showPaperToast("Proposal accepted");
     } else if (!proposal && resolution === "rejected") {
-      showPaperToast("Предложение отклонено");
+      showPaperToast("Proposal rejected");
     }
   },
   onStatus: (status) => {
@@ -8824,7 +8824,7 @@ function paperCollabTransportLabel(network) {
   const found = Number(network?.signalingPeerCount);
   const ice = String(network?.iceState || "").trim();
   const parts = [];
-  if (Number.isFinite(found) && found > 0) parts.push(`пиры ${found}`);
+  if (Number.isFinite(found) && found > 0) parts.push(`peers ${found}`);
   if (ice && ice !== "idle") parts.push(`ice ${ice}`);
   return parts.length ? ` · ${parts.join(" · ")}` : "";
 }
@@ -8870,7 +8870,7 @@ function updatePaperCollabUi() {
   const count = Math.max(2, 1 + found, 1 + relayCount);
   let next = "live" + roomLabel;
   if (relayCount > 0 || holdRelay) next = `relay · ${count}${roomLabel}`;
-  else if (network?.enabled && (network?.signaling || found)) next = `P2P · ожидание${roomLabel}`;
+  else if (network?.enabled && (network?.signaling || found)) next = `P2P · waiting${roomLabel}`;
   if (el.textContent === next) return;
   el.textContent = next;
   el.classList.remove("is-conflict");
@@ -8926,7 +8926,7 @@ async function resolvePaperCollabProposalHunk(hunkId, resolution) {
   } catch {
     paperState.collabProposalResolving = false;
     renderPaperCollabProposal();
-    showPaperToast("Предложение уже изменилось — проверьте новую версию", {
+    showPaperToast("The proposal has already changed — review the new version", {
       variant: "error",
     });
   }
@@ -9015,8 +9015,8 @@ function updatePaperInboxNotice() {
   if (markBtn) {
     markBtn.disabled = !paperInboxBootstrapCopied;
     markBtn.title = paperInboxBootstrapCopied
-      ? "Отметить Paper Inbox как настроенный"
-      : "Сначала скопируйте сообщение и вставьте в Cursor";
+      ? "Mark Paper Inbox as configured"
+      : "First copy the message and paste it into Cursor";
   }
 
   if (watcherEl) {
@@ -9024,9 +9024,9 @@ function updatePaperInboxNotice() {
       watcherEl.textContent = "";
     } else if (isPaperInboxConfigured() && !appSettings.paper_inbox_watcher_running) {
       watcherEl.textContent =
-        "Watcher не запущен — выполните ./scripts/koi-serve.sh start";
+        "Watcher is not running — run ./scripts/koi-serve.sh start";
     } else if (isPaperInboxOperational()) {
-      watcherEl.textContent = "Paper Inbox готов — генерация подхватится автоматически.";
+      watcherEl.textContent = "Paper Inbox is ready; generation will be picked up automatically.";
     } else {
       watcherEl.textContent = "";
     }
@@ -9036,7 +9036,7 @@ function updatePaperInboxNotice() {
 async function copyPaperInboxBootstrap(statusEl) {
   const text = paperInboxBootstrapText();
   if (!text) {
-    if (statusEl) statusEl.textContent = "Bootstrap ещё не загружен — обновите страницу.";
+    if (statusEl) statusEl.textContent = "Bootstrap has not loaded yet — refresh the page.";
     return false;
   }
   try {
@@ -9045,14 +9045,14 @@ async function copyPaperInboxBootstrap(statusEl) {
     updatePaperInboxNotice();
     if (statusEl) {
       statusEl.textContent =
-        "Скопировано — вставьте в чат «ResearchOS Paper Inbox» в Cursor.";
+        "Copied — paste into “ResearchOS Paper Inbox” chat in Cursor.";
       setTimeout(() => {
-        if (statusEl.textContent.startsWith("Скопировано")) statusEl.textContent = "";
+        if (statusEl.textContent.startsWith("Copied")) statusEl.textContent = "";
       }, 5000);
     }
     return true;
   } catch {
-    if (statusEl) statusEl.textContent = "Не удалось скопировать.";
+    if (statusEl) statusEl.textContent = "Could not copy.";
     return false;
   }
 }
@@ -9217,11 +9217,11 @@ function paperRelayLimitMetricHtml() {
   const stateClass = paperProgressChipClass(bytes, limit);
   const fill = paperProgressFillPercent(bytes, limit);
   const title = over
-    ? `main.tex ${currentKb} КБ — больше кадра шлюза (${limitKb} КБ). Полный снимок может не дойти до второго компьютера.`
-    : `main.tex ${currentKb} КБ из ${limitKb} КБ кадра шлюза. Мелкие правки проходят и сверх лимита.`;
+    ? `main.tex ${currentKb} KB exceeds the gateway frame (${limitKb} KB). A full snapshot may not reach the second computer.`
+    : `main.tex ${currentKb} KB of the ${limitKb} KB gateway frame. Small edits can pass even beyond the limit.`;
   return `<span class="paper-progress-metric ${stateClass}" title="${escapeHtml(title)}">
-    <span class="paper-progress-metric__label">Синк</span>
-    <span class="paper-progress-metric__value">${escapeHtml(currentKb)}/${escapeHtml(limitKb)} КБ</span>
+    <span class="paper-progress-metric__label">Sync</span>
+    <span class="paper-progress-metric__value">${escapeHtml(currentKb)}/${escapeHtml(limitKb)} KB</span>
     <span class="paper-progress-metric__bar" aria-hidden="true"><span class="paper-progress-metric__fill" style="width:${fill}%"></span></span>
   </span>`;
 }
@@ -9235,29 +9235,29 @@ function formatPaperDeadlineHours(hours, { compact = false } = {}) {
   const rounded = Math.max(0, Math.round(Math.abs(hours)));
   if (hours >= 0) {
     if (compact) {
-      if (rounded === 0) return "<1 ч";
-      if (rounded < 24) return `${rounded} ч`;
+      if (rounded === 0) return "<1 hr";
+      if (rounded < 24) return `${rounded} hr`;
       const days = Math.floor(rounded / 24);
       const rest = rounded % 24;
-      return rest === 0 ? `${days} д` : `${days} д ${rest} ч`;
+      return rest === 0 ? `${days} d` : `${days} d ${rest} hr`;
     }
-    if (rounded === 0) return "до отправки меньше часа";
-    if (rounded === 1) return "до отправки 1 час";
-    if (rounded < 24) return `до отправки ${rounded} ч`;
+    if (rounded === 0) return "less than an hour until submission";
+    if (rounded === 1) return "1 hour until submission";
+    if (rounded < 24) return `${rounded} hours until submission`;
     const days = Math.floor(rounded / 24);
     const rest = rounded % 24;
-    if (rest === 0) return `до отправки ${days} д`;
-    return `до отправки ${days} д ${rest} ч`;
+    if (rest === 0) return `${days} days until submission`;
+    return `${days} days ${rest} hours until submission`;
   }
   if (compact) {
-    if (rounded === 0) return "просрочено";
-    if (rounded < 24) return `−${rounded} ч`;
-    return `−${Math.floor(rounded / 24)} д`;
+    if (rounded === 0) return "overdue";
+    if (rounded < 24) return `−${rounded} hr`;
+    return `−${Math.floor(rounded / 24)} d`;
   }
-  if (rounded === 1) return "дедлайн прошёл 1 час назад";
-  if (rounded < 24) return `дедлайн прошёл ${rounded} ч назад`;
+  if (rounded === 1) return "deadline passed 1 hour ago";
+  if (rounded < 24) return `deadline passed ${rounded} hours ago`;
   const days = Math.floor(rounded / 24);
-  return `дедлайн прошёл ${days} д назад`;
+  return `deadline passed ${days} days ago`;
 }
 
 function computePaperDeadlineHoursLeft(deadline) {
@@ -9325,18 +9325,18 @@ function renderPaperProgress(entry) {
   const metrics = [paperRelayLimitMetricHtml()];
 
   if (hasCounts || hasConfig || progress.main_pages != null) {
-    metrics.push(paperProgressMetricHtml("Главный", counts?.main ?? 0, progress.main_pages));
+    metrics.push(paperProgressMetricHtml("Main", counts?.main ?? 0, progress.main_pages));
   }
 
   if (hasCounts || hasConfig || progress.references_pages != null) {
     metrics.push(
-      paperProgressMetricHtml("Реф.", counts?.references ?? 0, progress.references_pages)
+      paperProgressMetricHtml("Refs.", counts?.references ?? 0, progress.references_pages)
     );
   }
 
   if (hasCounts || hasConfig || progress.appendix_pages != null) {
     metrics.push(
-      paperProgressMetricHtml("Апп.", counts?.appendix ?? 0, progress.appendix_pages)
+      paperProgressMetricHtml("App.", counts?.appendix ?? 0, progress.appendix_pages)
     );
   }
 
@@ -9408,9 +9408,9 @@ async function savePaperProgress(event) {
     if (idx >= 0) paperState.papers[idx] = { ...paperState.papers[idx], ...updated };
     renderPaperProgress(updated);
     paperState.progressSettingsOpen = false;
-    showPaperToast("Настройки прогресса сохранены");
+    showPaperToast("Progress settings saved");
   } catch (err) {
-    showPaperToast(`Не удалось сохранить прогресс: ${err.message}`, "error");
+    showPaperToast(`Could not save progress: ${err.message}`, "error");
   } finally {
     els.progressSave.disabled = false;
   }
@@ -9421,14 +9421,14 @@ function renderPaperTabs() {
   if (!tabs) return;
   const papers = paperState.papers || [];
   if (!papers.length) {
-    tabs.innerHTML = `<p class="card-live-empty card-live-empty--tabs">Нет статей — добавьте <code>paper/&lt;slug&gt;/</code> в member-проекте или сгенерируйте черновик</p>`;
+    tabs.innerHTML = `<p class="card-live-empty card-live-empty--tabs">No papers — add <code>paper/&lt;slug&gt;/</code> to a member project or generate a draft</p>`;
     return;
   }
   tabs.innerHTML = papers
     .map((paper) => {
       const key = paperTabKey(paper);
       const active = key === paperState.activeKey;
-      return `<button type="button" class="card-live-card-tab${active ? " is-active" : ""}${paper.pdf_exists ? "" : " paper-tab--no-pdf"}" data-paper-key="${escapeHtml(key)}" role="tab" aria-selected="${active}" title="${escapeHtml(paper.pdf_exists ? "" : "PDF не собран")}">
+      return `<button type="button" class="card-live-card-tab${active ? " is-active" : ""}${paper.pdf_exists ? "" : " paper-tab--no-pdf"}" data-paper-key="${escapeHtml(key)}" role="tab" aria-selected="${active}" title="${escapeHtml(paper.pdf_exists ? "" : "PDF not built")}">
         <span class="card-live-card-tab__dot" aria-hidden="true"></span>
         <span class="card-live-card-tab__title">${escapeHtml(paperTabLabel(paper))}</span>
       </button>`;
@@ -9438,7 +9438,7 @@ function renderPaperTabs() {
     btn.addEventListener("click", () => {
       const key = btn.getAttribute("data-paper-key");
       if (!key || key === paperState.activeKey) return;
-      if (paperState.texDirty && !window.confirm("Есть несохранённые изменения в main.tex. Переключить статью?")) {
+      if (paperState.texDirty && !window.confirm("main.tex has unsaved changes. Switch papers?")) {
         return;
       }
       paperState.activeKey = key;
@@ -9505,7 +9505,7 @@ function bindPaperFrameLoad() {
   frame.addEventListener("error", () => {
     hidePaperLoader();
     const { status, pdfMissing } = paperEls();
-    if (status) status.textContent = "Не удалось загрузить PDF в просмотрщике — откройте ссылку «Открыть PDF».";
+    if (status) status.textContent = "Could not load the PDF in the viewer; use the Open PDF link.";
     pdfMissing?.classList.remove("hidden");
   });
 }
@@ -9583,11 +9583,11 @@ async function reloadPaperTexFromDisk({ quiet = false, remoteText = null } = {})
     dismissPaperTexExternalChange();
     setTexEditorContent(text, { markClean: true });
     await syncPaperTexRemoteMtime(entry.project_id, entry.slug);
-    if (!quiet) showPaperToast("main.tex перезагружен с диска");
+    if (!quiet) showPaperToast("main.tex reloaded from disk");
     return true;
   } catch (err) {
     if (!quiet && paperEls().status) {
-      paperEls().status.textContent = `Не удалось перезагрузить main.tex: ${err.message}`;
+      paperEls().status.textContent = `Could not reload main.tex: ${err.message}`;
     }
     return false;
   }
@@ -9673,7 +9673,7 @@ async function pollPaperTexChanges(entry, st) {
 
   paperState.lastRemoteTexMtime = remoteMtime;
   await reloadPaperTexFromDisk({ quiet: true, remoteText });
-  showPaperToast("main.tex обновлён с диска");
+  showPaperToast("main.tex updated from disk");
 }
 
 function stopPaperPollingAll() {
@@ -9682,7 +9682,7 @@ function stopPaperPollingAll() {
   void stopPaperCollab();
 }
 
-function showPaperLoader(step = "Генерация статьи…") {
+function showPaperLoader(step = "Generating paper…") {
   showKoiLoader("paper-loader", { step, pool: "paper" });
 }
 
@@ -9696,8 +9696,8 @@ function paperViewerKey(projectId, slug) {
 
 function paperLineRangeLabel(lineStart, lineEnd) {
   if (!lineStart) return "";
-  if (lineEnd === lineStart) return `строка ${lineStart}`;
-  return `строки ${lineStart}–${lineEnd}`;
+  if (lineEnd === lineStart) return `line ${lineStart}`;
+  return `lines ${lineStart}–${lineEnd}`;
 }
 
 function commentAnchorMeta(comment) {
@@ -9724,7 +9724,7 @@ function paperSelectionLabel() {
     selectedCharEnd: ce,
     selectedText,
   } = paperState;
-  if (!start) return "Выделите фрагмент текста";
+  if (!start) return "Select a text fragment";
   let label = paperLineRangeLabel(start, end);
   if (start === end && cs != null && ce != null) {
     const lineLen = (paperState.texLines[start - 1] || "").length;
@@ -10001,10 +10001,10 @@ function setPaperVersionPushLabel(text) {
 }
 
 function paperCurrentVersionMeta() {
-  if (paperState.viewedSha) return "откройте «Сейчас», чтобы править";
-  if (paperState.texDirty) return "есть правки, ещё не на диске";
-  if (paperState.paperVersionsDirty) return "черновик, не закоммичен";
-  return "черновик на экране";
+  if (paperState.viewedSha) return "open Current to edit";
+  if (paperState.texDirty) return "changes not yet written to disk";
+  if (paperState.paperVersionsDirty) return "uncommitted draft";
+  return "draft on screen";
 }
 
 function paperVersionRefreshIcon() {
@@ -10032,12 +10032,12 @@ function renderPaperVersions() {
     const canPush = Boolean(paperState.paperVersionsDirty || paperState.texDirty);
     els.versionPush.disabled = paperState.paperSyncing || Boolean(paperState.viewedSha) || !canPush;
     els.versionPush.setAttribute("aria-busy", paperState.paperSyncing ? "true" : "false");
-    setPaperVersionPushLabel(paperState.paperSyncing ? "Отправляю…" : "Отправить");
+    setPaperVersionPushLabel(paperState.paperSyncing ? "Pushing…" : "Push");
   }
   if (!els.versionsList) return;
   const commits = paperState.paperVersions || [];
   if (!commits.length) {
-    els.versionsList.innerHTML = `<p class="paper-versions__empty">Пока нет снимков в git</p>`;
+    els.versionsList.innerHTML = `<p class="paper-versions__empty">No Git snapshots yet</p>`;
     return;
   }
   els.versionsList.innerHTML = commits
@@ -10049,12 +10049,12 @@ function renderPaperVersions() {
       const subject = escapeHtml(item.subject || item.short || sha.slice(0, 8));
       const short = escapeHtml(item.short || sha.slice(0, 8));
       const badge = incoming
-        ? `<span class="paper-version__badge">новый</span>`
+        ? `<span class="paper-version__badge">new</span>`
         : "";
       const pull = incoming
         ? `<button type="button" class="paper-version-action paper-version-action--warn" data-paper-version-pull="1" ${
             paperState.paperSyncing ? "disabled" : ""
-          } title="Забрать этот снимок из git">${paperVersionRefreshIcon()}<span class="paper-version-action__label">Обновить</span></button>`
+          } title="Fetch this snapshot from Git">${paperVersionRefreshIcon()}<span class="paper-version-action__label">Update</span></button>`
         : "";
       return `<div class="paper-version-row${incoming ? " is-incoming" : ""}">
         <button type="button" class="paper-version${active ? " is-active" : ""}${incoming ? " is-incoming" : ""}" data-paper-version="${escapeHtml(sha)}" title="${escapeHtml(sha)}" aria-pressed="${active ? "true" : "false"}"${active ? ' aria-current="true"' : ""}>
@@ -10093,9 +10093,9 @@ async function pullPaperVersions() {
     await paperCollab.disconnect();
     await loadPaperTex(entry.project_id, entry.slug, { force: true });
     await ensurePaperCollab(entry.project_id, entry.slug);
-    showPaperToast("Статья обновлена из git");
+    showPaperToast("Paper updated from Git");
   } catch (err) {
-    showPaperToast(err.message || "Не удалось забрать обновления", { variant: "error" });
+    showPaperToast(err.message || "Could not fetch updates", { variant: "error" });
   } finally {
     paperState.paperSyncing = false;
     renderPaperVersions();
@@ -10113,9 +10113,9 @@ async function pushPaperVersions() {
   renderPaperVersions();
   try {
     applyPaperVersionsPayload(await KoiApi.pushPaperVersions(entry.project_id, entry.slug));
-    showPaperToast("Снимок статьи отправлен в git");
+    showPaperToast("Paper snapshot pushed to Git");
   } catch (err) {
-    showPaperToast(err.message || "Не удалось отправить снимок", { variant: "error" });
+    showPaperToast(err.message || "Could not push the snapshot", { variant: "error" });
   } finally {
     paperState.paperSyncing = false;
     renderPaperVersions();
@@ -10160,7 +10160,7 @@ async function showPaperVersion(sha) {
     updatePaperEditorLock();
     renderPaperVersions();
   } catch (err) {
-    showPaperToast(`Не удалось открыть версию: ${err.message}`, { variant: "error" });
+    showPaperToast(`Could not open version: ${err.message}`, { variant: "error" });
   }
 }
 
@@ -10171,7 +10171,7 @@ function updatePaperEditorLock() {
   if (els.texSave) els.texSave.disabled = locked || !paperState.texDirty || paperState.texSaving;
   if (els.texCompile) els.texCompile.disabled = locked || paperState.texSaving || paperState.texCompiling;
   if (els.texSelection && paperState.viewedSha) {
-    els.texSelection.textContent = "Снимок из git — только просмотр";
+    els.texSelection.textContent = "Git snapshot — read-only";
   }
 }
 
@@ -10206,16 +10206,16 @@ function updatePaperSaveUi() {
   const els = paperEls();
   els.texDirty?.classList.toggle("hidden", !paperState.texDirty || Boolean(paperState.viewedSha));
   if (els.texSave) {
-    els.texSave.textContent = paperState.texSaving ? "Сохранение…" : "Сохранить";
+    els.texSave.textContent = paperState.texSaving ? "Saving…" : "Save";
   }
   if (els.texCompile) {
-    els.texCompile.textContent = paperState.texCompiling ? "Сборка…" : "Собрать PDF";
+    els.texCompile.textContent = paperState.texCompiling ? "Building…" : "Build PDF";
   }
   updatePaperEditorLock();
   if (els.versionPush) {
     const canPush = Boolean(paperState.paperVersionsDirty || paperState.texDirty);
     els.versionPush.disabled = paperState.paperSyncing || Boolean(paperState.viewedSha) || !canPush;
-    setPaperVersionPushLabel(paperState.paperSyncing ? "Отправляю…" : "Отправить");
+    setPaperVersionPushLabel(paperState.paperSyncing ? "Pushing…" : "Push");
   }
   const current = els.versionCurrent;
   if (current) {
@@ -10322,7 +10322,7 @@ async function renderPaperTexGutter() {
       Boolean(paperState.activeCommentId) && commentId === paperState.activeCommentId;
     return `<div class="paper-tex-gutter-line${hasComment ? " is-commented" : ""}${stale ? " is-stale" : ""}${inRange ? " is-in-range" : ""}${activeComment ? " is-active-comment" : ""}" data-line="${lineNo}">
       <span class="paper-tex-gutter-ln">${lineNo}</span>
-      <button type="button" class="paper-tex-gutter-mark" aria-label="Комментарий на строке ${lineNo}"${commentId ? ` data-focus-comment="${escapeHtml(commentId)}"` : ""}></button>
+      <button type="button" class="paper-tex-gutter-mark" aria-label="Comment on line ${lineNo}"${commentId ? ` data-focus-comment="${escapeHtml(commentId)}"` : ""}></button>
     </div>`;
   }).join("")}</div>`;
 
@@ -10436,7 +10436,7 @@ async function savePaperTex({ quiet = false } = {}) {
   const entry = activePaperEntry();
   const els = paperEls();
   if (!entry) {
-    if (els.status) els.status.textContent = "Не удалось сохранить: статья не выбрана";
+    if (els.status) els.status.textContent = "Could not save: no paper selected";
     return false;
   }
   if (paperState.texSaving) return false;
@@ -10462,17 +10462,17 @@ async function savePaperTex({ quiet = false } = {}) {
     paperState.texSavedAt = Date.now();
     const label = `${entry.project_id}/${entry.slug}`;
     if (!quiet && els.status) {
-      els.status.textContent = `main.tex сохранён · ${label}`;
+      els.status.textContent = `main.tex saved · ${label}`;
       setTimeout(() => {
-        if (els.status?.textContent?.startsWith("main.tex сохранён")) els.status.textContent = "";
+        if (els.status?.textContent?.startsWith("main.tex saved")) els.status.textContent = "";
       }, 5000);
     }
-    if (!quiet) showPaperToast(`main.tex сохранён · ${label}`);
+    if (!quiet) showPaperToast(`main.tex saved · ${label}`);
     void loadPaperVersions(entry.project_id, entry.slug);
     return true;
   } catch (err) {
-    if (els.status) els.status.textContent = `Не удалось сохранить main.tex: ${err.message}`;
-    showPaperToast(`Ошибка сохранения: ${err.message}`, { variant: "error" });
+    if (els.status) els.status.textContent = `Could not save main.tex: ${err.message}`;
+    showPaperToast(`Save error: ${err.message}`, { variant: "error" });
     return false;
   } finally {
     paperState.texSaving = false;
@@ -10490,14 +10490,14 @@ async function compilePaperPdf() {
   }
   paperState.texCompiling = true;
   updatePaperSaveUi();
-  showPaperLoader("Сборка PDF…");
+  showPaperLoader("Building PDF…");
   try {
     const res = await KoiApi.compilePaper(entry.project_id, entry.slug);
     hidePaperLoader();
     if (els.status) {
-      els.status.textContent = res?.engine ? `PDF собран (${res.engine})` : "PDF собран";
+      els.status.textContent = res?.engine ? `PDF built (${res.engine})` : "PDF built";
       setTimeout(() => {
-        if (els.status?.textContent?.startsWith("PDF собран")) els.status.textContent = "";
+        if (els.status?.textContent?.startsWith("PDF built")) els.status.textContent = "";
       }, 4000);
     }
     const pdfMtime = res?.pdf_mtime || Date.now();
@@ -10515,12 +10515,12 @@ async function compilePaperPdf() {
       renderPaperProgress(paperState.papers[idx]);
     }
     renderPaperTabs();
-    showPaperToast(`PDF собран (${res?.engine || "ok"})`);
+    showPaperToast(`PDF built (${res?.engine || "ok"})`);
   } catch (err) {
     hidePaperLoader();
     const detail = String(err.message || err).trim();
-    if (els.status) els.status.textContent = `Ошибка сборки PDF: ${detail}`;
-    showPaperToast(detail.slice(0, 240) || "Ошибка сборки PDF", { variant: "error" });
+    if (els.status) els.status.textContent = `PDF build error: ${detail}`;
+    showPaperToast(detail.slice(0, 240) || "PDF build error", { variant: "error" });
   } finally {
     paperState.texCompiling = false;
     updatePaperSaveUi();
@@ -10571,12 +10571,12 @@ function paperCommentAnchorHtml(comment, { expanded = false, stale = false } = {
             )
             .join("")}
         </div>
-        <textarea class="paper-comment-thread-reply" rows="2" placeholder="Ответ…" data-paper-thread-reply="${escapeHtml(comment.id)}"></textarea>
+        <textarea class="paper-comment-thread-reply" rows="2" placeholder="Reply…" data-paper-thread-reply="${escapeHtml(comment.id)}"></textarea>
         <footer class="paper-comment-card__actions paper-comment-card__actions--compact">
-          ${paperCommentBtn("Ответить", PAPER_COMMENT_ICONS.send, `data-paper-thread-send="${escapeHtml(comment.id)}"`, "paper-comment-btn--primary", { iconOnly: true })}
-          ${paperCommentBtn("Копировать", PAPER_COMMENT_ICONS.copy, `data-paper-thread-copy="${escapeHtml(comment.id)}"`, "", { iconOnly: true })}
-          ${paperCommentBtn(comment.resolved ? "Открыть снова" : "Resolve", comment.resolved ? PAPER_COMMENT_ICONS.reopen : PAPER_COMMENT_ICONS.resolve, `data-paper-thread-resolve="${escapeHtml(comment.id)}"`, "", { iconOnly: true })}
-          ${paperCommentBtn("Удалить", PAPER_COMMENT_ICONS.delete, `data-paper-thread-delete="${escapeHtml(comment.id)}"`, "paper-comment-btn--danger", { iconOnly: true })}
+          ${paperCommentBtn("Reply", PAPER_COMMENT_ICONS.send, `data-paper-thread-send="${escapeHtml(comment.id)}"`, "paper-comment-btn--primary", { iconOnly: true })}
+          ${paperCommentBtn("Copy", PAPER_COMMENT_ICONS.copy, `data-paper-thread-copy="${escapeHtml(comment.id)}"`, "", { iconOnly: true })}
+          ${paperCommentBtn(comment.resolved ? "Reopen" : "Resolve", comment.resolved ? PAPER_COMMENT_ICONS.reopen : PAPER_COMMENT_ICONS.resolve, `data-paper-thread-resolve="${escapeHtml(comment.id)}"`, "", { iconOnly: true })}
+          ${paperCommentBtn("Delete", PAPER_COMMENT_ICONS.delete, `data-paper-thread-delete="${escapeHtml(comment.id)}"`, "paper-comment-btn--danger", { iconOnly: true })}
         </footer>
       </div>
     </article>
@@ -10592,14 +10592,14 @@ function paperCommentComposeHtml() {
       <div class="paper-comment-card__rail" aria-hidden="true"></div>
       <div class="paper-comment-card__content">
         <header class="paper-comment-card__head">
-          <span class="paper-comment-card__badge">Новый комментарий</span>
+          <span class="paper-comment-card__badge">New comment</span>
           <span class="paper-comment-card__status is-compose">Draft</span>
         </header>
         <p class="paper-comment-card__range">${escapeHtml(paperSelectionLabel())}</p>
-        <textarea class="paper-comment-compose-body" rows="3" placeholder="Комментарий для агента…" data-paper-compose-body="1"></textarea>
+        <textarea class="paper-comment-compose-body" rows="3" placeholder="Comment for the agent…" data-paper-compose-body="1"></textarea>
         <footer class="paper-comment-card__actions paper-comment-card__actions--compact">
-          ${paperCommentBtn("Сохранить", PAPER_COMMENT_ICONS.save, `data-paper-compose-save="1"`, "paper-comment-btn--primary", { iconOnly: true })}
-          ${paperCommentBtn("Отмена", PAPER_COMMENT_ICONS.cancel, `data-paper-compose-cancel="1"`, "", { iconOnly: true })}
+          ${paperCommentBtn("Save", PAPER_COMMENT_ICONS.save, `data-paper-compose-save="1"`, "paper-comment-btn--primary", { iconOnly: true })}
+          ${paperCommentBtn("Cancel", PAPER_COMMENT_ICONS.cancel, `data-paper-compose-cancel="1"`, "", { iconOnly: true })}
         </footer>
       </div>
     </article>
@@ -10612,9 +10612,9 @@ function paperProposalAnchorHtml(proposal, hunk) {
   const lineTop = measurePaperLineTop(start);
   const source =
     proposal.source === "cursor-buffer"
-      ? "Cursor · не сохранено"
+      ? "Cursor · unsaved"
       : proposal.source === "agent"
-        ? "Агент"
+        ? "Agent"
         : "main.tex";
   const resolving =
     paperState.collabProposalResolving === `${proposal.id}:${hunk.id}`;
@@ -10628,8 +10628,8 @@ function paperProposalAnchorHtml(proposal, hunk) {
         </header>
         <pre class="paper-proposal-diff">${escapeHtml(hunk.diff || "")}</pre>
         <div class="paper-comment-card__actions paper-comment-card__actions--compact">
-          <button type="button" class="paper-comment-btn" data-proposal-hunk-reject="${escapeHtml(hunk.id)}" ${resolving ? "disabled" : ""}>Отклонить</button>
-          <button type="button" class="paper-comment-btn paper-comment-btn--primary" data-proposal-hunk-accept="${escapeHtml(hunk.id)}" ${resolving ? "disabled" : ""}>Принять</button>
+          <button type="button" class="paper-comment-btn" data-proposal-hunk-reject="${escapeHtml(hunk.id)}" ${resolving ? "disabled" : ""}>Reject</button>
+          <button type="button" class="paper-comment-btn paper-comment-btn--primary" data-proposal-hunk-accept="${escapeHtml(hunk.id)}" ${resolving ? "disabled" : ""}>Accept</button>
         </div>
       </div>
     </article>
@@ -10910,11 +10910,11 @@ async function copyPaperCommentLink(commentId, triggerBtn = null) {
   const text = paperCommentClipboardText(entry.project_id, entry.slug, comment);
   try {
     await navigator.clipboard.writeText(text);
-    showPaperToast("Скопировано — вставьте агенту в Cursor");
+    showPaperToast("Copied — paste for the agent in Cursor");
     markPaperCopyButton(triggerBtn, true);
     return true;
   } catch {
-    showPaperToast("Не удалось скопировать", { variant: "error" });
+    showPaperToast("Could not copy", { variant: "error" });
     return false;
   }
 }
@@ -10971,7 +10971,7 @@ async function savePaperComment() {
     await renderPaperTexEditor();
     void copyPaperCommentLink(paperState.activeCommentId);
   } catch (err) {
-    if (els.status) els.status.textContent = `Не удалось сохранить комментарий: ${err.message}`;
+    if (els.status) els.status.textContent = `Could not save comment: ${err.message}`;
   }
 }
 
@@ -10996,7 +10996,7 @@ async function replyPaperComment(commentId) {
     publishPaperComments();
     await renderPaperCommentMargin();
   } catch (err) {
-    if (els.status) els.status.textContent = `Не удалось отправить ответ: ${err.message}`;
+    if (els.status) els.status.textContent = `Could not send reply: ${err.message}`;
   }
 }
 
@@ -11009,13 +11009,13 @@ async function togglePaperCommentResolved(commentId, resolved) {
     publishPaperComments();
     await renderPaperCommentMargin();
   } catch (err) {
-    if (paperEls().status) paperEls().status.textContent = `Не удалось обновить комментарий: ${err.message}`;
+    if (paperEls().status) paperEls().status.textContent = `Could not update comment: ${err.message}`;
   }
 }
 
 async function deletePaperComment(commentId) {
   const entry = activePaperEntry();
-  if (!window.confirm("Удалить комментарий?")) return;
+  if (!window.confirm("Delete comment?")) return;
   try {
     await KoiApi.deletePaperComment(entry.project_id, entry.slug, commentId);
     paperState.comments = paperState.comments.filter((item) => item.id !== commentId);
@@ -11023,7 +11023,7 @@ async function deletePaperComment(commentId) {
     publishPaperComments([commentId]);
     await renderPaperTexEditor();
   } catch (err) {
-    if (paperEls().status) paperEls().status.textContent = `Не удалось удалить: ${err.message}`;
+    if (paperEls().status) paperEls().status.textContent = `Could not delete: ${err.message}`;
   }
 }
 
@@ -11059,7 +11059,7 @@ function showPaperPdf(projectId, slug, stamp) {
     els.texLink.classList.remove("hidden");
     return;
   }
-  showPaperLoader("Загрузка PDF…");
+  showPaperLoader("Loading PDF…");
   els.frame?.classList.add("hidden");
   if (els.frame) els.frame.src = `${KoiApi.paperPdfUrl(projectId, slug)}?t=${encodeURIComponent(stamp || "")}#view=FitH`;
   paperState.lastPdfStamp = cacheKey;
@@ -11088,8 +11088,8 @@ function renderPaperState(st) {
 
   if (running) {
     const step = isInboxAgentMode()
-      ? "Paper Inbox пишет статью…"
-      : "Генерация статьи…";
+      ? "Paper Inbox is writing the paper…"
+      : "Generating paper…";
     showPaperLoader(step);
     setPaperViewerVisible({ split: false, empty: false });
     els.status.textContent = "";
@@ -11113,23 +11113,23 @@ function renderPaperState(st) {
 
   if (!running && st.state === "error") {
     const hint = st.log_tail ? ` · ${String(st.log_tail).split("\n")[0]}` : "";
-    els.status.textContent = `Ошибка: ${st.error || "не удалось сгенерировать статью"}${hint}`;
-    els.empty.textContent = "Статья не сгенерирована — попробуйте ещё раз.";
+    els.status.textContent = `Error: ${st.error || "could not generate the paper"}${hint}`;
+    els.empty.textContent = "The paper was not generated; try again.";
     setPaperViewerVisible({ split: false, empty: true });
   } else if (!running && st.state === "done" && st.pdf_exists) {
     const when = st.finished_at ? ` · ${new Date(st.finished_at).toLocaleString()}` : "";
-    const how = st.mode === "agent" ? `агент (${st.backend || "LLM"})` : "автосборка из графа";
-    els.status.textContent = `Готово: ${how}${when}`;
+    const how = st.mode === "agent" ? `agent (${st.backend || "LLM"})` : "automatic graph assembly";
+    els.status.textContent = `Done: ${how}${when}`;
   } else if (!running) {
     els.status.textContent = "";
     if (st.tex_exists && !st.pdf_exists) {
       els.empty.textContent =
         entry.description ||
-        "PDF не найден — откройте main.tex или положите paper.pdf в папку статьи.";
+        "PDF not found; open main.tex or place paper.pdf in the paper directory.";
       els.texLink.href = KoiApi.paperTexUrl(projectId, slug);
       els.texLink.classList.remove("hidden");
     } else if (!st.pdf_exists && !st.tex_exists) {
-      els.empty.textContent = entry.description || "Статья ещё не генерировалась.";
+      els.empty.textContent = entry.description || "The paper has not been generated yet.";
       setPaperViewerVisible({ split: false, empty: true });
     }
   }
@@ -11165,7 +11165,7 @@ async function refreshPaperStatus({ quiet = false } = {}) {
     stopPaperPolling();
     hidePaperLoader();
     const els = paperEls();
-    if (els.status) els.status.textContent = `Ошибка статуса: ${err.message}`;
+    if (els.status) els.status.textContent = `Status error: ${err.message}`;
   }
 }
 
@@ -11178,7 +11178,7 @@ async function requestPaperGeneration() {
   els.generate.disabled = true;
   els.regenerate.disabled = true;
   els.status.textContent = "";
-  showPaperLoader("Запуск генерации…");
+  showPaperLoader("Starting generation…");
   setPaperViewerVisible({ split: false, empty: false });
   try {
     const res = await KoiApi.generatePaper(projectId, slug);
@@ -11194,7 +11194,7 @@ async function requestPaperGeneration() {
   } catch (err) {
     hidePaperLoader();
     setPaperViewerVisible({ split: false, empty: true });
-    els.status.textContent = `Не удалось запустить генерацию: ${err.message}`;
+    els.status.textContent = `Could not start generation: ${err.message}`;
     els.generate.disabled = false;
     els.regenerate.disabled = false;
     return;
@@ -11210,7 +11210,7 @@ function openPaperModal() {
   paperState.lastPdfKey = null;
   paperState.lastRemotePdfMtime = null;
   if (els.frame) els.frame.src = "about:blank";
-  showPaperLoader("Загрузка статей…");
+  showPaperLoader("Loading papers…");
   void refreshAppSettings().then(() => {
     if (isInboxAgentMode() && !isPaperInboxConfigured() && appSettings.paper_inbox_bootstrap_prompt) {
       lastPaperInboxMessage = appSettings.paper_inbox_bootstrap_prompt;
@@ -11228,7 +11228,7 @@ function openPaperModal() {
     .catch((err) => {
       hidePaperLoader();
       const statusEl = paperEls().status;
-      if (statusEl) statusEl.textContent = `Не удалось загрузить статьи: ${err.message}`;
+      if (statusEl) statusEl.textContent = `Could not load papers: ${err.message}`;
     });
 }
 
@@ -11287,7 +11287,7 @@ function initPaper() {
   document.getElementById("paper-inbox-mark-configured")?.addEventListener("click", () => {
     void markPaperInboxConfigured().then((ok) => {
       const status = document.getElementById("paper-inbox-message-status");
-      if (ok && status) status.textContent = "Paper Inbox отмечен как настроенный.";
+      if (ok && status) status.textContent = "Paper Inbox marked as configured.";
     });
   });
   paperEls().progressSettingsToggle?.addEventListener("click", () => {
@@ -11347,7 +11347,7 @@ async function init() {
         return;
       }
       if (el.dataset.close === "paper-modal") {
-        if (paperState.texDirty && !window.confirm("Есть несохранённые изменения в main.tex. Закрыть без сохранения?")) {
+        if (paperState.texDirty && !window.confirm("main.tex has unsaved changes. Close without saving?")) {
           return;
         }
         stopPaperPollingAll();
@@ -11370,7 +11370,7 @@ async function init() {
       }
       const paperModal = document.getElementById("paper-modal");
       if (paperModal && !paperModal.classList.contains("hidden")) {
-        if (paperState.texDirty && !window.confirm("Есть несохранённые изменения в main.tex. Закрыть без сохранения?")) {
+        if (paperState.texDirty && !window.confirm("main.tex has unsaved changes. Close without saving?")) {
           return;
         }
         hideModal("paper-modal");
@@ -11476,8 +11476,8 @@ async function init() {
     if (!preferred) {
       setStatus(
         hubMode
-          ? "Не удалось загрузить снимок проекта"
-          : "Нет обнаруженных проектов (ищем tree/*/koi-structure/)",
+          ? "Could not load the project snapshot"
+          : "No projects discovered (searching tree/*/koi-structure/)",
         true
       );
       return;
@@ -11492,7 +11492,7 @@ async function init() {
     syncLabProject(state.project);
     const list = await loadProjectList(preferred);
     if (!list.length) {
-      setStatus("Нет обнаруженных проектов (ищем tree/*/koi-structure/)", true);
+      setStatus("No projects discovered (searching tree/*/koi-structure/)", true);
       return;
     }
     setActiveProjectInList(preferred);
@@ -11522,7 +11522,7 @@ async function init() {
     setStatus(
       hubMode
         ? `Hub: ${err.message}`
-        : `Не удалось загрузить: ${err.message}. Проверьте API на ${KoiApi.baseUrl?.() ?? "порту 8010"} (scripts/koi-serve.sh start).`,
+        : `Could not load: ${err.message}. Check the API at ${KoiApi.baseUrl?.() ?? "port 8010"} (scripts/koi-serve.sh start).`,
       true
     );
   }
@@ -11530,5 +11530,5 @@ async function init() {
 
 init().catch((err) => {
   console.error(err);
-  setStatus(`Ошибка UI: ${err.message}`, true);
+  setStatus(`UI error: ${err.message}`, true);
 });

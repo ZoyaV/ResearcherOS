@@ -19,12 +19,13 @@ def render_hypotheses(project: Project, report_index: dict) -> str:
     nodes = project.nodes
     causes, supported, refuted, insights = statistics(project)
     lines = [
-        "# Гипотезы и результаты",
+        "# Hypotheses and results",
         "",
-        f"Автовыжимка по {len(causes)} гипотезам (подтверждено: {supported}, "
-        f"опровергнуто: {refuted}, открыто: {len(causes) - supported - refuted}; "
-        f"инсайтов: {insights}). Источник — project.md и research.json, "
-        "пересобирается при каждом сохранении проекта; не править руками.",
+        f"Automatically generated summary of {len(causes)} hypotheses "
+        f"(supported: {supported}, refuted: {refuted}, "
+        f"open: {len(causes) - supported - refuted}; insights: {insights}). "
+        "Sources: project.md and research.json. Rebuilt whenever the project is "
+        "saved; do not edit manually.",
         "",
     ]
     for cause in causes:
@@ -32,7 +33,7 @@ def render_hypotheses(project: Project, report_index: dict) -> str:
         lines += [
             f"## {cause.title}",
             "",
-            f"Вердикт: {mark}  ·  узел `{cause.id}`",
+            f"Verdict: {mark}  ·  node `{cause.id}`",
             "",
         ]
         if cause.description:
@@ -41,20 +42,20 @@ def render_hypotheses(project: Project, report_index: dict) -> str:
         for method in methods_under(nodes, cause.id):
             for question in method.research_questions:
                 had_insights = True
-                source = f"метод `{method.id}`"
+                source = f"method `{method.id}`"
                 if question.card_id:
-                    source += f", карточка `{question.card_id}`"
+                    source += f", card `{question.card_id}`"
                     report = report_index.get(question.card_id)
                     if report:
-                        source += f" → [отчёт](../reports/{report})"
+                        source += f" → [report](../reports/{report})"
                 narrative = question.narrative or question.answer or "—"
                 lines += [
                     f"- {question.question}",
-                    f"  - {narrative}  _(уверенность: {question.certainty.value}, "
-                    f"важность: {question.importance}/5; {source})_",
+                    f"  - {narrative}  _(certainty: {question.certainty.value}, "
+                    f"importance: {question.importance}/5; {source})_",
                 ]
         if not had_insights:
-            lines.append("- _инсайтов пока нет (эксперимент не закрыт)._")
+            lines.append("- _No insights yet (the experiment is not complete)._")
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"
 
@@ -69,30 +70,30 @@ def render_project_index(
         (node for node in project.nodes if node.node_type == NodeType.PROBLEM), None
     )
     lines = [
-        f"# База знаний: {project.title}",
+        f"# Knowledge base: {project.title}",
         "",
-        "Оглавление базы знаний проекта: краткие сводки и ссылки, полные документы — ",
-        "в [`knowledge/`](knowledge/), журнал пополнений — в ",
-        "[KNOWLEDGE_LOG.md](KNOWLEDGE_LOG.md). Генерируется автоматически при каждом ",
-        "сохранении проекта (`koi/knowledge/`) — не править руками.",
+        "Project knowledge-base index with summaries and links. Full documents are ",
+        "in [`knowledge/`](knowledge/), and the update log is in ",
+        "[KNOWLEDGE_LOG.md](KNOWLEDGE_LOG.md). Generated automatically whenever ",
+        "the project is saved (`koi/knowledge/`); do not edit manually.",
         "",
-        f"Проект: `{project.id}` · гипотез: {len(causes)} "
+        f"Project: `{project.id}` · hypotheses: {len(causes)} "
         f"(✔ {supported} · ✗ {refuted} · … {len(causes) - supported - refuted}) "
-        f"· инсайтов: {insights} · документов: {len(documents)}",
+        f"· insights: {insights} · documents: {len(documents)}",
         "",
     ]
     if problem:
         lines += [
-            "## Проблема",
+            "## Problem",
             "",
             f"**{problem.title}.** {shorten(problem.description, 400)}",
             "",
         ]
-    lines += ["## Документы", ""]
+    lines += ["## Documents", ""]
     if not documents:
         lines += [
-            "_Документов пока нет — положите .md в `knowledge/` "
-            "(см. конвенцию в docs/research-workflow.md)._",
+            "_No documents yet. Add .md files to `knowledge/` "
+            "(see the convention in docs/research-workflow.md)._",
             "",
         ]
     for document in documents:
@@ -101,9 +102,9 @@ def render_project_index(
             entry += f" — {document.summary}"
         lines.append(entry)
     lines.append("")
-    lines += ["## Гипотезы — статус", ""]
+    lines += ["## Hypothesis status", ""]
     if not causes:
-        lines += ["_Гипотез пока нет._", ""]
+        lines += ["_No hypotheses yet._", ""]
     for cause in causes:
         mark = VERDICT_MARK.get(cause.verdict, cause.verdict.value)
         questions = [
@@ -113,7 +114,7 @@ def render_project_index(
         ]
         entry = f"- {mark} — [{cause.title}](knowledge/{GENERATED_DOC})"
         if questions:
-            entry += f" · инсайтов: {len(questions)}"
+            entry += f" · insights: {len(questions)}"
         report = next(
             (
                 report_index[question.card_id]
@@ -123,12 +124,12 @@ def render_project_index(
             None,
         )
         if report:
-            entry += f" · [отчёт](reports/{report})"
+            entry += f" · [report](reports/{report})"
         lines.append(entry)
         if questions:
             top = max(questions, key=lambda question: question.importance)
             text = top.narrative or top.answer
             if text:
-                lines.append(f"  - итог: {shorten(text, 200)}")
+                lines.append(f"  - conclusion: {shorten(text, 200)}")
     lines.append("")
     return "\n".join(lines).rstrip() + "\n"

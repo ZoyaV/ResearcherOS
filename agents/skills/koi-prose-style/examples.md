@@ -1,95 +1,87 @@
-# Примеры стиля KOI (good / bad)
+# KOI style examples (good / bad)
 
-Эталон из учебного проекта: `bicycle_problem/koi-structure/project.md`.
+Reference project: `bicycle_problem/koi-structure/project.md`.
 
-## Узлы и описания
+## Nodes and descriptions
 
-Заголовок узла на карте — **≤ 8 слов**. Подробности — в описании (открытие узла).
+A map title has at most **8 words**. Details belong in the description.
 
-| | Заголовок (≤8 слов) | Описание (при открытии) |
-|---|------|------|
-| ✅ | Бюджет в поиске тратится неэффективно | Неэффективное распределение рекламного бюджета в поисковых кампаниях: широкие и конкурентные запросы съедают расход при низкой отдаче |
-| ❌ | Budget waste in search campaigns | — |
-| ❌ | Неэффективный budget waste в search campaigns | — |
+| | Title | Description |
+|---|-------|-------------|
+| Good | Search budget is spent inefficiently | Broad, competitive queries consume search-ad budget while producing few useful actions. |
+| Bad | Budget Waste in Search Campaigns | — |
+| Bad | Inefficient budget waste in search campaigns | — |
 
-| | Заголовок (≤8 слов) | Описание (при открытии) |
-|---|------|------|
-| ✅ | Модель не воспроизводит правила игры | По записанной партии модель мира не восстанавливает ходы и правила игры при проверке |
-| ❌ | Модель мира по записанной партии не воспроизводит ходы игры при проверке | (весь текст в заголовке — слишком длинно) |
-| ❌ | Исполняемый code world model по trace не воспроизводит переходы игры (validate fail) | — |
+| | Title | Description |
+|---|-------|-------------|
+| Good | Model fails to reproduce game rules | Given a recorded game, the world model does not reconstruct the moves and rules during validation. |
+| Bad | The world model does not reproduce recorded game moves during validation | Entire explanation is overloaded into the title. |
+| Bad | Executable code world model fails trace transitions | — |
 
-| | Заголовок / подпись | |
-|---|------|------|
-| ✅ | Доля кликов около одиннадцати процентов | в описании: средняя доля кликов по показам (CTR) — около 11% |
-| ❌ | CTR ~11% | |
-| ❌ | Click-through rate составляет 11% | |
+| | Label | Note |
+|---|-------|------|
+| Good | Click share is about eleven percent | Description: mean click-through rate (CTR) is about 11%. |
+| Bad | CTR ~11% | Bare abbreviation |
+| Bad | Click-through rate equals 11% | Better than an abbreviation, but prefer a reader-facing claim |
 
-## Карточки канбана
+## Kanban cards
 
-Заголовок карточки — **≤ 8 слов**; детали и метрики — в `desc`.
+Card titles have at most **8 words**; details and metrics belong in `desc`.
 
-| | Заголовок (≤8 слов) | desc |
-|---|-----------|------|
-| ✅ | Сводная таблица по форматам показа | четыре сочетания формата и устройства: показы, клики, доля кликов, цена клика |
-| ❌ | Сводная таблица по всей выгрузке: текст и картинка на телефоне и на компьютере | (title слишком длинный) |
-| ❌ | fmt-aggregate CTR/CPC table | aggregate by format×device |
+| | Title | desc |
+|---|-------|------|
+| Good | Summary table by display format | Four format/device combinations with impressions, clicks, click-through rate, and cost per click. |
+| Bad | Summary table for text and image across phone and desktop traffic | Title is too long. |
+| Bad | fmt-aggregate CTR/CPC table | aggregate by format×device |
 
-| | Заголовок (≤8 слов) | desc |
-|---|-----------|------|
-| ✅ | Отключить картинки на телефоне | новая доля кликов, число кликов и сумма расхода без мобильной графики |
-| ❌ | Что изменится, если перестать показывать картинки на телефоне | (title > 8 слов) |
-| ❌ | Simulate fmt-policy-off | mobile display off scenario |
+| | Title | desc |
+|---|-------|------|
+| Good | Disable images on phones | New click-through rate, click count, and spend without mobile image ads. |
+| Bad | What changes if we stop showing images on phones | Title is too long. |
+| Bad | Simulate fmt-policy-off | mobile display off scenario |
 
 ## research.json (question / narrative)
 
-| | Поле | Текст |
-|---|------|-------|
-| ✅ | question | Становится ли агент разнообразнее в выборе действий после обучения на примерах траекторий? |
-| ❌ | question | Does SFT improve action diversity vs baseline? |
+| | Field | Text |
+|---|-------|------|
+| Good | question | Does training on example trajectories make the agent choose a wider variety of actions? |
+| Bad | question | Does SFT improve action diversity vs baseline? |
+| Good | narrative | Yes. In the same situation, the model considered about one and a half action variants before training and about two afterward. |
+| Bad | narrative | mean diversity 2.02 vs 1.46 base (step 77) |
+| Good | answer | mean diversity 2.02 vs 1.46 base (step 77) |
 
-| | Поле | Текст |
-|---|------|-------|
-| ✅ | narrative | Да. Раньше в одной ситуации модель перебирала примерно полтора варианта действия, после обучения — около двух. |
-| ❌ | narrative | mean diversity 2.02 vs 1.46 base (step 77) |
+Technical abbreviations and raw numbers are allowed in `answer`.
 
-| | Поле | Текст |
-|---|------|-------|
-| ✅ | answer | mean diversity 2.02 vs 1.46 base (step 77) |
-| — | answer | Техническое поле: аббревиатуры и числа здесь допустимы |
+## Methods and hypotheses
 
-## Методы и гипотезы
-
-| | Текст |
+| | Text |
 |---|------|
-| ✅ | Проверить: действительно ли формат и устройство влияют на долю кликов |
-| ❌ | Validate format×device effect on CTR |
-| ❌ | A/B test: format device mismatch hypothesis |
+| Good | Test whether display format and device affect click-through rate |
+| Bad | Validate format×device effect on CTR |
+| Bad | A/B test: format device mismatch hypothesis |
 
-| | Текст |
+| | Text |
 |---|------|
-| ✅ | Для каждого сегмента посчитать показы, клики, долю кликов (CTR), расход в рублях, цену клика (CPC) |
-| ❌ | Per segment: impressions, clicks, CTR, spend, CPC |
+| Good | For each segment, calculate impressions, clicks, click-through rate (CTR), spend, and cost per click (CPC). |
+| Bad | Per segment: impressions, clicks, CTR, spend, CPC |
 
-## Анти-AI тон (Wikipedia Signs of AI writing)
+## AI-sounding tone
 
-Короткий UI-текст: скопление маркеров = плохо. Чинить фактом, не синонимом.
+A cluster of markers in short UI text is bad. Repair with facts, not synonyms.
 
-| | Текст |
+| | Text |
 |---|------|
-| ✅ | После отключения картинок на телефоне доля кликов выросла на два пункта |
-| ❌ | Это решение знаменует прорывной сдвиг и открывает новые горизонты оптимизации |
-| ❌ | Важно отметить, что подход не только эффективен, но и комплексен |
+| Good | Disabling phone images increased click-through rate by two percentage points. |
+| Bad | This groundbreaking solution marks a pivotal shift and opens new optimization horizons. |
+| Bad | It is worth noting that the approach is not only effective but also comprehensive. |
+| Good | Hypothesis: display format and device affect click-through rate. |
+| Bad | In today's advertising landscape, researchers underscore the pivotal role of format. |
+| Bad | The method seamlessly integrates signals, underscoring the importance of calibration. |
 
-| | Текст |
-|---|------|
-| ✅ | Гипотеза: формат показа и устройство влияют на долю кликов |
-| ❌ | В современном ландшафте рекламы исследователи подчеркивают pivotal role формата |
-| ❌ | Метод seamlessly интегрирует сигналы, underscoring значимость калибровки |
+See [anti-ai-writing.md](anti-ai-writing.md) for the full checklist.
 
-Подробный чеклист: [anti-ai-writing.md](anti-ai-writing.md).
+## Reviewer test
 
-## Тест ревьюера
-
-Прочитай фрагмент без контекста проекта. Если нужно знать, что такое SFT, PPO,
-`fmt-aggregate` или что означает голый CTR — это `FAIL` с конкретной переписью.
-Если текст звучит как пресс-релиз или набор «важных» слов без факта — тоже `FAIL`.
+Read the fragment without project context. If a reader must already know SFT,
+PPO, `fmt-aggregate`, or a bare CTR abbreviation, return `FAIL` with a concrete
+rewrite. Also fail press-release prose or important-sounding words without facts.

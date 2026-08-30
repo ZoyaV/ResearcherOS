@@ -5,55 +5,55 @@ const HINT_ROTATE_MS = 2400;
 
 export const KOI_LOADER_POOLS = {
   literature: [
-    "Подключаюсь к Literature Inbox…",
-    "Ищу статьи по ключевым словам проекта…",
-    "Листаю arXiv…",
-    "Скачиваю PDF…",
-    "Читаю абстракты…",
-    "Выделяю ключевые идеи…",
-    "Анализирую кластеры…",
-    "Смотрю детали литературы…",
-    "Группирую ответы по темам…",
-    "Сверяю с контекстом проекта…",
+    "Connecting to Literature Inbox…",
+    "Searching for papers using project keywords…",
+    "Browsing arXiv…",
+    "Downloading PDFs…",
+    "Reading abstracts…",
+    "Extracting key ideas…",
+    "Analyzing clusters…",
+    "Reviewing literature details…",
+    "Grouping answers by topic…",
+    "Checking against project context…",
   ],
   related: [
-    "Подключаюсь к Literature Inbox…",
-    "Читаю выбранные кластеры…",
-    "Сопоставляю с гипотезами проекта…",
-    "Ищу пробелы в related work…",
-    "Смотрю, что уже известно…",
-    "Формулирую связь с вашей работой…",
-    "Пишу черновик обзора…",
+    "Connecting to Literature Inbox…",
+    "Reading selected clusters…",
+    "Matching them to project hypotheses…",
+    "Looking for gaps in related work…",
+    "Reviewing what is already known…",
+    "Formulating the connection to your work…",
+    "Writing the review draft…",
   ],
   relatedQueue: [
-    "Скоро агент возьмётся за вашу задачу…",
-    "Задача стоит в очереди Literature Inbox…",
-    "Watcher скоро подхватит запрос…",
-    "Ждём свободного агента в Cursor…",
-    "Related Work уже в списке задач…",
-    "Обычно это занимает несколько секунд…",
-    "Агент скоро подключится…",
+    "An agent will pick up your task shortly…",
+    "The task is queued in Literature Inbox…",
+    "The watcher will pick up the request shortly…",
+    "Waiting for an available agent in Cursor…",
+    "Related Work is already in the task queue…",
+    "This usually takes a few seconds…",
+    "An agent will connect shortly…",
   ],
   agent: [
-    "Подключаюсь к ResearchOS Chat Inbox…",
-    "Сверяю research.json…",
-    "Ищу отчёты экспериментов…",
-    "Проверяю гипотезы на карте…",
-    "Читаю выводы методов…",
-    "Смотрю базу знаний…",
-    "Формирую ответ…",
+    "Connecting to ResearchOS Chat Inbox…",
+    "Checking research.json…",
+    "Finding experiment reports…",
+    "Checking hypotheses on the map…",
+    "Reading method findings…",
+    "Reviewing the knowledge base…",
+    "Preparing the answer…",
   ],
   paper: [
-    "Подключаюсь к Paper Inbox…",
-    "Читаю граф гипотез проекта…",
-    "Сверяю выводы research.json…",
-    "Собираю отчёты экспериментов…",
-    "Вставляю графики из assets…",
-    "Пишу черновик в LaTeX…",
-    "Форматирую под NeurIPS…",
-    "Компилирую PDF…",
-    "Проверяю библиографию…",
-    "Финальная сборка статьи…",
+    "Connecting to Paper Inbox…",
+    "Reading the project hypothesis graph…",
+    "Checking findings in research.json…",
+    "Collecting experiment reports…",
+    "Adding plots from assets…",
+    "Writing a LaTeX draft…",
+    "Formatting for NeurIPS…",
+    "Compiling the PDF…",
+    "Checking the bibliography…",
+    "Building the final paper…",
   ],
 };
 
@@ -169,7 +169,7 @@ export function detachRotatingHint(hintEl) {
   stopLoaderHints(hintEl);
 }
 
-export function showKoiLoader(rootOrId, { step = "Подготовка…", pool = "literature" } = {}) {
+export function showKoiLoader(rootOrId, { step = "Preparing…", pool = "literature" } = {}) {
   const root = resolveRoot(rootOrId);
   if (!root) return;
   ensureLoaderStructure(root);
@@ -198,14 +198,14 @@ export function setKoiLoaderStep(rootOrId, step, { pool } = {}) {
 
 export function koiLoaderTypingHtml(pool = "agent") {
   const messages = KOI_LOADER_POOLS[pool] || KOI_LOADER_POOLS.agent;
-  const first = messages[0] || "Агент думает…";
+  const first = messages[0] || "The agent is thinking…";
   return (
-    `<div class="agent-chat-typing koi-loader-inline" data-koi-loader-pool="${pool}" aria-label="Агент работает">` +
+    `<div class="agent-chat-typing koi-loader-inline" data-koi-loader-pool="${pool}" aria-label="Agent working">` +
     `<div class="koi-loader koi-loader--inline" aria-hidden="true">` +
     LOADER_VIZ_HTML +
     `</div>` +
     `<div class="agent-chat-typing-text">` +
-    `<span class="agent-chat-typing-label">Агент работает</span>` +
+    `<span class="agent-chat-typing-label">Agent working</span>` +
     `<span class="koi-loader__hint koi-loader__hint--inline">${first}</span>` +
     `</div>` +
     `</div>`

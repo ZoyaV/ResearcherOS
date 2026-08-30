@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Автоисследование по карточке · ResearcherOS</title>
-  <meta name="description" content="Длинный прогон одной карточки с тремя ролями: Руководитель, Исследователь и Дебаггер — поверх выполнения карточки." />
+  <title>Card autoresearch · ResearcherOS</title>
+  <meta name="description" content="Run one card over a long period with Manager, Researcher, and Debugger roles." />
   <script>
     (function () {
       var t = localStorage.getItem("koi-theme");
@@ -20,16 +20,15 @@
 <body class="page-detail">
   <header class="site-header site-header--detail">
     <div class="site-header__inner">
-      <a class="brand" href="../index.html" aria-label="ResearcherOS — на главную">
+      <a class="brand" href="../index.html" aria-label="ResearcherOS — home">
         <img class="brand__logo" src="../assets/logo.png?v=6" alt="ResearcherOS" height="27" />
       </a>
-      <nav class="nav" aria-label="Основное">
+      <nav class="nav" aria-label="Main navigation">
         <a href="../index.html#about">About</a>
         <a href="../index.html#start">How to start</a>
         <a href="../index.html#skills" aria-current="page">Skills</a>
-        <a href="../index.html#lessons">Lessons</a>
         <a href="https://github.com/ZoyaV/ResearcherOS">GitHub</a>
-        <button type="button" id="btn-theme" class="btn-theme" title="Тёмная тема" aria-label="Тёмная тема">
+        <button type="button" id="btn-theme" class="btn-theme" title="Dark theme" aria-label="Dark theme">
           <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"/><path fill="currentColor" d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" stroke-width="2"/></svg>
           <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 14.5A8.5 8.5 0 0 1 9.5 3 7 7 0 1 0 21 14.5z"/></svg>
         </button>
@@ -38,53 +37,53 @@
   </header>
   <main class="article">
     <a class="back-link" href="../index.html#skills">← Skills</a>
-    <h1 class="article__title">Автоисследование по карточке</h1>
+    <h1 class="article__title">Card autoresearch</h1>
     <p class="skill-id">koi-card-autoresearch</p>
     <div class="article__meta">
-      <span class="chip">«Системное исследование» / многочасовой прогон</span>
+      <span class="chip">Systematic research or a multi-hour run</span>
     </div>
-    <p class="article__lead">Длинный прогон одной карточки с тремя ролями: Руководитель, Исследователь и Дебаггер — поверх выполнения карточки.</p>
+    <p class="article__lead">Run one card over a long period with Manager, Researcher, and Debugger roles.</p>
 
-    <h2>Что делает</h2>
-    <p>Оркестрация долгого эксперимента по одной карточке канбана. Руководитель один раз переносит карточку в работу, настраивает живое окно и state-файл. Исследователь запускает job (через project-скилл, если он есть), следит по расписанию и отмечает подзадачи. Дебаггер только диагностирует сбои и пишет рекомендации — код и перезапуск остаются за Исследователем. Канбан, отчёт и колонка «готово» ведутся по сценарию выполнения карточки.</p>
+    <h2>What it does</h2>
+    <p>The Manager moves the card to in progress and configures the live window and state file. The Researcher starts and monitors the job and checks off subtasks. The Debugger only diagnoses failures and records recommendations; code changes and restarts remain the Researcher&#x27;s responsibility. Kanban, reporting, and done status follow card execution.</p>
 
-    <h2>Зачем</h2>
-    <p>Чтобы многочасовой или remote-прогон не разваливался на «запустил и забыл»: есть кто стартует, кто крутит job и смотрит пульс, кто только разбирает ошибки — без смешения ролей в одном хаотичном чате.</p>
+    <h2>Why use it</h2>
+    <p>Keep multi-hour or remote runs from becoming start-and-forget jobs by separating operation, monitoring, and diagnosis.</p>
 
-    <h2>Когда вызывать</h2>
+    <h2>When to use it</h2>
     <ul class="skill-scenarios">
-      <li>Просьба «проведи системное исследование / автоисследование по карточке»</li>
-      <li>Обучение или remote job на часы–сутки: нужен watch и плановый triage сбоев</li>
-      <li>В workspace есть project-скилл запуска (например для verl) — нужен общий протокол ролей поверх него</li>
+      <li>A request for systematic research or autoresearch</li>
+      <li>A job lasting hours or days that needs monitoring and failure triage</li>
+      <li>A project launch skill needs a shared role protocol</li>
     </ul>
 
-    <h2>Как вызвать</h2>
-    <p>Скажите «проведи системное исследование по карточке …» или «автоисследование по карточке …». Назовите проект и id/заголовок карточки. Если рядом с кодом есть свой скилл запуска — упомяните его; роли и cadence всё равно из этого сценария, а канбан — из выполнения карточки.</p>
+    <h2>How to invoke it</h2>
+    <p>Ask for autoresearch and provide the project plus card ID or title. Mention any project-specific launch skill. Roles and cadence come from this workflow; kanban handling comes from card execution.</p>
     <div class="example">
-      <p>Пример фразы AI-помощнику в редакторе:</p>
-      <pre><code>Проведи системное исследование по карточке &lt;id&gt; в проекте &lt;проект&gt;:
-роли руководитель → исследователь → дебаггер, с мониторингом по ходу.</code></pre>
+      <p>Example request for the AI assistant in your editor:</p>
+      <pre><code>Run systematic research for card &lt;id&gt; in project &lt;project&gt;:
+use Manager → Researcher → Debugger roles and monitor progress throughout.</code></pre>
     </div>
 
-    <h2>Схема работы</h2>
-    <p class="diagram-caption">Схема — три роли по времени. Руководитель работает один раз в начале. Исследователь и Дебаггер идут параллельно: Исследователь чаще смотрит пульс job, Дебаггер — плановый triage и внеплановый вызов. Финиш — отчёт и колонка «готово».</p>
+    <h2>Workflow diagram</h2>
+    <p class="diagram-caption">The Manager acts once at the beginning. Researcher and Debugger then operate in parallel: the Researcher checks job health frequently, while the Debugger performs scheduled and incident triage. The workflow ends with a report and done status.</p>
     <div class="graph">
       <pre class="mermaid">
 flowchart TD
-  U[Запрос пользователя] --> M[Руководитель: в работу + live + state]
-  M --> R[Исследователь: старт job]
-  R --> W[Watch: 1 мин × 20, потом 20 мин]
-  R --> D[Дебаггер: каждые 10 мин]
-  W -->|сбой| I[Вызов дебаггера]
+  U[User request] --> M[Manager: in progress + live view + state]
+  M --> R[Researcher: start job]
+  R --> W[Watch: every minute × 20, then every 20 min]
+  R --> D[Debugger: every 10 min]
+  W -->|failure| I[Call debugger]
   I --> D
-  D -->|рекомендация в state| W
-  W -->|готово| F[Отчёт + готово + вывод]
+  D -->|recommendation in state| W
+  W -->|complete| F[Report + done + finding]
       </pre>
     </div>
 
     <div class="article__actions">
-      <a class="btn btn-ghost" href="https://github.com/ZoyaV/ResearcherOS/tree/main/agents/skills/koi-card-autoresearch">Исходник на GitHub</a>
-      <a class="btn btn-primary" href="../index.html#skills">К списку Skills</a>
+      <a class="btn btn-ghost" href="https://github.com/ZoyaV/ResearcherOS/tree/main/agents/skills/koi-card-autoresearch">Source on GitHub</a>
+      <a class="btn btn-primary" href="../index.html#skills">Back to Skills</a>
     </div>
   </main>
   <footer class="site-footer">

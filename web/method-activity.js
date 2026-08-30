@@ -63,14 +63,14 @@ export function getMethodActivityState(board) {
     const { open, done: subDone } = subtasksFromDescription(card.description);
     const current = open[0] || null;
     const lastDone = subDone.length ? subDone[subDone.length - 1] : null;
-    const cardTag = running.length > 1 ? truncate(card.title || card.id, 20) : "Сейчас";
+    const cardTag = running.length > 1 ? truncate(card.title || card.id, 20) : "Now";
 
     if (current) {
       bubbles.push({ tag: cardTag, text: current, kind: "running", cardId: card.id });
     }
     if (lastDone) {
       bubbles.push({
-        tag: running.length > 1 ? cardTag : "Готово",
+        tag: running.length > 1 ? cardTag : "Done",
         text: lastDone,
         kind: "done",
         cardId: card.id,
@@ -87,7 +87,7 @@ export function getMethodActivityState(board) {
   }
 
   if (!bubbles.length && running.length) {
-    bubbles.push({ tag: "Сейчас", text: running[0].title, kind: "running" });
+    bubbles.push({ tag: "Now", text: running[0].title, kind: "running" });
   }
 
   return { running, recentDone, bubbles };
@@ -97,13 +97,13 @@ export function getMethodActivityState(board) {
 export function pickActivityTheme(node) {
   const id = String(node?.id || "").toLowerCase();
   const title = String(node?.title || "").toLowerCase();
-  if (id.includes("op-") || id.includes("agent") || title.includes("агент") || title.includes("оператор")) {
+  if (id.includes("op-") || id.includes("agent") || title.includes("agent") || title.includes("operator")) {
     return "agent";
   }
-  if (id.includes("rem") || id.includes("pretrain") || id.includes("div") || title.includes("обучен")) {
+  if (id.includes("rem") || id.includes("pretrain") || id.includes("div") || title.includes("train")) {
     return "train";
   }
-  if (id.includes("ev") || id.includes("bench") || title.includes("бенч") || title.includes("метрик")) {
+  if (id.includes("ev") || id.includes("bench") || title.includes("bench") || title.includes("metric")) {
     return "scan";
   }
   return "lab";
@@ -166,9 +166,9 @@ function activitySvgMarkup(theme, uid) {
  * @param {{ author?: string, task?: string, projectTitle?: string, methodTitle?: string }} meta
  */
 export function formatActivityPreview(meta) {
-  const author = String(meta?.author || "коллега").trim() || "коллега";
-  const task = String(meta?.task || "эксперимент").trim() || "эксперимент";
-  return `${author} и агент работают над задачей «${task}»`;
+  const author = String(meta?.author || "a colleague").trim() || "a colleague";
+  const task = String(meta?.task || "experiment").trim() || "experiment";
+  return `${author} and the agent are working on “${task}”`;
 }
 
 /**
@@ -180,8 +180,8 @@ export function activityPreviewMeta(state, context = {}) {
   const author =
     (firstCard?.id && context.authors?.[firstCard.id]) ||
     context.author ||
-    "коллега";
-  let task = "эксперимент";
+    "a colleague";
+  let task = "experiment";
   if (firstCard) {
     const { open } = subtasksFromDescription(firstCard.description);
     task = open[0] || firstCard.title || task;
@@ -218,8 +218,8 @@ export function methodActivityHtml(state, node, context = {}) {
   const cardId = firstCard?.id ? String(firstCard.id) : "";
   const monitorHint =
     state.running.length > 1
-      ? `Монитор — ${state.running.length} в работе`
-      : "Открыть монитор";
+      ? `Monitor — ${state.running.length} in progress`
+      : "Open monitor";
 
   const inspectBtn = hideInspect
     ? ""
@@ -249,11 +249,11 @@ function previewMetaFromEl(el) {
   const tagEl = el.querySelector(".method-activity-bubble-tag");
   const textEl = el.querySelector(".method-activity-bubble-text");
   const liveTask =
-    tagEl?.textContent?.trim() === "Сейчас" ? textEl?.textContent?.trim() : "";
+    tagEl?.textContent?.trim() === "Now" ? textEl?.textContent?.trim() : "";
   return {
-    author: el.dataset.previewAuthor || "коллега",
-    task: liveTask || el.dataset.previewTask || "эксперимент",
-    projectTitle: el.dataset.previewProject || "проект",
+    author: el.dataset.previewAuthor || "a colleague",
+    task: liveTask || el.dataset.previewTask || "experiment",
+    projectTitle: el.dataset.previewProject || "project",
   };
 }
 
@@ -586,8 +586,8 @@ export function syncMethodActivity(belowEl, node, board, context = {}) {
       const firstId = state.running[0]?.id;
       const hint =
         state.running.length > 1
-          ? `Монитор — ${state.running.length} в работе`
-          : "Открыть монитор";
+          ? `Monitor — ${state.running.length} in progress`
+          : "Open monitor";
       if (inspect && firstId) {
         inspect.dataset.cardId = String(firstId);
         inspect.title = hint;

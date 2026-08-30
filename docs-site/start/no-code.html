@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -10,8 +10,8 @@
       document.documentElement.setAttribute("data-theme", t);
     })();
   </script>
-  <title>Начинаю с нуля — кода ещё нет · ResearcherOS</title>
-  <meta name="description" content="Создать пустой проект ResearcherOS: tree/<repo>/koi-structure и папка для кода." />
+  <title>Start from scratch — no code yet · ResearcherOS</title>
+  <meta name="description" content="Create an empty ResearcherOS project: tree/<repo>/koi-structure and a code directory." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
@@ -20,16 +20,16 @@
 <body class="page-detail">
   <header class="site-header site-header--detail">
     <div class="site-header__inner">
-      <a class="brand" href="../index.html" aria-label="ResearcherOS — на главную">
+      <a class="brand" href="../index.html" aria-label="ResearcherOS — home">
         <img class="brand__logo" src="../assets/logo.png?v=6" alt="ResearcherOS" height="27" />
       </a>
-      <nav class="nav" aria-label="Основное">
+      <nav class="nav" aria-label="Main navigation">
         <a href="../index.html#about">About</a>
         <a href="../index.html#start" aria-current="page">How to start</a>
         <a href="../index.html#skills">Skills</a>
         <a href="../index.html#lessons">Lessons</a>
         <a href="https://github.com/ZoyaV/ResearcherOS">GitHub</a>
-        <button type="button" id="btn-theme" class="btn-theme" title="Тёмная тема" aria-label="Тёмная тема">
+        <button type="button" id="btn-theme" class="btn-theme" title="Dark theme" aria-label="Dark theme">
           <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"/><path fill="currentColor" d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" stroke-width="2"/></svg>
           <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 14.5A8.5 8.5 0 0 1 9.5 3 7 7 0 1 0 21 14.5z"/></svg>
         </button>
@@ -39,16 +39,16 @@
 
   <main class="article">
     <a class="back-link" href="../index.html#start">← How to start</a>
-    <h1 class="article__title">Начинаю с нуля — кода ещё нет</h1>
+    <h1 class="article__title">Start from scratch — no code yet</h1>
     <p class="article__lead">
-      Сначала заводим карту гипотез. Код эксперимента появится позже в
-      <code>&lt;репо&gt;/projectcode/</code>.
+      Create the hypothesis map first. Experiment code can be added later in
+      <code>&lt;repo&gt;/projectcode/</code>.
     </p>
 
-    <h2>Одной командой</h2>
+    <h2>With one command</h2>
     <ol class="steps">
       <li>
-        Клонируйте и запустите ResearcherOS
+        Clone and start ResearcherOS
         <div class="example">
           <pre><code>git clone git@github.com:ZoyaV/ResearcherOS.git ReseachOS
 cd ReseachOS
@@ -56,56 +56,56 @@ cd ReseachOS
         </div>
       </li>
       <li>
-        Создайте пустой проект
+        Create an empty project
         <div class="example">
           <pre><code>python -m koi.projects.install_cli install my_idea \
-  --create --title "Моя исследовательская проблема"
+  --create --title "My research problem"
 ./scripts/koi-serve.sh restart
 # http://127.0.0.1:8080</code></pre>
         </div>
-        <p>На диске появится:</p>
+        <p>The following appears on disk:</p>
         <div class="example">
           <pre><code>tree/my_idea/koi-structure/   ← project.md, research.json
-my_idea/projectcode/          ← место под код</code></pre>
+my_idea/projectcode/          ← code goes here</code></pre>
         </div>
       </li>
     </ol>
 
-    <h2>В интерфейсе</h2>
+    <h2>In the interface</h2>
     <ol class="steps">
       <li>
-        Откройте <a href="http://127.0.0.1:8080">http://127.0.0.1:8080</a>,
-        в списке проектов — <strong>+ Новый проект</strong>: название, описание,
-        короткий латинский ярлык и программу.
+        Open <a href="http://127.0.0.1:8080">http://127.0.0.1:8080</a> and click
+        <strong>+ New project</strong> in the project list. Enter a title,
+        description, short Latin-character slug, and program.
       </li>
       <li>
-        На карте появится проблема — добавляйте причины, гипотезы и методы через «+».
+        A problem appears on the map; add causes, hypotheses, and methods with +.
       </li>
     </ol>
 
-    <h2>С помощником в редакторе</h2>
+    <h2>With the assistant in your editor</h2>
     <div class="example">
-      <p>Промпт:</p>
-      <pre><code>Создай новый проект ResearcherOS с нуля.
+      <p>Prompt:</p>
+      <pre><code>Create a new ResearcherOS project from scratch.
 
-1. Спроси меня о проблеме, области и том, какие эксперименты реалистичны.
-2. Предложи дерево: проблема → причины → гипотезы → методы.
-3. Создай через
-   python -m koi.projects.install_cli install &lt;ярлык&gt; --create
-   (tree/&lt;ярлык&gt;/koi-structure + &lt;ярлык&gt;/projectcode).
-4. Пиши понятным языком. Не коммить без моей явной просьбы.</code></pre>
+1. Ask me about the problem, domain, and realistic experiments.
+2. Propose a tree: problem → causes → hypotheses → methods.
+3. Create it with
+   python -m koi.projects.install_cli install &lt;slug&gt; --create
+   (tree/&lt;slug&gt;/koi-structure + &lt;slug&gt;/projectcode).
+4. Write clearly. Do not commit unless I explicitly ask.</code></pre>
     </div>
 
     <div class="callout">
       <p>
-        Пошаговый учебный проход —
+        Step-by-step tutorial:
         <a href="https://github.com/ZoyaV/ResearcherOS/blob/main/docs/human/getting-started.md">getting-started</a>.
       </p>
     </div>
 
     <div class="article__actions">
-      <a class="btn btn-primary" href="../index.html#start">К путям</a>
-      <a class="btn btn-ghost" href="../skills/koi-grill-experiment.html">Спроектировать эксперимент</a>
+      <a class="btn btn-primary" href="../index.html#start">Back to start paths</a>
+      <a class="btn btn-ghost" href="../skills/koi-grill-experiment.html">Design an experiment</a>
     </div>
   </main>
 

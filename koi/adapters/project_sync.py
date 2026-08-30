@@ -411,7 +411,7 @@ def pull_mount(
                 "ok": True,
                 "project_id": mount.project_id,
                 "action": ensured["action"],
-                "message": f"Создана sync-ветка {branch}.",
+                "message": f"Created sync branch {branch}.",
                 "rq_discoveries": [],
             }
         ref_before = _remote_sync_ref(repo, branch)
@@ -421,7 +421,7 @@ def pull_mount(
             "ok": False,
             "project_id": mount.project_id,
             "action": "failed",
-            "message": f"Ветка {branch} не найдена на origin.",
+            "message": f"Branch {branch} was not found on origin.",
             "rq_discoveries": [],
         }
 
@@ -432,8 +432,8 @@ def pull_mount(
             "action": "blocked",
             "needs_console": True,
             "message": (
-                f"Есть незакоммиченные изменения в {koi_rel} ({len(dirty)} файлов). "
-                "Сначала push или stash, затем pull."
+                f"{koi_rel} has uncommitted changes ({len(dirty)} files). "
+                "Push or stash them before pulling."
             ),
             "rq_discoveries": [],
         }
@@ -443,7 +443,7 @@ def pull_mount(
             "ok": True,
             "project_id": mount.project_id,
             "action": "would_pull",
-            "message": f"Можно обновить {koi_rel} из origin/{branch}.",
+            "message": f"{koi_rel} can be updated from origin/{branch}.",
             "rq_discoveries": [],
         }
 
@@ -518,7 +518,7 @@ def pull_mount(
         "ok": True,
         "project_id": mount.project_id,
         "action": "pulled",
-        "message": f"Обновлён {koi_rel} из origin/{branch}.",
+        "message": f"Updated {koi_rel} from origin/{branch}.",
         "rq_discoveries": discoveries,
     }
 
@@ -576,7 +576,7 @@ def push_mount(
             "ok": True,
             "project_id": mount.project_id,
             "action": "none",
-            "message": "Нет изменений в koi-structure для push.",
+            "message": "No koi-structure changes to push.",
         }
 
     if dry_run:
@@ -584,7 +584,7 @@ def push_mount(
             "ok": True,
             "project_id": mount.project_id,
             "action": "would_push",
-            "message": f"Можно отправить изменения {koi_rel} в origin/{branch}.",
+            "message": f"Changes from {koi_rel} can be pushed to origin/{branch}.",
         }
 
     wt, err = _ensure_push_worktree(mount)
@@ -612,7 +612,7 @@ def push_mount(
             "ok": True,
             "project_id": mount.project_id,
             "action": "none",
-            "message": "После копирования изменений не осталось.",
+            "message": "No changes remained after copying.",
         }
 
     commit_msg = message or f"projects({mount.project_id}): sync koi-structure"
@@ -640,7 +640,7 @@ def push_mount(
         "ok": True,
         "project_id": mount.project_id,
         "action": "pushed",
-        "message": f"Отправлено в origin/{branch}.",
+        "message": f"Pushed to origin/{branch}.",
         "commit": _run_git(wt, "rev-parse", "HEAD").stdout.strip(),
     }
 

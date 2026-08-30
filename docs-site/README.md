@@ -1,26 +1,26 @@
 # ResearcherOS docs-site
 
-Публичный сайт (RU) для GitHub Pages: о проекте, три пути старта, каталог скиллов, уроки.
+Public English-language GitHub Pages site: project overview, three ways to get started, skill catalog, and lessons.
 
-## Локально
+## Run locally
 
 ```bash
 cd docs-site
-python3 scripts/generate_skills.py   # обновить skills/*.html из skills.json
+python3 scripts/generate_skills.py   # update skills/*.html from skills.json
 python3 -m http.server 8765
 # http://127.0.0.1:8765/
 ```
 
-## Деплой
+## Deployment
 
-Workflow [`.github/workflows/pages.yml`](../.github/workflows/pages.yml) публикует папку `docs-site/` на GitHub Pages при пуше в `main`.
+The [`.github/workflows/pages.yml`](../.github/workflows/pages.yml) workflow publishes `docs-site/` to GitHub Pages on pushes to `main`.
 
-В настройках репозитория: **Settings → Pages → Source: GitHub Actions**.
+Repository setting: **Settings → Pages → Source: GitHub Actions**.
 
-URL проекта: `https://zoyav.github.io/ResearcherOS/` (имя репо `ResearcherOS`).
+Project URL: `https://zoyav.github.io/ResearcherOS/` (repository name: `ResearcherOS`).
 
-## Обновить скилл
+## Update a skill
 
-1. Правьте `skills.json` (описание, mermaid, example).
+1. Edit `skills.json` (description, Mermaid diagram, and example).
 2. `python3 scripts/generate_skills.py`
-3. Закоммитьте `skills.json` и сгенерированные `skills/*.html`.
+3. Commit `skills.json` and the generated `skills/*.html` files.

@@ -13,7 +13,7 @@ router = APIRouter(tags=["pages"])
 
 
 class CreatePageBody(BaseModel):
-    title: str = Field(default="Мастер-отчёт", min_length=1, max_length=200)
+    title: str = Field(default="Master report", min_length=1, max_length=200)
 
 
 class AttachPageBody(BaseModel):
@@ -79,7 +79,7 @@ def post_node_page(project_id: str, node_id: str, body: AttachPageBody) -> dict:
     get_project(project_id, sync_reports=False)
     try:
         if body.create or not body.page_id:
-            title = (body.title or "").strip() or "Мастер-отчёт"
+            title = (body.title or "").strip() or "Master report"
             return page_commands.create_and_attach(
                 project_id, node_id, title, visible=body.visible
             )

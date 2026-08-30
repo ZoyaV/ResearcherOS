@@ -8,7 +8,7 @@ _LEGACY_KANBAN_HYPOTHESIS_TYPES = {NodeType.CAUSE_EVIDENCE, NodeType.REMEDIATION
 
 
 def default_method_title(hypothesis: Node) -> str:
-    """Label for auto-created method under a hypothesis (not generic «Метод проверки»)."""
+    """Label for an auto-created method under a hypothesis (not generic "Evaluation method")."""
     title = hypothesis.title.strip()
     if len(title) <= 72:
         return title

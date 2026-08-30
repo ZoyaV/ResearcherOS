@@ -1,55 +1,34 @@
 # Research Chat
 
-<p class="lead">Панель «Спросить агента» в локальном ResearcherOS: вопрос уходит в очередь, ответ строится сначала из <code>research.json</code>, отчёты читаются только если не хватает деталей. Доставка ответа — через Inbox Cursor, hooks IDE или фоновый API.</p>
+<p class="lead">The local **Ask agent** panel queues a question, answers from <code>research.json</code> first, and reads reports only when details are missing. Delivery uses a Cursor Inbox, IDE hooks, or a background API.</p>
 
-<div class="media-slot" data-media="chat-hero" data-accept="png,jpg,webp,mp4,webm">
-  <strong>Слот для картинки или видео</strong>
-  Положите файл в <code>media/chat-hero.png</code> (или <code>.jpg</code> / <code>.webp</code> / <code>.mp4</code> / <code>.webm</code>).
-</div>
+<div class="media-slot" data-media="chat-hero" data-accept="png,jpg,webp,mp4,webm"><p>Media: Research Chat</p></div>
 
-## Как работает
+## How it works
 
-Вопрос не отправляется в «весь репозиторий». Политика ответа:
+A question is not sent indiscriminately to the entire repository. The answer policy is:
 
-1. Сопоставить вопрос с записями в <code>research.json</code> (вопрос / рассказ для человека / краткий технический ответ, уверенность, важность, карточка-источник).
-2. Собрать связный ответ из подходящих записей.
-3. Открыть отчёт эксперимента **только** если нужны цифры или метод, которых нет в записи.
-4. Если в базе пусто — сказать об этом и предложить закрыть эксперимент (колонка «готово» → сценарий вывода) или уточнить вопрос.
+1. Match the question against `research.json` entries: question, human narrative, concise technical answer, certainty, importance, and source card.
+2. Compose an answer from relevant entries.
+3. Open an experiment report only when figures or method details are missing.
+4. If the database is empty, say so and suggest completing an experiment or clarifying the question.
 
-Если вопрос хорошо совпадает с базой, API может ответить сразу (автоответ), без агента.
+A strong match may be answered immediately by the API. Delivery modes under **Settings → Chat agent** are Cursor Inbox (recommended, 1–3 second wake signal), IDE hooks, and a background worker using a Cursor API key. The queue is `.run/agent-chat-queue.json`; `koi-agent-chat` performs claim → context → answer → complete.
 
-Три режима доставки (Настройки → «Агент в чате»):
+## How people use the interface
 
-| Режим | Поведение |
-|-------|-----------|
-| Inbox-чат (<code>cursor_inbox</code>, рекомендуется) | Watcher пишет wake-строку в лог; чат Cursor слушает <code>AGENT_CHAT_WAKE</code> (~1–3 с) |
-| Hooks (<code>cursor_ide</code>) | Очередь подхватывается при старте/остановке чата агента в IDE |
-| Фоновый API (<code>api</code>) | Воркер + ключ Cursor API |
+1. Open a project and the chat panel.
+2. For first-time Inbox setup, copy the bootstrap message into **ResearchOS Chat Inbox** in Cursor and click **Inbox ready**.
+3. Submit a question. The feed shows queued, read, and writing states before the answer.
+4. Scope may include the current method or node without removing access to the project database.
+5. Switch to hooks or API mode in Settings when needed. Missing Inbox or API setup produces an explicit instruction.
 
-Очередь: <code>.run/agent-chat-queue.json</code>. Скилл агента: <code>koi-agent-chat</code> (claim → context → ответ → complete).
+## Agent workflows
 
-Рядом по тому же Inbox-паттерну живут чаты литературы и статьи — отдельные страницы каталога; эта страница только про панель вопросов по проекту.
-
-## Как человек работает в интерфейсе
-
-1. Откройте проект. Кнопка открытия панели чата (на главной рабочей области).
-2. При первом запуске Inbox: в панели — шаги «Скопировать сообщение» → вставить в чат **ResearchOS Chat Inbox** в Cursor → «Inbox готов». Статус watcher видно в подсказке.
-3. Введите вопрос в поле (плейсхолдер вроде «помогает ли …»). Отправьте форму.
-4. В ленте: ваш вопрос, статусы «в очереди» / «прочитано» / «Агент пишет…», затем ответ. Область видимости может учитывать текущий метод или узел (scope).
-5. В Настройках переключите режим агента в чате, если нужен hooks или API вместо Inbox.
-
-Без настроенного Inbox (в режиме inbox) панель покажет инструкцию bootstrap; без ключа API — соответствующее уведомление в режиме api.
-
-## Какие сценарии для агента подключаются
-
-| Сценарий (skill) | Роль |
-|------------------|------|
-| <code>koi-agent-chat</code> | Основной: claim / context / ответ по политике «сначала research.json». |
-| <code>koi-done-research</code> | Наполняет базу, из которой чат отвечает; без done-выводов чат часто пустой. |
-| <code>koi-knowledge-curator</code> | Курируемые заметки — дополнительный контекст, не замена <code>research.json</code> как первого источника. |
-| Hooks скилла | <code>agents/skills/koi-agent-chat/hooks/</code> — session/stop для режима IDE. |
-
-Команды локально:
+- `koi-agent-chat`: main queue workflow and research-first answer policy.
+- `koi-done-research`: populates the findings the chat uses.
+- `koi-knowledge-curator`: adds curated context but does not replace `research.json` as the first source.
+- `agents/skills/koi-agent-chat/hooks/`: session/stop hooks for IDE mode.
 
 ```bash
 python -m koi.agent_chat.cli pending
@@ -59,32 +38,10 @@ python -m koi.agent_chat.inbox_cli bootstrap
 python -m koi.agent_chat.inbox_cli watch
 ```
 
-Подробности Inbox: <code>docs/agent-chat-inbox.md</code>.
+## Technical details and limits
 
-## Как устроено технически
+UI → queue API → optional automatic finding match → watcher/hook/worker → agent claim and context → answer API → panel. Code lives in `koi/agent_chat/`; the client panel is in `web/index.html` and `web/app.js`. Context may include `scope_method` and `scope_node`.
 
-### Поток данных
+Chat does not replace onboarding or write the tree. Answer quality depends on findings and reports. On macOS without inotify, Inbox polls about every two seconds and requires `koi-serve` or the watcher.
 
-UI → HTTP постановка вопроса в очередь → (опционально автоответ по совпадению с <code>research.json</code>) → watcher/hook/worker будит агента → агент claim + context (в JSON: вопрос, project, scope, весь <code>research_database</code>, политика) → ответ пишется обратно в очередь/API → панель показывает сообщение.
-
-Пакет: <code>koi/agent_chat/</code> (cli, inbox_cli, очередь под <code>.run/</code>). Клиент: <code>#agent-chat-panel</code> в <code>web/index.html</code>, логика в <code>web/app.js</code> (режимы <code>agent_chat_mode</code>, bootstrap, watcher status).
-
-### Контекст scope
-
-Если пользователь смотрел метод или узел, в context попадают <code>scope_method</code> / <code>scope_node</code> — ответ можно сузить, не теряя доступ ко всей базе проекта.
-
-### Ограничения
-
-- Чат не заменяет онбординг и не пишет дерево сам по себе.
-- Качество ответа упирается в заполненность <code>research.json</code> и отчётов.
-- Inbox на macOS без inotify поллит очередь (~2 с); нужен запущенный <code>koi-serve</code> / watcher.
-
-## Связанные страницы
-
-- <a href="knowledge.html">База знаний</a>
-- <a href="kanban.html">Канбан экспериментов</a>
-- <a href="index.html">Обзор архитектуры</a>
-- <a href="related-work.html">Related Work</a>
-- <a href="paper.html">PaperDraft</a>
-
-<p class="callout">Текст: <code>content/chat.md</code>. Медиа: <code>media/chat-hero.*</code>.</p>
+Related: [Knowledge base](knowledge.html) · [Experiment kanban](kanban.html) · [Architecture](index.html) · [Related Work](related-work.html) · [PaperDraft](paper.html)

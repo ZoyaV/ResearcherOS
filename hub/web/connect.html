@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Подключить проект · ResearchOS Hub</title>
+  <title>Connect a project · ResearchOS Hub</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
@@ -29,11 +29,11 @@
           <span class="tagline">Hub</span>
         </div>
         <div class="topbar-nav">
-          <a href="/?tab=mine" class="btn">← Мои проекты</a>
+          <a href="/?tab=mine" class="btn">← My projects</a>
         </div>
       </div>
       <div class="toolbar">
-        <button type="button" id="btn-theme" class="btn btn-theme" title="Тёмная тема" aria-label="Включить тёмную тему">
+        <button type="button" id="btn-theme" class="btn btn-theme" title="Dark theme" aria-label="Enable dark theme">
           <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"/><path fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
           <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 14.5A8.5 8.5 0 0 1 9.5 3 7 7 0 1 0 21 14.5z"/></svg>
         </button>
@@ -43,36 +43,36 @@
   </header>
   <main>
     <section class="hub-hero">
-      <p class="hub-hero__kicker">Подключение</p>
-      <h1>Новый проект в Hub</h1>
+      <p class="hub-hero__kicker">Connect</p>
+      <h1>New Hub project</h1>
       <p>
-        Репозиторий с веткой <code>koi/research</code> и каталогом <code>koi-structure/</code>.
-        Синхронизируется только структура исследования — без исходного кода.
+        A repository with a <code>koi/research</code> branch and a <code>koi-structure/</code> directory.
+        Only the research structure is synchronized, without source code.
       </p>
     </section>
     <form id="connect-form" class="form hub-connect-form">
       <label>
-        Репозиторий (owner/name)
+        Repository (owner/name)
         <select id="repo" required></select>
       </label>
       <label>
-        Ветка
+        Branch
         <input id="branch" value="koi/research" required />
       </label>
       <label>
-        Название (необязательно)
-        <input id="title" placeholder="Из project.md, если пусто" />
+        Title (optional)
+        <input id="title" placeholder="Taken from project.md if empty" />
       </label>
       <label>
-        Видимость
+        Visibility
         <select id="visibility">
-          <option value="public">Публичный — вкладка «Все проекты»</option>
-          <option value="network">Сеть — только подписчикам</option>
-          <option value="unlisted">По ссылке — секретный URL</option>
+          <option value="public">Public — shown on the “All projects” tab</option>
+          <option value="network">Network — followers only</option>
+          <option value="unlisted">Unlisted — secret URL</option>
         </select>
       </label>
       <div class="form-actions">
-        <button type="submit" class="btn btn-primary">Подключить и синхронизировать</button>
+        <button type="submit" class="btn btn-primary">Connect and synchronize</button>
       </div>
       <div id="status" class="hub-status"></div>
     </form>

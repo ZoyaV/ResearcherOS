@@ -124,7 +124,7 @@ def test_report_mutations_and_assets_use_card_context(
     ) == Path("/tmp/chart.png")
 
     assert report_context["sync"] == [
-        ("demo", "report_saved", "отчёт карточки Experiment")
+        ("demo", "report_saved", "report for card Experiment")
     ]
     assert report_context["save_asset"][0][3:] == (
         "Experiment",

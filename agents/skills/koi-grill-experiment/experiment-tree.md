@@ -1,81 +1,85 @@
-# Дерево решений для grill эксперимента
+# Decision tree for grilling an experiment
 
-Справочник для агента: типовые вопросы по веткам. На каждый ход — **один**
-вопрос из текущей ветки; рекомендация обязательна.
+This is an agent reference for common branch questions. Ask **one** question
+from the current branch per turn and always include a recommendation.
 
-## A — Контекст и claim
+## A — Context and claim
 
-| # | Вопрос (шаблон) | Зависит от |
-|---|-----------------|------------|
-| A1 | К какому cause-узлу `c-…` привязываем карточку? | project.md |
-| A2 | Claim одним предложением: X **увеличивает/уменьшает** Y при Z? | A1 |
-| A3 | Зачем это в дереве гипотез (1–2 предложения для §1)? | A2 |
-| A4 | Какой инсайт из KNOWLEDGE/research.json мотивирует прогноз? | A3 |
+| # | Question template | Depends on |
+|---|-------------------|------------|
+| A1 | Which cause node `c-…` owns the card? | project.md |
+| A2 | One-sentence claim: X **increases/decreases** Y under Z? | A1 |
+| A3 | Why does this matter in the hypothesis tree (1–2 sentences for Section 1)? | A2 |
+| A4 | Which KNOWLEDGE/research.json insight motivates the prediction? | A3 |
 
-**Красные флаги:** «изучить влияние», «посмотреть что будет», нет направления эффекта.
+Red flags: “study the effect,” “see what happens,” or no direction of effect.
 
-## B — Метрика и вердикт (§2)
+## B — Metric and verdict (Section 2)
 
-| # | Вопрос | Зависит от |
-|---|--------|------------|
-| B1 | Одна основная метрика для финального теста? | A2 |
-| B2 | Агрегация (mean/median/@k, по каким seed)? | B1 |
-| B3 | Бейзлайн для сравнения? | B1 |
-| B4 | **supported**, если … (числовой порог)? | B1–B3 |
-| B5 | **refuted**, если …? | B4 |
-| B6 | **open**, если … (недостаток данных / шум)? | B4 |
+| # | Question | Depends on |
+|---|----------|------------|
+| B1 | What single primary metric defines the final test? | A2 |
+| B2 | How is it aggregated (mean/median/@k and across which seeds)? | B1 |
+| B3 | What is the comparison baseline? | B1 |
+| B4 | The claim is **supported** if which numeric threshold is met? | B1–B3 |
+| B5 | It is **refuted** if what occurs? | B4 |
+| B6 | It remains **open** under what data/noise conditions? | B4 |
 
-Пороги фиксируются **до** прогона (см. `hypothesis-spec.md`, AGENTS.md).
+Fix thresholds **before** the run; see `hypothesis-spec.md` and AGENTS.md.
 
-## C — Границы и зависимости
+## C — Boundaries and dependencies
 
-| # | Вопрос | Зависит от |
-|---|--------|------------|
-| C1 | Что этот прогон **не** доказывает (2–4 пункта)? | A2 |
-| C2 | Блокирующие карточки `kb-…` в канбане? | project.md |
-| C3 | Угрозы валидности (seeds, прогрев, leakage)? | D |
+| # | Question | Depends on |
+|---|----------|------------|
+| C1 | What does this run **not** establish (2–4 points)? | A2 |
+| C2 | Which kanban cards `kb-…` block it? | project.md |
+| C3 | What threatens validity (seeds, warm-up, leakage)? | D |
 
-## D — Реализация (§3)
+## D — Implementation (Section 3)
 
-| # | Вопрос | Зависит от |
-|---|--------|------------|
-| D1 | Сколько прогонов (§3.1 / §3.2 …)? | B, C |
-| D2 | Данные: публичное имя, N, фильтр; локальный путь? | D1 |
-| D3 | Модель / конфиг / отличие от предыдущего прогона? | D2 |
-| D4 | Точная команда или скрипт запуска? | D3 |
-| D5 | Бюджет: эпохи, steps, wall-clock, число seeds? | D4 |
-| D6 | Куда пишутся метрики и логи (`live_log`, jsonl)? | D4 |
+| # | Question | Depends on |
+|---|----------|------------|
+| D1 | How many runs (Sections 3.1, 3.2, …)? | B, C |
+| D2 | Data: public name, N, filter, and local path? | D1 |
+| D3 | Model/config and difference from the previous run? | D2 |
+| D4 | Exact launch command or script? | D3 |
+| D5 | Budget: epochs, steps, wall-clock, and seed count? | D4 |
+| D6 | Where are metrics and logs written (`live_log`, jsonl)? | D4 |
 
-Если команда уже в репо — покажи её и спроси «оставляем / меняем что?».
+When the repository already contains a command, show it and ask what to retain
+or change.
 
-## E — Таблицы и графики (§4.1 / §5.1)
+## E — Tables and plots (Sections 4.1 / 5.1)
 
-| # | Вопрос | Зависит от |
-|---|--------|------------|
-| E1 | Таблица A (финальный протокол §2): строки и столбцы? | B |
-| E2 | Диагностические таблицы B/C (не финальный тест)? | E1 |
-| E3 | Какие графики (learning curve, ablation bar, …)? | B, D |
-| E4 | Формат артефактов (png в `assets/`, `metrics_dir`)? | E3 |
+| # | Question | Depends on |
+|---|----------|------------|
+| E1 | Table A for the final Section 2 protocol: rows and columns? | B |
+| E2 | Diagnostic tables B/C, explicitly not the final test? | E1 |
+| E3 | Which plots (learning curve, ablation bar, etc.)? | B, D |
+| E4 | Artifact format (PNG under `assets/`, `metrics_dir`)? | E3 |
 
-Подзадача §3 должна ссылаться: «→ табл. A в §4.1», «→ fig. 1».
+A Section 3 task must point to an output, for example “→ Table A in Section 4.1”
+or “→ Figure 1.”
 
-## F — Подзадачи и закрытие карточки
+## F — Tasks and card completion
 
-| # | Вопрос | Зависит от |
-|---|--------|------------|
-| F1 | SMART-подзадачи для §3.1 (действие + объект + критерий)? | D, E |
-| F2 | Нужен ли §3.2 (второй масштаб / ablation)? | D1 |
-| F3 | §3.3: проверяемый чеклист «проверка → результат»? | B4–B6 |
-| F4 | Какой чекпоинт передаём следующей карточке? | F3 |
+| # | Question | Depends on |
+|---|----------|------------|
+| F1 | SMART tasks for Section 3.1 (action + object + criterion)? | D, E |
+| F2 | Is Section 3.2 needed for a second scale or ablation? | D1 |
+| F3 | Section 3.3 verifiable check → result checklist? | B4–B6 |
+| F4 | Which checkpoint is passed to the next card? | F3 |
 
-Пример подзадачи: «На dev-500: eval mean diversity @3 seeds → json summary → §4.1 табл. A».
+Example: “On dev-500, evaluate mean diversity over three seeds → JSON summary →
+Section 4.1 Table A.”
 
-## G — Канбан
+## G — Kanban
 
-| # | Вопрос | Зависит от |
-|---|--------|------------|
-| G1 | Заголовок карточки (короткий, для project.md)? | A2 |
-| G2 | board / method id в project.md? | G1 |
-| G3 | Колонка `backlog` (по умолчанию) — ок? | G2 |
+| # | Question | Depends on |
+|---|----------|------------|
+| G1 | Short card title for project.md? | A2 |
+| G2 | Board / method id in project.md? | G1 |
+| G3 | Is the default `backlog` column correct? | G2 |
 
-После G — резюме и черновик отчёта; запись в репо — по запросу пользователя.
+After G, summarize and draft the report. Write to the repository only when the
+user requests it.

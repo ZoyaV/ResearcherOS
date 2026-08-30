@@ -21,18 +21,18 @@ from koi.agent_chat.formatting import append_sources, format_sources_block
 
 def test_sources_block_deduplicates_records_and_keeps_experiment_title() -> None:
     records = [
-        {"method_title": "Проверка", "experiment_title": "Запуск A"},
-        {"method_title": "Проверка", "experiment_title": "Запуск A"},
-        {"method_title": "Анализ"},
+        {"method_title": "Test", "experiment_title": "Run A"},
+        {"method_title": "Test", "experiment_title": "Run A"},
+        {"method_title": "Analysis"},
         {"method_title": ""},
     ]
 
     assert format_sources_block(records) == (
-        "Источники:\n"
-        "• Метод «Проверка» → эксперимент «Запуск A»\n"
-        "• Метод «Анализ»"
+        "Sources:\n"
+        "• Method “Test” → experiment “Run A”\n"
+        "• Method “Analysis”"
     )
-    assert append_sources("  Вывод.  ", records).startswith("Вывод.\n\nИсточники:")
+    assert append_sources("  Conclusion.  ", records).startswith("Conclusion.\n\nSources:")
 
 
 def test_auto_answer_uses_research_narrative_and_card_title(
@@ -43,12 +43,12 @@ def test_auto_answer_uses_research_narrative_and_card_title(
         project_id="demo",
         parent_id="remediation-1",
         node_type=NodeType.METHOD,
-        title="Проверка разнообразия",
+        title="Diversity test",
         research_questions=[
             MethodResearchQuestion(
                 id="rq-1",
-                question="Повысилось ли разнообразие ответов?",
-                narrative="Разнообразие ответов заметно повысилось.",
+                question="Did response diversity increase?",
+                narrative="Response diversity increased noticeably.",
                 answer="diversity +18%",
                 certainty=ResearchQuestionCertainty.DEFINITE,
                 card_id="card-1",
@@ -71,14 +71,14 @@ def test_auto_answer_uses_research_narrative_and_card_title(
     monkeypatch.setattr(agent_chat_auto, "load_project", lambda *_args, **_kwargs: project)
 
     answer = agent_chat_auto.try_auto_answer(
-        "demo", "Что показала проверка разнообразия ответов?"
+        "demo", "What did the response-diversity test show?"
     )
 
     assert answer is not None
-    assert "Разнообразие ответов заметно повысилось." in answer
+    assert "Response diversity increased noticeably." in answer
     assert "diversity +18%" in answer
-    assert "Метод «Проверка разнообразия»" in answer
-    assert "эксперимент «Diversity benchmark»" in answer
+    assert "Method “Diversity test”" in answer
+    assert "experiment “Diversity benchmark”" in answer
 
 
 @pytest.mark.parametrize(

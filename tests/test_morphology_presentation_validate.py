@@ -118,7 +118,7 @@ def slide(
         "node_ids": [node_id] if node_id else [],
         "section_anchor": section or None,
         "title": loc(slide_id, slide_id),
-        "body": loc("Short grounded explanation.", "Краткое объяснение."),
+        "body": loc("Short grounded explanation.", "Brief explanation."),
         "evidence_quote": quote or None,
         "visual": visual,
     }
@@ -166,7 +166,7 @@ def valid_presentation() -> dict:
                     "source_anchor": "S2.F1",
                     "src": "https://arxiv.org/html/paper/assets/diagram.png",
                     "source_caption": "Figure 1 Method overview",
-                    "explanation": loc("Method overview.", "Схема метода."),
+                    "explanation": loc("Method overview.", "Method diagram."),
                     "natural_width": 800,
                     "natural_height": 500,
                     "contains_text": True,
@@ -223,7 +223,7 @@ def valid_presentation() -> dict:
                     "highlight_cell_ids": ["S3.T1.r1.c2"],
                     "explanation": loc(
                         "The highlighted score supports the claim.",
-                        "Выделенное значение подтверждает тезис.",
+                        "The highlighted value supports the claim.",
                     ),
                 },
             ),

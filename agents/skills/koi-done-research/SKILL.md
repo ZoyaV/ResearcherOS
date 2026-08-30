@@ -2,94 +2,102 @@
 name: koi-done-research
 description: >-
   When a KOI/ResearchOS kanban card moves to done, generate a method research
-  question and answer with certainty (точный/неточный) and importance (1–5).
+  question and answer with certainty (definite/tentative) and importance (1–5).
   Use when the user moves experiments to done, mentions done cards, or when
   the done-research queue has pending items.
 ---
 
-# KOI: done → исследовательский вывод
+# KOI: done → research conclusion
 
-## Когда запускать
+## When to run
 
-1. Пользователь перенёс карточку эксперимента в колонку **done** (в UI или через API).
-2. В очереди есть необработанные карточки (см. ниже).
-3. Пользователь просит сформулировать вывод по завершённому эксперименту.
+1. The user moved an experiment card to **done** in the UI or through the API.
+2. The queue contains unprocessed cards.
+3. The user asks for a conclusion from a completed experiment.
 
-При старте сессии с KOI/ResearchOS **сначала проверь очередь**:
+At the start of a KOI/ResearchOS session, **check the queue first**:
 
 ```bash
 KOI/.venv/bin/python -m koi.projects.done_research_cli pending
 ```
 
-Если список не пуст — обработай каждую запись по workflow ниже.
+If it is non-empty, process every entry using the workflow below.
 
-## Workflow (на одну карточку)
+## Workflow for one card
 
-### 1. Собрать контекст
+### 1. Gather context
 
 ```bash
 KOI/.venv/bin/python -m koi.projects.done_research_cli context \
   <project_id> <board_id> <card_id>
 ```
 
-В JSON: метод, родительская гипотеза, карточка, отчёт (`report_markdown`), уже существующие `research_questions` (макс. 3 на метод).
+The JSON contains the method, parent hypothesis, card, report
+(`report_markdown`), and existing `research_questions` (at most three per method).
 
-### 2. Сформулировать вывод
+### 2. Formulate the conclusion
 
-На основе отчёта, описания карточки и контекста метода:
+Use the report, card description, and method context:
 
-| Поле | Куда | Правила |
-|------|------|---------|
-| `question` | исследовательский вопрос | Один чёткий вопрос; **понятен человеку без контекста проекта** — без SFT/RL/PPO/diversity/SR и названий метрик; вместо них — «обучение на примерах», «симулятор», «доля успешных попыток», «разнообразие действий» |
-| `narrative` | ответ человеческим языком | Показывается в модалке «Выводы»; 2–4 предложения; тот же принцип — внешний читатель должен понять суть без глоссария |
-| `answer` | техническая заметка | Сырые метрики, шаги, аббревиатуры — **только здесь**, не в question/narrative |
-| `certainty` | `definite` или `tentative` | **Точный ответ** → `definite`; **неточный / предварительный** → `tentative` |
-| `importance` | целое 1–5 | Относительная важность для метода: 1 — побочный факт, 3 — умеренный вклад, 5 — ключевой ответ |
-| `card_id` | id карточки канбана | **Обязательно** при выводе из done-карточки — `card_id` из контекста (`context` JSON) |
+| Field | Purpose | Rules |
+|-------|---------|-------|
+| `question` | research question | One clear question that makes sense without project context. Avoid unexplained SFT/RL/PPO/diversity/SR and metric names; use plain descriptions such as “training on examples,” “simulator,” “share of successful attempts,” and “variety of actions.” |
+| `narrative` | plain-language answer | Shown in the Conclusions modal; 2–4 sentences; an outside reader must understand it without a glossary. |
+| `answer` | technical note | Raw metrics, steps, and abbreviations belong **only here**, not in question/narrative. |
+| `certainty` | `definite` or `tentative` | A precise answer uses `definite`; a preliminary or uncertain answer uses `tentative`. |
+| `importance` | integer 1–5 | Relative importance to the method: 1 is incidental, 3 is a moderate contribution, and 5 is a key answer. |
+| `card_id` | kanban card id | **Required** for a conclusion from a done card; use `card_id` from the context JSON. |
 
-**Оценка certainty**
+**Certainty rubric**
 
-- `definite`: в отчёте есть критерий done, воспроизводимый результат, явный ответ да/нет или количественное сравнение.
-- `tentative`: мало данных, противоречия, только промежуточные метрики, гипотеза не проверена до конца.
+- `definite`: the report has a done criterion, reproducible result, and an
+  explicit yes/no answer or quantitative comparison.
+- `tentative`: evidence is sparse or contradictory, metrics are intermediate,
+  or the hypothesis was not fully tested.
 
-**Оценка importance (1–5)**
+**Importance rubric (1–5)**
 
-- **5** — напрямую отвечает на главный вопрос метода или меняет решение «идём дальше / нет».
-- **4** — сильный аргумент за/против гипотезы.
-- **3** — полезное уточнение (по умолчанию).
-- **2** — слабый сигнал, уточняющая деталь.
-- **1** — почти не влияет на вывод по методу.
+- **5** — directly answers the method's main question or changes the proceed/stop decision.
+- **4** — strong evidence for or against the hypothesis.
+- **3** — useful clarification (default).
+- **2** — weak signal or supporting detail.
+- **1** — barely affects the method conclusion.
 
-Если подходящий вопрос уже есть — **обнови** его (тот же `id`), не создавай дубликат. Если слотов нет (уже 3 вопроса) — обнови наименее важный (`importance` минимален) или сообщи пользователю.
+If a matching question already exists, **update** it using the same `id`; do not
+create a duplicate. If all three slots are occupied, replace the least important
+question or tell the user.
 
-### 3. Сохранить в ResearchOS
+### 3. Save to ResearchOS
 
-API (dev-сервер на 8010):
+API (development server on port 8010):
 
 ```bash
 curl -s -X PATCH "http://127.0.0.1:8010/projects/<project_id>/nodes/<method_id>" \
   -H "Content-Type: application/json" \
-  -d '{"research_questions": [ ...все вопросы метода, включая новый/обновлённый... ]}'
+  -d '{"research_questions": [ ...all method questions, including the new or updated one... ]}'
 ```
 
-Сохраняй **полный** список `research_questions` узла-метода, не только новую запись. На диске вопросы попадают в `projects/<project_id>/research.json` (не в `project.md`).
+Save the method node's **complete** `research_questions` list, not only the new
+entry. On disk, questions are stored in `projects/<project_id>/research.json`,
+not `project.md`.
 
-### 4. Закрыть очередь
+### 4. Complete the queue item
 
 ```bash
 KOI/.venv/bin/python -m koi.projects.done_research_cli complete \
   <project_id> <board_id> <card_id>
 ```
 
-Если вывод сформулировать нельзя (пустой отчёт, карточка не в done) — `complete` всё равно, кратко объясни пользователю почему.
+If no conclusion is possible because the report is empty or the card is not
+done, still call `complete` and briefly explain why to the user.
 
-## Пример тела research question
+## Example research question body
 
 ```json
 {
   "id": "rq-new-001",
-  "question": "Становится ли агент разнообразнее в выборе действий после обучения на примерах траекторий?",
-  "narrative": "Да. Раньше в одной ситуации модель перебирала примерно полтора варианта действия, после обучения — около двух.",
+  "question": "Does the agent choose a wider variety of actions after training on example trajectories?",
+  "narrative": "Yes. In the same situation, the model previously considered about one and a half action variants; after training it considered about two.",
   "answer": "mean diversity 2.02 vs 1.46 base (step 77)",
   "certainty": "definite",
   "importance": 5,
@@ -97,37 +105,40 @@ KOI/.venv/bin/python -m koi.projects.done_research_cli complete \
 }
 ```
 
-**Проверка формулировки:** перед PATCH прогони `question` и `narrative` через скилл **koi-prose-style** (subagent-ревью до PASS). Запасной тест: прочитай вслух — если без знания канбана и отчёта неясно, о чём речь, перепиши.
+Before PATCH, review `question` and `narrative` with **koi-prose-style** using a
+subagent until PASS. As a fallback, read them aloud: if the meaning is unclear
+without the kanban and report, rewrite them.
 
-## Очередь
+## Queue
 
-Перенос карточки в `done` пополняет `.run/done-research-queue.json`:
+Moving a card to `done` adds it to `.run/done-research-queue.json`:
 
-| Способ | Как попадает в очередь |
-|--------|------------------------|
+| Source | How it enters the queue |
+|--------|--------------------------|
 | UI drag-and-drop / API `PATCH column_id=done` | `save_project` → `sync_done_research_on_save` |
-| Правка `project.md` на диске | `load_project` → `reconcile_done_research_queue` (при следующем чтении проекта) |
-| `report_ingest` с §5.2 | **не** в очередь — RQ уже записан из отчёта |
+| Editing `project.md` on disk | `load_project` → `reconcile_done_research_queue` the next time the project is read |
+| `report_ingest` with Section 5.2 | **Not queued** because the research question was already written from the report |
 
-Пропуск: если у метода уже есть `research_questions` с `card_id` этой карточки.
+Skip the item when the method already has a `research_questions` entry with the
+card's `card_id`.
 
 ### Cursor hooks
 
-Скрипты: `agents/skills/koi-done-research/hooks/`. В IDE: `.cursor/hooks.json`
-из шаблона `agents/cursor-hooks.json`.
+Scripts live in `agents/skills/koi-done-research/hooks/`. IDE configuration
+comes from `agents/cursor-hooks.json` through `.cursor/hooks.json`.
 
-| Hook | Скрипт | Поведение |
-|------|--------|-----------|
-| `sessionStart` | `koi-done-research-session.sh` | Если очередь не пуста — `additional_context` со списком карточек |
-| `stop` | `koi-done-research-stop.sh` | Если очередь ещё не пуста — `followup_message` обработать следующую (до 10 итераций) |
+| Hook | Script | Behavior |
+|------|--------|----------|
+| `sessionStart` | `koi-done-research-session.sh` | Adds an `additional_context` card list when the queue is non-empty |
+| `stop` | `koi-done-research-stop.sh` | Sends a `followup_message` to process the next card while items remain (up to ten iterations) |
 
-Проверка: **Hooks** output channel в Cursor после нового Agent-чата.
+Inspect Cursor's **Hooks** output channel after opening a new Agent chat.
 
-## Связанные скиллы
+## Related skills
 
-- Выполнение карточки (TODO + канбан): **koi-execute-card**
-- Стиль question/narrative: **koi-prose-style**
-- Отчёты: **koi-report-review**
-- Dev-сервер: `koi-dev-server` (8010 + 8080)
-- Визуальная проверка выводов: `koi-visual-qa`
-- После сохранения вывода: **koi-project-sync** — commit + push `projects/`
+- Execute a card (TODO + kanban): **koi-execute-card**
+- Review question/narrative style: **koi-prose-style**
+- Reports: **koi-report-review**
+- Development server: `koi-dev-server` (8010 + 8080)
+- Visual review of conclusions: `koi-visual-qa`
+- After saving a conclusion: **koi-project-sync** — commit and push `projects/`

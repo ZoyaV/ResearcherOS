@@ -56,16 +56,16 @@ def processing_instructions(*, focus_paper_id: str | None = None) -> str:
     paper = "-m koi.paper.cli"
     if focus_paper_id:
         return (
-            "Paper (статья NeurIPS): скилл **koi-paper** — "
-            f"новая задача `{focus_paper_id}`. "
+            "Paper (NeurIPS): use **koi-paper** — "
+            f"new task `{focus_paper_id}`. "
             f"`{py} {paper} claim {focus_paper_id}` → context → answer -f paper-body.txt."
         )
     pending = _pending_paper()
     if not pending:
-        return "Очередь Paper пуста."
+        return "The Paper queue is empty."
     ids = ", ".join(item["id"] for item in pending[:3])
     return (
-        "Paper: скилл **koi-paper** — "
+        "Paper: use **koi-paper** — "
         f"pending ids: {ids}. "
         f"`{py} {paper} claim <id>` → context → answer -f paper-body.txt."
     )
@@ -119,8 +119,8 @@ def _loop_task_prompt() -> str:
     py = _python_bin()
     pending_cmd = f"{py} {INBOX_SCRIPT} pending"
     return (
-        "ResearchOS Paper Inbox: проверь Paper pending "
-        f"(`{pending_cmd}`) и обработай по скиллу koi-paper "
+        "ResearchOS Paper Inbox: check pending Paper items "
+        f"(`{pending_cmd}`) and process them with koi-paper "
         "(claim → context → answer -f paper-body.txt)."
     )
 
@@ -142,47 +142,47 @@ def bootstrap_prompt() -> str:
     watch = INBOX_SCRIPT
     log_rel = ".run/logs/paper-watch.log"
     loop_shell = agent_loop_shell_command()
-    return f"""Ты **ResearchOS Paper Inbox** — фоновый агент для генерации статей NeurIPS (index.html → «Статья»).
+    return f"""You are **ResearchOS Paper Inbox**, the background NeurIPS paper agent (index.html → Paper).
 
-**Настройка один раз.** Кнопка «Сгенерировать статью» кладёт задачи в JSON-очередь; watcher пишет `{WAKE_PREFIX}` в лог (~1–3 с).
+**One-time setup.** Generate paper queues JSON tasks; the watcher writes `{WAKE_PREFIX}` to the log in about 1–3 seconds.
 
-## Сделай сейчас (всё из этого сообщения)
+## Do everything below now
 
-1. Назови этот чат **ResearchOS Paper Inbox**.
+1. Name this chat **ResearchOS Paper Inbox**.
 
-2. Подними сервер и **watcher статей**:
+2. Start the server and **paper watcher**:
    ```
    cd {ENGINE_ROOT}
    ./scripts/koi-serve.sh start
    {py} {watch} status
    ```
-   В status должно быть `"paper_inbox_watcher_running": true`. Если `false` — повтори `koi-serve.sh start`.
+   Status must contain `"paper_inbox_watcher_running": true`. If false, rerun `koi-serve.sh start`.
 
-3. **Автоподхват (критично):** запусти **два фоновых shell** через Shell tool с `block_until_ms: 0` и **`notify_on_output`** — без notify агент не просыпается на новые задачи.
+3. **Automatic pickup (critical):** start **two background shells** with `block_until_ms: 0` and **`notify_on_output`**; without notifications the agent will not wake for new tasks.
 
-   Сначала проверь терминалы и останови старые дубликаты (`tail …paper-watch.log`, `AGENT_LOOP_TICK_PAPER`).
+   First inspect terminals and stop stale duplicates (`tail …paper-watch.log`, `AGENT_LOOP_TICK_PAPER`).
 
-   **A) Мониторинг лога watcher** (основной wake, ~1–3 с):
+   **A) Watcher log monitoring** (primary wake, about 1–3 seconds):
    - command: `cd {ENGINE_ROOT} && tail -n 0 -f {log_rel}`
    - `notify_on_output`: pattern `^{WAKE_PREFIX}`, reason `Paper wake`
 
-   **B) Fallback — опрос очереди каждые {LOOP_POLL_INTERVAL_S} с**:
+   **B) Fallback: poll the queue every {LOOP_POLL_INTERVAL_S} seconds**:
    - command: `{loop_shell}`
    - `notify_on_output`: pattern `^AGENT_LOOP_TICK_PAPER`, reason `Paper queue poll`
 
-   Оба процесса оставь работать. Не используй голый `tail`/`while` без `notify_on_output`.
+   Leave both processes running. Do not use bare `tail`/`while` without `notify_on_output`.
 
-4. Сразу обработай накопленное: `{py} {watch} pending` → по скиллу **koi-paper**: `claim` → `context` → `answer -f paper-body.txt`.
+4. Process accumulated work now: `{py} {watch} pending` → **koi-paper**: `claim` → `context` → `answer -f paper-body.txt`.
 
-5. На каждый wake из п.3 — снова `pending` и обработай все новые id.
+5. On every wake from step 3, run `pending` again and process all new ids.
 
-6. Не останавливай мониторинг, пока я явно не попрошу."""
+6. Do not stop monitoring until explicitly requested."""
 
 
 def format_pending_report() -> str:
     paper = _pending_paper()
     if not paper:
-        return "Очередь Paper пуста (pending: 0)."
+        return "The Paper queue is empty (pending: 0)."
     lines = [f"Pending paper: {len(paper)}", ""]
     for item in paper:
         title = item.get("project_title") or item["project_id"]
@@ -216,15 +216,15 @@ def inbox_task_message(*, paper_id: str | None = None, setup: bool = False) -> s
     paper = "-m koi.paper.cli"
     if paper_id:
         return (
-            f"ResearchOS Paper Inbox — статья `{paper_id}`.\n\n"
-            f"Проверь очередь:\n`{py} {inbox} pending`\n\n"
-            f"Обработай по скиллу **koi-paper**:\n"
+            f"ResearchOS Paper Inbox — paper `{paper_id}`.\n\n"
+            f"Check the queue:\n`{py} {inbox} pending`\n\n"
+            f"Process it with **koi-paper**:\n"
             f"1. `{py} {paper} claim {paper_id}`\n"
             f"2. `{py} {paper} context {paper_id}`\n"
             f"3. `{py} {paper} answer {paper_id} -f paper-body.txt`"
         )
     return (
-        f"Проверь pending Paper:\n`{py} {inbox} pending`\n\n"
+        f"Check pending Paper items:\n`{py} {inbox} pending`\n\n"
         f"{processing_instructions()}"
     )
 

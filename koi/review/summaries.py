@@ -211,9 +211,9 @@ def _generate_question_answer_from_abstract(
     comprehensive_answer = body[:4000] + ("…" if len(body) > 4000 else "")
     evidence = sentences[:4] if sentences else (body[:220] + ("…" if len(body) > 220 else ""),)
     limitations = (
-        "Эвристический ответ по полному тексту без LLM-агента."
+        "Heuristic full-text answer without an LLM agent."
         if used_full_text
-        else "Эвристический ответ по абстракту без LLM-агента."
+        else "Heuristic abstract-based answer without an LLM agent."
     )
     return short_answer, comprehensive_answer, evidence, limitations, "abstract_heuristic"
 

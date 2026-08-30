@@ -351,7 +351,7 @@ export function createPaperCollabClient({
     } catch (error) {
       networkStatus = {
         ...networkStatus,
-        error: error?.message || "Не удалось запустить P2P",
+        error: error?.message || "Could not start P2P",
       };
       emitStatus();
     }
@@ -440,7 +440,7 @@ export function createPaperCollabClient({
     if (message.type === "network_error") {
       networkStatus = {
         ...networkStatus,
-        error: message.reason || "P2P state отклонён",
+        error: message.reason || "P2P state rejected",
       };
       emitStatus();
       return;

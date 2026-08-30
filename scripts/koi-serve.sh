@@ -38,20 +38,20 @@ diagnose_health() {
   if curl -sf "http://127.0.0.1:${API_PORT}/health" >/dev/null 2>&1; then
     echo "  API :${API_PORT} — OK" >&2
   else
-    echo "  API :${API_PORT} — не отвечает" >&2
+    echo "  API :${API_PORT} — not responding" >&2
     if port_busy "$API_PORT"; then
-      echo "    порт занят PID: $(lsof -ti:"$API_PORT" 2>/dev/null | tr '\n' ' ')" >&2
+      echo "    port is occupied by PID: $(lsof -ti:"$API_PORT" 2>/dev/null | tr '\n' ' ')" >&2
     fi
   fi
   if curl -sf "http://127.0.0.1:${WEB_PORT}/api/health" >/dev/null 2>&1; then
     echo "  Web :${WEB_PORT}/api — OK" >&2
   elif curl -sf -o /dev/null "http://127.0.0.1:${WEB_PORT}/" 2>/dev/null; then
-    echo "  Web :${WEB_PORT} — отвечает на /, но НЕТ /api (старый http.server?)" >&2
-    echo "    запустите: $0 restart" >&2
+    echo "  Web :${WEB_PORT} — responds on / but has NO /api (old http.server?)" >&2
+    echo "    run: $0 restart" >&2
   else
-    echo "  Web :${WEB_PORT} — не отвечает" >&2
+    echo "  Web :${WEB_PORT} — not responding" >&2
     if port_busy "$WEB_PORT"; then
-      echo "    порт занят PID: $(lsof -ti:"$WEB_PORT" 2>/dev/null | tr '\n' ' ')" >&2
+      echo "    port is occupied by PID: $(lsof -ti:"$WEB_PORT" 2>/dev/null | tr '\n' ' ')" >&2
     fi
   fi
 }
@@ -121,7 +121,7 @@ start_web() {
     return 0
   fi
   stop_pid_file "$WEB_PID" "$WEB_PORT"
-  # Старый python -m http.server отвечает на /, но не проксирует /api.
+  # An old python -m http.server responds on / but does not proxy /api.
   if port_busy "$WEB_PORT"; then
     free_port "$WEB_PORT"
   fi

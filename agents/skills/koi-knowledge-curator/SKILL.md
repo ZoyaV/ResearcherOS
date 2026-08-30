@@ -8,60 +8,59 @@ description: >-
   curation, or when KNOWLEDGE_LOG.md grew noticeably.
 ---
 
-# KOI: курирование базы знаний (глубокая суммаризация)
+# KOI: curate the knowledge base
 
-Автоген-слой (`KNOWLEDGE.md`, `knowledge/hypotheses.md`, `KNOWLEDGE_LOG.md`)
-собирается правилами из отчётов и research.json — он точный, но плоский: список
-вердиктов и инсайтов без связей между ними. Глубокий слой — курируемые документы
-`projects/<id>/knowledge/<тема>.md` — пишет агент. Автоген руками/агентом не
-править (перезапишется), курируемые файлы подхватываются в оглавление
-автоматически.
+The generated layer (`KNOWLEDGE.md`, `knowledge/hypotheses.md`, and
+`KNOWLEDGE_LOG.md`) is built deterministically from reports and research.json.
+It is accurate but flat: a list of verdicts and insights without relationships.
+An agent writes the deeper curated layer under
+`projects/<id>/knowledge/<topic>.md`. Never edit generated files; they are
+overwritten. Curated files are added to the index automatically.
 
-## Когда запускать
+## When to run
 
-1. Пользователь просит «суммаризируй знания», готовит статью, отчёт или доклад.
-2. С последнего курирования накопилось ≥3 новых done-карточек (видно по
-   `projects/<id>/KNOWLEDGE_LOG.md`).
-3. После серии ingest'ов в одном методе/гипотезе.
+1. The user asks to summarize knowledge or is preparing a paper, report, or talk.
+2. At least three new done cards accumulated since the last curation, visible in
+   `projects/<id>/KNOWLEDGE_LOG.md`.
+3. After a series of ingests within one method or hypothesis.
 
 ## Workflow
 
-### 1. Собрать сырьё
+### 1. Gather evidence
 
-- `projects/<id>/KNOWLEDGE_LOG.md` — что и когда добавлялось;
-- `projects/<id>/research.json` — все инсайты (question/answer/narrative,
-  certainty, importance, card_id);
-- отчёты-основания: `projects/<id>/reports/<узел>/<карточка>.run.md` по
-  затронутым карточкам — числа, правила решения, §4 «Угрозы и оговорки».
+- `projects/<id>/KNOWLEDGE_LOG.md` — what was added and when
+- `projects/<id>/research.json` — all insights (question, answer, narrative,
+  certainty, importance, card_id)
+- source reports under `projects/<id>/reports/<node>/<card>.run.md` for affected
+  cards — measurements, decision rules, and Section 4 threats/caveats
 
-### 2. Кросс-анализ (то, чего правила не умеют)
+### 2. Cross-analyze what deterministic rules cannot
 
-- **Связки**: какие инсайты из разных экспериментов складываются в один вывод?
-- **Противоречия**: где результаты расходятся при смене условий (seed, масштаб,
-  диапазон)? Не сглаживать — фиксировать явно с обеими ссылками.
-- **Пределы применимости**: из §4 отчётов — при каких условиях вывод перестаёт
-  действовать.
-- **Открытые вопросы**: что логично проверить следующим? (кандидаты в новые
-  карточки канбана).
+- **Connections:** which insights from different experiments combine into one conclusion?
+- **Contradictions:** where do results diverge as seed, scale, or range changes?
+  Do not smooth them over; record both sources.
+- **Applicability limits:** under what report caveats does a conclusion stop holding?
+- **Open questions:** what should be tested next? These can become kanban cards.
 
-### 3. Написать курируемый документ
+### 3. Write a curated document
 
-`projects/<id>/knowledge/<тема>.md`:
+Create `projects/<id>/knowledge/<topic>.md`:
 
-- `# Заголовок`, первый абзац после него = сводка для оглавления;
-- каждый тезис — со ссылкой на отчёт-основание (путь к `.run.md`) и числами;
-- инсайты с `certainty: tentative` помечать как предварительные;
-- раздел «Открытые вопросы» — в конце.
+- `# Title`; the first paragraph is the index summary
+- every claim links to a source `.run.md` report and gives measured values
+- mark `certainty: tentative` insights as preliminary
+- end with an Open questions section
 
-### 4. Пересборка оглавлений
+### 4. Rebuild indexes
 
-Локально проект пересоберётся при следующем `save_project` (любое сохранение из
-UI/ingest). Проектный индекс обновляет `koi/knowledge` при сохранении проекта.
+The project rebuilds on the next `save_project` from the UI or ingest. The
+`koi/knowledge` package updates the project index whenever the project is saved.
 
-## Правила качества
+## Quality rules
 
-- Ни одного тезиса без ссылки на первоисточник (отчёт) и числа.
-- Противоречие ценнее гладкой картинки: явно «эксперимент A показал X, но B при
-  других условиях — Y; граница не установлена».
-- Не дублировать автоген: курируемый документ — про связи и смысл, а не пересказ
-  списка инсайтов.
+- No claim without a source-report link and numbers.
+- A contradiction is more valuable than a smooth story: write explicitly that
+  experiment A found X while B found Y under different conditions and that the
+  boundary remains unknown.
+- Do not duplicate generated lists. A curated document explains relationships
+  and meaning rather than repeating insights.

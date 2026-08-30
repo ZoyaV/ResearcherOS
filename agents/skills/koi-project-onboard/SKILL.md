@@ -1,477 +1,338 @@
 ---
 name: koi-project-onboard
 description: >-
-  Attach an existing code repository to ResearchOS via a persistent Socratic
-  interview with semantic quality gates (problem → program → cause/hyp →
-  method), then a cold-reader clarity loop on titles only (≤6 iterations;
-  descriptions out of scope), koi-prose-style, write
-  tree/REPO/koi-structure/project.md, then install_cli (orphan koi/research +
-  tree worktree). TRIGGER when the user asks to «подключить проект», onboard,
-  attach a repo to ResearchOS, or points at a sibling folder with code but no
+  Attach an existing code repository to ResearchOS through a persistent Socratic
+  interview with semantic quality gates (problem → program → cause/hypothesis →
+  method), then a cold-reader title-only clarity loop (at most six iterations),
+  koi-prose-style, writing tree/REPO/koi-structure/project.md, and install_cli
+  (orphan koi/research + tree worktree). Trigger when the user asks to connect,
+  onboard, or attach a repository, or points to a sibling code folder without
   koi-structure/.
 ---
 
-# KOI: онбординг проекта (attach)
+# KOI: attach and onboard a project
 
-Подключить репозиторий **с уже существующим кодом** к ResearchOS и построить
-**скелет** дерева: problem → cause → remediation|cause_evidence → method.
-
-Это **attach** по ADR-001. Канонический путь материалов:
+Attach a repository with **existing code** to ResearchOS and build a research
+skeleton:
 
 ```text
-tree/<repo>/koi-structure/project.md   # ветка koi/research (worktree)
-<repo>/                                # код, любая ветка
+problem → cause → remediation|cause_evidence → method
 ```
 
-Не создание пустого проекта из UI и не полный Related Work. Пустой проект без
-кода — `python -m koi.projects.install_cli install <name> --create`.
+This follows ADR-001. Canonical storage:
 
-Type-checks формулировок и шаблон frames — в
+```text
+tree/<repo>/koi-structure/project.md   # koi/research worktree
+<repo>/                                # code, any branch
+```
+
+This is not empty-project creation and not a full Related Work review. For a
+new project without code, use
+`python -m koi.projects.install_cli install <name> --create`.
+
+Node type checks and interview frames are in
 [framing-checks.md](framing-checks.md).
 
-**Бриф-якорь (обязательно на диске):** по мере диалога веди и в конце запиши
-`tree/<repo>/koi-structure/onboard-brief.md` (legacy: `<repo>/koi-structure/…`)
-по шаблону [onboard-brief.template.md](onboard-brief.template.md). Это
-зафиксированные высокие цели/problem/cause/hyp/method из слоёв 3A–3C. Перед
-**любым** написанием или правкой заголовков узлов/карточек (фиксация слоя,
-clarity loop, prose-pass, поздние правки дерева) — **перечитай
-`onboard-brief.md`** и сверяй titles с ним. Cold reader файл не получает.
+## Mandatory framing brief
 
-**Стиль текста (обязательно, на каждое сообщение):** любое обращение к
-человеку в онбординге — бриф, сверка с литературой, комментарий, вопрос,
-фиксация узла, резюме skeleton — пишется по правилам
-[`koi-prose-style`](../koi-prose-style/SKILL.md) (естественный язык, без
-EN/RU-каши и без «лог-заголовков»). Перед отправкой хода — **prose-self-check**
-(§3 «Prose на каждом ходе»). Фиксации слоёв и запись `project.md` — полный
-цикл prose (subagent → `PASS`). Без `PASS` в файл не писать.
+Maintain and eventually write
+`tree/<repo>/koi-structure/onboard-brief.md` (legacy:
+`<repo>/koi-structure/...`) using
+[onboard-brief.template.md](onboard-brief.template.md). It records the high-level
+goal/problem/cause/hypothesis/method agreed in layers 3A–3C.
 
-**Форма диалога — сократовская, академическая, послойная:** не сваливать
-дерево в Frame A/B/C. Слой problem → cause/hyp → method; на каждом слое
-несколько вопросов. Постоянно сверять литературу ↔ ответы исследователя ↔ код,
-но формулировать сверку **человеческим академическим языком**, не мета-жаргоном
-агента (`gap`, `claim`, `KOI-узел`, `falsification`, сырые англ. title без
-перевода смысла).
+Before **any** node/card title edit — layer fixation, clarity loop, prose pass,
+or later tree edit — reread `onboard-brief.md` and compare every title to it.
+The cold reader must not receive this file.
 
-## Когда запускать
+## Mandatory prose discipline
 
-1. «Подключи `<path>` к ResearchOS» / «onboard» / «attach repo».
-2. Репозиторий лежит рядом с engine (или в `KOI_SCAN_ROOTS`), код есть,
-   нет `tree/<repo>/koi-structure/project.md` (и нет legacy
-   `<repo>/koi-structure/project.md`).
-3. Человеку сложно самому сформулировать верхнеуровневую problem/cause.
+Every user-facing onboarding message — brief, literature comparison, question,
+comment, fixed node, or skeleton summary — follows
+[`koi-prose-style`](../koi-prose-style/SKILL.md). Run a prose self-check before
+every message. When fixing a layer and before writing `project.md`, run the full
+read-only subagent cycle until `PASS`. Never write without PASS.
 
-**Не** запускать, если:
+The dialogue is Socratic, academic, and layered. Do not dump complete Frame
+A/B/C alternatives. Move from problem to cause/hypothesis to method, asking
+several questions per layer. Continuously triangulate literature, researcher
+answers, and code using natural academic English, not agent metadata such as
+gap, claim, KOI node, category error, or raw module/status labels.
 
-- дерево уже есть и нужна новая карточка → **koi-grill-experiment**;
-- нужен полный Intro/Related Work / BibTeX → **literature-review-agent**
-  (PaperOrchestra Step 3);
-- нужен только layout / ветка sync без диалога →
-  `python -m koi.projects.install_cli install <repo>`;
-- нужен только git-sync уже подключённого проекта → **koi-project-sync**.
+## When to run
 
-## Пайплайн (обязательный порядок)
+1. The user asks to connect/onboard/attach `<path>` to ResearchOS.
+2. A sibling or scanned repository contains code but lacks
+   `tree/<repo>/koi-structure/project.md` and legacy
+   `<repo>/koi-structure/project.md`.
+3. The researcher needs help formulating a high-level problem or cause.
 
-```text
-0 Prefight (+ скан соседних проектов/программ) → 1 Code scan → 2 Lit framing
-→ 3A Сократ PROBLEM (≥4 вопроса) → prose-фиксация
-→ 3PROG Сократ PROGRAM (≥1–2 вопроса) → фиксация programs:
-→ 3B Сократ CAUSE+HYP (≥4 вопроса) → prose-фиксация
-→ 3C Сократ METHOD (≥3 вопроса, seed cards) → prose-фиксация
-→ 5 Clarity loop (холодный читатель заголовков, ≤6) → лучший набор titles
-→ 6a prose-pass → 6b Write в tree/<repo>/koi-structure/ (только после «пиши»)
-→ 6c install_cli + sync push (если у репо есть .git) → handoff
-```
+Do not run when:
 
-Не пиши `koi-structure/`, пока не закрыты слои 3A → 3PROG → 3B → 3C,
-не пройден clarity loop (§5) и человек не сказал «пиши». Не перескакивай со
-слоя problem сразу к method. Если репозиторий — git, после записи **обязательно**
-§6c (`install_cli`).
+- a tree exists and the user needs a card: use **koi-grill-experiment**;
+- a full Introduction/Related Work/BibTeX review is needed: use the literature
+  review agent or paper pipeline;
+- only layout/branch sync is needed: use `install_cli install <repo>`;
+- only sync for an attached project is needed: use **koi-project-sync**.
 
----
-
-## 0. Prefight
-
-1. Разреши путь к **code-репо** (абсолютный или относительно workspace). Каталог
-   должен существовать. Имя папки = `<repo>` для `tree/<repo>/`.
-2. Discovery: репо — sibling engine (`parent(ENGINE_ROOT)/<repo>`) или путь из
-   `KOI_SCAN_ROOTS`. Если путь вне scan roots — предупреди: UI может не увидеть
-   проект, пока корень не добавят в scan.
-3. Если уже есть `tree/<repo>/koi-structure/project.md` **или** legacy
-   `<repo>/koi-structure/project.md` — **не перезаписывать**. Предложи: выйти /
-   точечно дополнить дерево (отдельная сессия) / показать текущий skeleton /
-   только `install_cli migrate` если дерево есть, но не в `tree/`. По умолчанию —
-   стоп.
-4. **Соседние проекты и программы** (для слоя 3PROG): в том же parent найди
-   `tree/*/koi-structure/project.md` и legacy `*/koi-structure/project.md`.
-   Из frontmatter каждого собери список программ (`programs:` — `id` + `title`
-   или строковый id). Внутренний список `existing_programs[]` + какие проекты
-   в них входят. Не спрашивай об этом до фиксации problem (§3A).
-
----
-
-## 1. Code scan (без вопросов к человеку)
-
-Три прохода. Не спрашивай то, что видно в файлах.
-
-| Проход | Где смотреть | Что извлечь |
-|--------|--------------|-------------|
-| **Intent** | README, abstracts, paper drafts, top-level dirs | кандидат phenomenon / problem |
-| **Stakes** | reward/loss, env wrappers, ablation flags, curriculum | кандидаты remediation / method |
-| **Evidence** | `examples/`, `*-jobs/`, train/eval scripts, log hints | seed-карточки backlog |
-
-Выход (внутренний черновик, 5–10 bullets):
-
-- что делает репо;
-- ставки (что уже пробуют менять);
-- как запускают проверки;
-- явные gaps (README говорит OOD, jobs только in-domain — и т.п.).
-
-**Запрет:** называть problem именем метода/фичи из репо («diversity bonus»,
-«LoRA PPO»). Method ≠ problem. См. framing-checks.
-
----
-
-## 2. Literature framing scan (лёгкий)
-
-Цель — помочь сформулировать **явление и причины**, не написать Related Work.
-
-**Не** вызывай полный `literature-review-agent` (BibTeX, Intro, 20–30 calls).
-
-1. Из code scan сформулируй 4–6 поисковых запросов:
-   - 2–3 на **явление / failure mode / gap**;
-   - 2–3 на **механизмы / причины**, которые поле обсуждает;
-   - опционально 1–2 survey / position paper.
-2. Найди кандидатов через web search; при доступности — Semantic Scholar
-   `paper/search` (без полной верификации PaperOrchestra, без Crossref-пайплайна).
-3. Оставь **5–12** релевантных papers. На каждый — одна строка:
-   title, year, *как формулируют problem*, *какую cause предполагают*,
-   *какое вмешательство* (если есть).
-4. Внутри себя держи **банк вариантов** (не показывай целиком как «выбери
-   Frame A/B/C»):
-   - 2–3 кандидата **problem** из lit+кода;
-   - 2–4 кандидата **cause** и связанных hyp;
-   - 1–3 кандидата **method** из jobs.
-   Метки `code+lit` / `code-only` / `lit-only` — для себя; в диалоге
-   раскрывай по мере слоя.
-
-Правила grounding — в [framing-checks.md](framing-checks.md).
-
----
-
-## 3. Сократовский диалог (академический ритм)
-
-Цель — совместно сформулировать **проблему, причины, гипотезы и методы**
-в терминах области, опираясь на литературу, код и позицию исследователя.
-Это не терапевтическое интервью и не коучинг.
-
-**Запрещённый тон:** «что болит», «как вы себя чувствуете», «что для вас
-важнее эмоционально», «своими словами без модулей» как единственный фокус.
-**Нужный тон:** research interview — постановка проблемы, вклад в область,
-сопоставление с prior work, механизм, способ проверки.
-
-### Prose на каждом ходе (обязательно)
-
-Перед отправкой **любого** сообщения человеку:
-
-1. Напиши черновик хода.
-2. Прогони **prose-self-check** по [`../koi-prose-style/SKILL.md`](../koi-prose-style/SKILL.md)
-   и [framing-checks.md](framing-checks.md) § «Prose в диалоге»:
-   - русский как основной язык фразы;
-   - англ. термин — только после русской расшифровки, в скобках;
-   - название статьи можно оставить, но **смысл постановки** — по-русски;
-   - нет сырого пайплайн-жаргона (`validate`, `trace`, `step()`, `gap`,
-     `claim`, `KOI-узел`, `category error`) в тексте для человека;
-   - сверка читается как абзац рассуждения, не как лог полей.
-3. Если self-check не проходит — перепиши **до** отправки. Не отправляй
-   «техническую сверку» в надежде, что человек поймёт.
-4. На **фиксации слоя** и перед записью файла — полный цикл
-   **koi-prose-style** (subagent → `PASS`), не только self-check.
-5. Внутренние notes агента могут быть жаргонными; в чат они не попадают.
-
-Плохой ход (так писать нельзя) и хороший — в framing-checks § «Prose в диалоге».
-
-### Триангуляция на каждом ходе (обязательно)
-
-Каждый ход после первого ответа связывает три источника, но **языком prose**:
-
-1. **Литература** — 1–3 работы: авторы/год + по-русски, как они ставят проблему
-   или причину.
-2. **Позиция человека** — парафраз его тезиса простым академическим языком.
-3. **Код репо** — что уже измеряют или меняют, без имён флагов в зачине.
-
-Смысл сверки (содержание), не ярлыки:
+## Mandatory pipeline
 
 ```text
-Вы говорите, что … Это близко к работе «…» (Year), где … .
-От работы Author et al. (Year) ваша постановка отличается тем, что … .
-В коде проекта это видно так: … .
-Отсюда для формулировки проблемы следует: … .
+0 Preflight + scan adjacent programs
+→ 1 Code scan
+→ 2 Lightweight literature framing
+→ 3A Socratic PROBLEM (at least 4 questions) → prose fixation
+→ 3PROG Socratic PROGRAM (1–2 questions) → fix programs:
+→ 3B Socratic CAUSE+HYPOTHESIS (at least 4 questions) → prose fixation
+→ 3C Socratic METHOD (at least 3 questions, seed cards) → prose fixation
+→ 5 Cold-reader clarity loop on titles only (at most 6) → best title set
+→ 6a Final prose pass
+→ 6b Write tree/<repo>/koi-structure/ only after “write”
+→ 6c install_cli + sync push for git repositories
+→ handoff
 ```
 
-Без такой сверки следующий вопрос не задавай вхолостую. Блоки-ярлыки
-`Сверка:`, `Комментарий:`, `⟨согласуется|…⟩` **не использовать** — пиши
-связным текстом.
+Do not write `koi-structure/` before layers 3A → 3PROG → 3B → 3C pass, the
+clarity loop is complete, and the user says to write. Do not jump from problem
+directly to method. After writing a git repository, Section 6c is mandatory.
 
-### Правила хода
+## 0. Preflight
 
-1. **Один вопрос за сообщение.** Не анкетой.
-2. **Минимум вопросов — нижняя граница, не квота.** Не закрывай слой после
-   формального числа вопросов: закрывай только после `PASS` смысловых ворот
-   из [framing-checks.md](framing-checks.md) § «Ворота готовности узлов».
-3. Вопрос предваряй контекстом из работ и кода — уже в prose.
-4. Вопрос — про исследовательскую позицию: схожая ли проблема с prior work;
-   почему её стоит решать; какой вклад в область; какой механизм; как проверить.
-5. После каждого ответа сначала определи, **что фактически сказал** человек:
-   наблюдаемое явление, механизм, ожидаемое наблюдение, вмешательство или
-   протокол. Не доверяй предложенному им названию типа узла автоматически.
-6. Проверь полноту ответа и связь с родителем. Если ответ короткий, расплывчатый,
-   смешивает типы или не проходит хотя бы один обязательный критерий — не
-   переходи к следующему пункту интервью. Назови один главный дефект и задай
-   один точный уточняющий вопрос по недостающему компоненту.
-7. Исследователь отвечает за предметный смысл; агент — за классификацию,
-   проверяемость и качество формулировки. Не спрашивай «это cause или
-   remediation?»; выясни смысл обычным научным вопросом и выбери тип сам.
-8. После ответа — следующий ход: prose-сверка → один следующий вопрос.
-9. Дождись ответа. Не генерируй Q[k+1] в том же сообщении.
-10. В конце слоя предложи title + описание, перечисли оставшуюся
-    неопределённость, если она есть, и попроси подтвердить **смысл**, а не
-    терминологию KOI. Фиксируй слой только при `PASS`.
-11. **Pushback академический, конкретный:** не соглашайся с плохой
-    формулировкой из вежливости. Укажи, какой критерий нарушен, почему это
-    ломает ветку, предложи 1–3 правдоподобные интерпретации из литературы/кода
-    и задай один вопрос, который их различает.
-12. Не додумывай недостающий предметный факт. Можно предложить формулировку как
-    гипотезу агента, но явно попросить исследователя подтвердить или исправить.
+1. Resolve the **code repository** path, absolute or workspace-relative. It must
+   exist. Its folder name becomes `<repo>` under `tree/`.
+2. Ensure the repository is a sibling of the engine or under `KOI_SCAN_ROOTS`.
+   Warn when it is outside discovery roots because the UI may not see it.
+3. If canonical or legacy `project.md` already exists, **do not overwrite**.
+   Offer to stop, show the skeleton, make targeted additions in a separate
+   session, or run `install_cli migrate` when only layout is legacy. Stop by default.
+4. Scan adjacent `tree/*/koi-structure/project.md` and legacy
+   `*/koi-structure/project.md` for programs. Build internal
+   `existing_programs[]` with program ids/titles and member projects. Do not ask
+   about programs until the problem layer is fixed.
 
-После каждого содержательного ответа выполняй внутренний цикл:
+## 1. Code scan (no questions)
+
+Do three passes; never ask what files already answer.
+
+| Pass | Inspect | Extract |
+|------|---------|---------|
+| **Intent** | README, abstracts, paper drafts, top-level directories | Candidate phenomenon/problem |
+| **Stakes** | reward/loss, environment wrappers, ablation flags, curriculum | Candidate remediation/method |
+| **Evidence** | examples, job directories, train/eval scripts, log hints | Backlog seed cards |
+
+Prepare an internal 5–10 bullet draft: repository purpose, current intervention
+bets, evaluation paths, and explicit gaps between stated goals and existing jobs.
+
+Do not name the problem after a feature/method such as diversity bonus or LoRA PPO.
+
+## 2. Lightweight literature framing
+
+The goal is to frame the **phenomenon and mechanisms**, not write Related Work.
+Do not invoke a full bibliography/Introduction pipeline.
+
+1. Derive 4–6 searches from the code scan:
+   - 2–3 for the phenomenon/failure mode/gap;
+   - 2–3 for proposed mechanisms/causes;
+   - optionally 1–2 surveys or position papers.
+2. Use web search or Semantic Scholar when available.
+3. Retain 5–12 relevant papers. For each, record title/year, how it defines the
+   problem, proposed cause, and intervention when present.
+4. Maintain an internal bank, not a menu shown to the user:
+   - 2–3 problem candidates from literature + code;
+   - 2–4 causes and linked hypotheses;
+   - 1–3 methods from existing jobs;
+   - internal labels `code+lit`, `code-only`, `lit-only`.
+
+Use [framing-checks.md](framing-checks.md) for grounding and type gates.
+
+## 3. Socratic academic dialogue
+
+Jointly formulate problem, causes, hypotheses, and methods in field terms,
+grounded in literature, code, and the researcher's position. This is a research
+interview, not therapy or coaching.
+
+Avoid “what hurts,” emotional priorities, or “explain without modules” as the
+only focus. Ask about field contribution, prior work, mechanism, falsification,
+and evaluation.
+
+### Prose on every turn
+
+Before sending any message:
+
+1. Draft the turn.
+2. Self-check against koi-prose-style and the dialogue prose rules in
+   framing-checks:
+   - natural English;
+   - explain unfamiliar terminology before abbreviation;
+   - paper titles may stay verbatim, but explain their framing plainly;
+   - no raw pipeline jargon as the opening language;
+   - comparisons read as reasoning, not a field log.
+3. Rewrite before sending when it fails.
+4. At layer fixation and before file writes, run full koi-prose-style to PASS.
+5. Keep technical internal notes out of chat.
+
+### Triangulation on every turn
+
+After the user's first answer, connect three sources in prose:
+
+1. one to three papers (authors/year and how they frame the problem/cause);
+2. a plain academic paraphrase of the user's position;
+3. what the repository measures or changes, without leading with flag names.
+
+For example: “You describe … . This resembles Title (Year), where … . It differs
+from Author et al. (Year) because … . In the repository, this distinction appears
+in … . This suggests framing the problem as … .” Then ask one question.
+
+Do not use labels such as `Cross-check:` or `Comment:`; write connected prose.
+
+### Turn rules
+
+1. Ask **one question per message**.
+2. Minimum question counts are lower bounds, not completion quotas. Close a
+   layer only when readiness gates in framing-checks pass.
+3. Precede the question with literature/code context in plain prose.
+4. Ask for the research position: similarity to prior work, why it matters,
+   contribution, mechanism, and evaluation.
+5. Classify what the researcher actually said: phenomenon, mechanism, expected
+   observation, intervention, protocol, or completed result. Do not trust their
+   proposed node label automatically.
+6. When an answer is vague, mixed, or incomplete, do not advance. Name one main
+   defect and ask one precise question about the missing component.
+7. The researcher owns domain meaning; the agent owns classification,
+   testability, and wording. Do not ask “is this cause or remediation?” Ask a
+   scientific question and classify it yourself.
+8. Each next turn begins with prose triangulation and one question.
+9. Wait for the answer; do not generate the next question in the same message.
+10. At layer end, propose a title and description, state remaining uncertainty,
+    and request confirmation of meaning rather than KOI terminology. Fix only on PASS.
+11. Push back academically and concretely: identify the failed criterion, explain
+    why it breaks the branch, offer 1–3 plausible interpretations, and ask one
+    distinguishing question.
+12. Never invent a missing domain fact. Label an agent proposal and request correction.
+
+Internal cycle after each substantive answer:
 
 ```text
-классифицировать фактический смысл
-→ проверить полноту узла
-→ проверить тип
-→ проверить связь с родителем
-→ выбрать один главный дефект
-→ дать короткий академический pushback
-→ задать один уточняющий вопрос
-→ повторять до PASS
+classify substance
+→ check node completeness
+→ check type
+→ check parent linkage
+→ choose one main defect
+→ concise academic pushback
+→ one clarifying question
+→ repeat until PASS
 ```
 
-Короткий ответ не является ошибкой сам по себе. Ошибка — принять его, когда
-по нему нельзя построить проверяемый узел. Например, «плохая генерализация»
-задаёт тему, но ещё не problem: уточни объект, между какими условиями возникает
-разрыв и как он наблюдается.
+A short answer is not itself wrong. “Poor generalization” names a topic but not
+a complete problem; ask for the object, conditions, observed gap, and expected state.
 
-Формат хода (содержание; стиль — как у живого исследователя):
+### 3A. PROBLEM layer
+
+First send a prose brief without questions: 3–5 repository findings and 2–4
+papers describing nearby observable problems, without causes or methods.
+
+Then ask at least four questions, one per message:
+
+| Goal | Example |
+|------|---------|
+| Prior-work comparison | Related work frames the problem as A or B. Is yours similar or different? |
+| Observable phenomenon | Which system/object fails, under which conditions, and how does actual behavior differ from expected behavior? |
+| Significance | Which field gap or practical decision depends on resolving it? |
+| Scope | What tempting neighboring issue should not become the root problem? |
+
+Stop only when one problem passes all readiness gates. Run prose review to PASS,
+confirm title/description, and add it to the brief.
+
+### 3PROG. PROGRAM layer
+
+After fixing the problem, show relevant existing programs discovered in preflight
+and ask one question: does the project belong to one, stand alone, or need a new
+program? For a new program ask a second question to fix a field-level title, not
+a method name. Program titles use at most eight words.
+
+Fix `programs:` or explicit “no program” and update the brief.
+
+### 3B. CAUSE + HYPOTHESIS layer
+
+Use the problem as the parent and ask at least four questions:
+
+| Goal | Example |
+|------|---------|
+| Mechanism | Which single mechanism could produce the observed problem? |
+| Parent link | How does that mechanism lead specifically to the problem? |
+| Falsification | Which observation would make you abandon this cause? |
+| Testable child | Should we test a predicted observation (`cause_evidence`) or an intervention (`remediation`), and what outcome is expected? |
+
+Keep asking until 1–2 causes and 1–2 linked hypotheses pass type/readiness gates.
+Run prose review, confirm, and update the brief.
+
+### 3C. METHOD layer
+
+For each hypothesis ask at least three questions:
+
+| Goal | Example |
+|------|---------|
+| Design | What is varied, controlled, and compared against which baseline? |
+| Decision rule | Which primary metric and threshold/direction supports or contradicts the hypothesis? |
+| Alignment | Which literature/repository protocol becomes the method and what remains out of scope? |
+| Seed cards | Which 0–3 existing runs should enter backlog without migrating all history? |
+
+Stop with 1–2 methods that define comparison, control, measurement, and
+interpretation, plus 0–3 seed cards. Run prose review and confirm the complete
+causal chain. Add method framing to the brief without module names.
+
+Target v1 depth: one problem, 1–2 causes, 1–2 hypotheses, 1–2 methods, and
+0–3 seed cards. Use **koi-grill-experiment** for detailed future cards.
+
+Before Section 5, assemble the complete brief. It becomes `onboard-brief.md`
+during writing and is already the ANCHOR for title refinement.
+
+## 5. Cold-reader clarity loop (titles only)
+
+After confirming the skeleton and receiving permission to polish/write, test
+**only** node/card/program titles with a cold reader. Descriptions and `desc`
+are out of scope. Goal: map titles are understandable without drifting from the
+high-level scientific framing. Maximum six iterations.
+
+### ANCHOR: onboard-brief.md
+
+Before every title revision, the Writer rereads the complete current brief. Do
+not send it to the cold reader.
+
+Allowed: clarify the phenomenon, mechanism, or intervention idea at the same
+abstraction level. Prohibited: replace a research problem with pipeline steps,
+frame/debugging details, or an engineering task list.
+
+Bad drift:
 
 ```text
-[слой problem · вопрос 2 из 4]
-
-В близких работах проблему часто ставят так:
-- «Название» (Year) — …
-- «Название» (Year) — …
-
-Вы ранее сказали, что … . Это сходится с первой постановкой и расходится со
-второй в том, что … . В вашем репозитории это отражается так: … .
-
-Считаете ли вы, что решаете схожую проблему — или ваша постановка другая?
+problem: Model cannot group puzzle shapes
+cause: Shapes are not grouped in simplified frames
+remediation: Pipeline: tracking → relationships → importance
+method: Full pipeline versus segmentation
+cards: Debug tracking; link matching shapes; add importance
 ```
 
-Банк вопросов — [framing-checks.md](framing-checks.md) § «Сократовские слои».
-
----
-
-### 3A. Слой PROBLEM (сначала только он)
-
-Бриф (одно сообщение, без вопросов, уже в prose): 3–5 пунктов по репо +
-2–4 работы — как в близких работах формулируют проблему (наблюдаемое явление
-или пробел), без причин и методов.
-
-Затем **по одному** минимум **4 вопроса**:
-
-| # | Зачем | Пример вопроса (тон) |
-|---|-------|----------------------|
-| P1 | Сопоставление с prior work | В проектах, близких к вашему, проблему часто ставят так: (1) … (2) … — считаете ли вы, что решаете **схожую** проблему, или ваша постановка другая? |
-| P2 | Мотивация / необходимость | Почему эту проблему, на ваш взгляд, **нужно** решать сейчас — какой пробел в результатах или теории она закрывает? |
-| P3 | Вклад в область | Если эту постановку удастся закрыть, **чем это продвинет** область (обучение агентов, перенос на новые среды, …)? Какой результат вы готовы отстаивать? |
-| P4 | Границы постановки | Какие соседние формулировки из литературы вы **намеренно не** берёте в корень (слишком широко, другая программа, уже закрыто ранее)? |
-| P5 | (если нужно) Условия проявления | В каких условиях или на какой задаче отсутствие прогресса по этой проблеме видно яснее всего? |
-
-Стоп слоя: согласованный **problem** (title + описание) после prose-pass и
-`PASS` ворот problem. В частности, должны быть известны объект, наблюдаемое
-явление, условия, ожидаемое сравнение и значимость; причина и решение не
-должны быть спрятаны в формулировке.
-Обнови черновик брифа: секции «цель/вклад», «Problem», «Опорная литература»,
-«Границы» (в рабочей памяти или сразу во временный файл; на диск в
-`koi-structure/` — не раньше согласия «пиши», либо пиши draft в
-`<repo>/.koi-onboard-brief.draft.md` вне sync, если удобно держать на диске
-раньше). Cause, program и method не обсуждать, пока problem не зафиксирован.
-
----
-
-### 3PROG. Слой PROGRAM (исследовательская программа)
-
-Только после фиксации problem. Программа — организационный слой **над**
-проектом (группа в сайдбаре UI); членство пишется в frontmatter
-`programs:` ([program-format](../../../docs/human/program-format.md), ADR-001).
-
-Контекст хода (prose): зафиксированная проблема + что уже есть у соседей.
-
-**Если `existing_programs` не пуст** (соседние репо с `koi-structure/` на том
-же уровне уже указывают программы):
-
-| # | Зачем | Пример вопроса |
-|---|-------|----------------|
-| R1 | Принадлежность | Рядом уже есть проекты ResearchOS в программах: (1) «…» (проекты: …) (2) «…». Входит ли **ваш** проект в одну из них — или это отдельная программа? |
-| R2 | (если «отдельная» / «нет») | Тогда зададим новую. По литературе и вашей постановке проблемы напрашиваются такие рамки программы: (1) … (2) … (3) … — какую берём, или напишите свою формулировку (короткий title ≤ 8 слов)? |
-
-**Если соседних программ нет:**
-
-| # | Зачем | Пример вопроса |
-|---|-------|----------------|
-| R1 | Новая программа | Проект в UI группируется по **исследовательской программе**. По близкой литературе к вашей проблеме варианты: (1) … (2) … (3) … — выберите или напишите свою (title ≤ 8 слов). Можно явно сказать «без программы». |
-
-Правила:
-
-1. Один вопрос за ход; сверка lit ↔ ответ — в prose.
-2. Варианты из литературы — **стратегическая рамка** (область / линия работ),
-   не название метода и не копия problem title.
-3. `id` программы: kebab-case / транслит от title (латиница или кириллица как
-   у соседей; согласуй со стилем `existing_programs`).
-4. В frontmatter пиши:
-
-```yaml
-programs:
-  - id: <program-id>
-    title: <короткий title ≤ 8 слов>
-```
-
-5. Если человек сказал «без программы» — поле `programs:` не добавляй.
-6. Prose-self-check на title программы.
-
-Стоп слоя: зафиксированный `programs:` (или явное «без программы») → обнови
-бриф (секция Program) → 3B.
-
----
-
-### 3B. Слой CAUSE + HYPOTHESES
-
-Только после фиксации problem **и** слоя PROGRAM. Напомни зафиксированную
-проблему одной фразой и 1–2 lit-якоря, которые её поддерживают или оспаривают.
-
-Задай **по одному** минимум **4 вопроса**:
-
-| # | Зачем | Пример вопроса (тон) |
-|---|-------|----------------------|
-| C1 | Механизм | Какой **механизм** (причина), по вашей гипотезе, порождает зафиксированную проблему — в отличие от выбора конкретного алгоритма? |
-| C2 | Сопоставление с lit | В работах по близкой теме причины формулируют как … / … — ваша причина **совпадает**, уточняет или противоречит им? |
-| C3 | Falsifiability | Какой исход эксперимента заставил бы вас **отклонить** эту причину? |
-| C4 | Evidence vs remediation | Если причина верна, какое наблюдение вы ожидаете увидеть — или какое изменение системы, по-вашему, должно ослабить этот механизм? |
-| C5 | (если remediation) | Почему выбранное вмешательство должно действовать именно на названный механизм — какая каузальная связь? |
-| C6 | (если 2 cause) | Какую причину ставим первой в дереве и почему не параллельно? |
-
-Каждый ответ снова сверяй с lit и с уже зафиксированным problem.
-
-Стоп слоя: 1–2 **cause** + 1–2 **hyp**, прошедшие собственные ворота и
-проверку связей `problem ← cause ← hyp`; затем prose-фиксация и confirm.
-`cause` считай объяснительной гипотезой. `cause_evidence` — ещё не полученное
-доказательство, а ожидаемое наблюдение, если cause верна. `remediation` —
-проверяемая гипотеза вмешательства.
-Обнови бриф: Cause, Hypothesis (с типом).
-
----
-
-### 3C. Слой METHOD (+ seed cards)
-
-Только после фиксации cause/hyp.
-
-Контекст: протоколы из lit + сравнения, уже заложенные в jobs репо — как
-кандидаты **experimental protocol**, не как имена фич.
-
-Задай **по одному** минимум **3 вопроса**:
-
-| # | Зачем | Пример вопроса (тон) |
-|---|-------|----------------------|
-| M1 | Design | Какой протокол проверки вы считаете адекватным: что варьируете, что контролируете, какой baseline? |
-| M2 | Decision rule | По какой основной метрике и при каком пороге/направлении эффекта гипотеза будет поддержана или отвергнута? |
-| M3 | Сопоставление | В литературе и в ваших запусках встречаются протоколы … / … — что берём как method, что оставляем за скобками? |
-| M4 | Seed | Какие 0–3 уже существующих запуска зафиксировать в backlog как черновые карточки (без полной миграции истории)? |
-
-Стоп слоя: 1–2 **method**, где зафиксированы сравнение, контроль, измерение и
-правило интерпретации, + 0–3 seed cards; prose-фиксация; показать всю причинную
-цепочку на финальный confirm. Дополни бриф: Method (без имён модулей).
-
-Глубина v1: 1 problem, 1–2 cause, 1–2 hyp, 1–2 method, 0–3 seed cards.
-Дальнейшая детализация карточек → **koi-grill-experiment**.
-
-Перед §5 собери полный черновик брифа (все секции шаблона). Он станет
-`onboard-brief.md` при записи (§6b) и уже используется как ANCHOR в §5.
-
----
-
-## 5. Clarity loop — холодный читатель **заголовков** (обязательно)
-
-После фиксации skeleton (и confirm человека «можно полировать / писать») —
-цикл понятности **только по заголовкам** узлов/карточек/программы. Описания
-и `desc:` в цикл **не входят** (без лимита слов; не показываются cold reader).
-
-Цель: titles на карте понятны незнакомому читателю **и** остаются на уровне
-согласованных в диалоге высоких проблем/целей — не сползают в пайплайн и
-отладку. Максимум **6** итераций.
-
-### Якорь = `onboard-brief.md` (для Writer, запрещён cold reader)
-
-Перед циклом Writer обязан иметь актуальный бриф (черновик или уже
-`koi-structure/onboard-brief.md`). Это и есть **ANCHOR**.
-
-На **каждой** итерации до правки titles:
-
-1. Перечитай бриф целиком (секции цели, problem, cause, hyp, method).
-2. Только потом готовь `T_i` / правь после критики.
-3. Бриф **не** клади в промпт cold reader.
-
-| Разрешено | Запрещено (дрифт) |
-|-----------|-------------------|
-| Уточнить явление/механизм/идею вмешательства тем же уровнем абстракции | Подменить problem на шаги конвейера («отслеживание → связи → важность») |
-| Сделать title понятнее без жаргона кода | Уйти в отладку кадров, сегментацию, «полный конвейер vs …» как problem/cause |
-| Method = протокол проверки идеи | Method/cards = список инженерных тасков вместо научной проверки |
-
-Если cold reader просит «конкретнее» — конкретизируй **научную постановку**
-по брифу, а не реализацию в репо. Если titles начинают расходиться с брифом —
-либо верни titles к брифу, либо (редко, после согласия человека) обнови бриф
-и снова прогони clarity; молча «переехать» на пайплайн нельзя.
-
-### Плохо vs хорошо (уровень абстракции)
-
-❌ Плохо (дрифт в пайплайн после «уточнений»):
+Good high-level framing:
 
 ```text
-problem: Модель не группирует фигуры в головоломках и плохо планирует
-cause: На упрощённых кадрах фигуры не группируются
-remediation: Конвейер: отслеживание → связи фигур → важность
-method: Полный конвейер vs сегментация: с моделью мира и без
-cards: Отладить отслеживание… · Связать одинаковые фигуры… · Добавить важность…
+problem: Models fail in abstract visual reasoning
+cause: No model for reasoning over abstract scenes
+remediation: Human Gestalt and attention rules
+method: World model using Gestalt and attention
 ```
 
-✅ Хорошо (держится высоких целей диалога):
+Cards may be more concrete than methods but must not pull problem/cause down
+into implementation debugging.
 
-```text
-problem: Модели не рассуждают в абстрактных визуальных средах
-cause: Нет модели для рассуждений в абстрактных сценах
-remediation: Правила гештальта и внимания человека
-method: Модель мира на гештальте и внимании
-```
+### Roles and snapshot
 
-(Карточки могут быть конкретнее method, но не должны перетягивать problem/cause
-вниз к отладке.)
+| Role | Behavior |
+|------|----------|
+| **Writer** | Onboarding agent edits titles only, keeps ANCHOR, gives no explanation to the cold reader |
+| **Cold reader** | New read-only subagent sees titles only and knows no brief/repository/dialogue |
 
-### Роли
-
-| Роль | Кто | Делает |
-|------|-----|--------|
-| **Writer** | агент онбординга | правит **только заголовки**; держит `ANCHOR`; не объясняет в чат |
-| **Cold reader** | новый subagent | видит **только** titles; не знает `ANCHOR`, репо, диалог |
-
-### Снимок для cold reader (только titles)
+Snapshot:
 
 ```text
 problem: <title>
@@ -483,253 +344,204 @@ program: <title>
 project_title: <frontmatter title>
 ```
 
-Без описаний, кода, lit, `ANCHOR`, пояснений.
+No descriptions, code, literature, ANCHOR, or explanations.
 
-### Итерация `i = 1..6`
+### Iteration 1..6
 
-1. Writer готовит `T_i` (+ сверяет с `ANCHOR` до отправки).
-2. Cold reader (`generalPurpose`, readonly, `KOI titles cold read`):
+1. Writer rereads ANCHOR and prepares `T_i`.
+2. Launch a read-only `generalPurpose` subagent named `KOI titles cold read`:
 
 ```text
 You are a cold reader. You know nothing except the TITLE tree below.
 
-Task: which titles are unclear, ambiguous, or too jargon-heavy on a map?
-
-Do NOT ask for implementation details, pipelines, or module names.
-Prefer feedback that keeps titles as research claims (phenomenon / mechanism /
-idea), not engineering task lists.
+Which titles are unclear, ambiguous, or too jargon-heavy on a map?
+Do not request implementation details, pipelines, module names, or descriptions.
+Keep titles as research claims: phenomenon, mechanism, intervention idea, method.
 
 Output:
 Line 1: CLEAR or UNCLEAR
 If CLEAR: one sentence; clarity 1-10; laconicism 1-10.
 If UNCLEAR: Title | What is unclear | What would help
-  (do NOT rewrite; do NOT ask for descriptions).
+Do not rewrite.
 
 Titles:
 <paste T_i only>
 ```
 
-3. Ранний стоп: `CLEAR` и clarity ≥ 8 и laconicism ≥ 7.
-4. При `UNCLEAR`:
-   - Writer меняет **только titles** → `T_{i+1}`;
-   - перед принятием `T_{i+1}` — **anchor-check** (ниже);
-   - нельзя чинить через описание/`desc` или чат-пояснения.
-5. Лимит: ≤ **8** слов; критический title после двух провалов — до **≤ 12**.
-6. Prose-self-check на titles после каждой правки.
+3. Stop early on `CLEAR`, clarity ≥8, laconicism ≥7.
+4. On UNCLEAR, Writer edits titles only, runs the anchor check below, then submits
+   `T_{i+1}`. Do not compensate with descriptions or chat explanation.
+5. Limit titles to eight words. A critical title may use up to 12 only after two
+   failed eight-word attempts.
+6. Run prose self-check after every edit.
 
-### Anchor-check (после каждой правки Writer)
+### Anchor check after every Writer edit
 
-Ответь себе да/нет (внутренне; при любом «нет» — перепиши titles заново):
+Reject a candidate on any “no”:
 
-1. Problem всё ещё про **явление/пробел области**, согласованный в 3A — не про
-   кадры/конвейер/отладку?
-2. Cause — **механизм**, а не упрощение датасета или баг трекера?
-3. Hyp — **идея вмешательства/доказательства** из 3B, а не список модулей?
-4. Method — **как проверить идею**, а не «полный пайплайн vs сегментация» как
-   замена problem?
-5. Новые titles можно кратко сопоставить с `ANCHOR` одним предложением каждое?
+1. Is problem still the agreed field phenomenon rather than frames/pipeline/debugging?
+2. Is cause a mechanism rather than a dataset simplification or tracker bug?
+3. Is the hypothesis the agreed intervention/prediction rather than a module list?
+4. Is method an evaluation protocol rather than “full pipeline vs segmentation”?
+5. Can every title be mapped to ANCHOR in one sentence?
 
-Дрифт (как в плохом примере выше) = кандидат `T_{i+1}` **бракуется**, даже если
-стал «понятнее» cold reader за счёт конкретики пайплайна.
+Choose the best `T_1…T_k` by clarity, laconicism, ANCHOR fidelity, and fewest
+9–12-word exceptions. Discard drift even when cold reader says CLEAR.
 
-### Выбор лучшей версии
+Keep descriptions from the dialogue and align them outside the clarity loop.
+Tell the user how many iterations ran and which titles changed. If iteration six
+remains UNCLEAR without drift, show feedback and ask the user. Do not write
+without permission.
 
-Сравни `T_1…T_k` по: (1) понятности, (2) лаконичности, (3) **верности `ANCHOR`**,
-(4) меньше исключений 9–12 слов. Кандидат с дрифтом отбрасывай.
+## 6. Final prose pass and writing
 
-Зафиксируй лучшие titles; описания оставь из диалога (подгони под titles вне
-цикла при §6a). Кратко человеку: итерации + что изменилось в titles.
+Proceed only after the user says “write” or “create.”
 
-Если на 6-й всё ещё `UNCLEAR` без дрифта — покажи замечания и спроси человека.
-Без «пиши» файл не пиши.
+### 6a. Full prose pass
 
----
+Collect visible fragments from the best title set:
 
-## 6. Финальный prose-pass + запись (только после «пиши» / «создавай»)
+- frontmatter `title` and `description`;
+- every node title and description;
+- seed-card titles and `desc`.
 
-### 6a. Обязательный prose-pass на skeleton
+Review the complete set for consistency with **koi-prose-style**. Titles marked
+as clarity exceptions may use 9–12 words; all others use at most eight. Continue
+to 6b only on PASS. After three failures, show feedback and ask; do not write
+without explicit permission.
 
-Собери **все** видимые фрагменты из **лучшей** версии после §5:
+### 6b. Write canonical files
 
-- frontmatter `title`, `description`;
-- заголовок и описание каждого узла (problem, cause, hyp, method);
-- заголовки и `desc:` seed-карточек канбана.
-
-Уже зафиксированные тексты прогони ещё раз целиком (consistency).
-Для title с пометкой `title_words:9-12` — допустимо ≤12 слов; иначе ≤8
-(`koi-prose-style`).
-
-Запусти полный цикл **koi-prose-style** → только при `PASS` переходи к 6b.
-После 3× `FAIL` — покажи таблицу замечаний и спроси; **не пиши файл** без
-явного согласия сохранить как есть.
-
-В ответе пользователю после записи: «стиль проверен (koi-prose-style), N итераций».
-
-### 6b. Запись на диск
-
-Пиши в **канонический** путь (создай каталоги при необходимости):
+Create:
 
 ```text
 tree/<repo>/koi-structure/
   project.md
-  onboard-brief.md       # из шаблона onboard-brief.template.md + итог диалога
+  onboard-brief.md
   research.json          # {"version": 1, "questions": []}
-  reports/               # пустой каталог (или .gitkeep)
+  reports/               # empty or .gitkeep
 ```
 
-где `tree/` — sibling engine (`parent(ENGINE_ROOT)/tree/`), `<repo>` — имя
-папки code-репо. Не клади skeleton в `<repo>/koi-structure/`, если можно сразу
-в `tree/` (иначе §6c смигрирует).
+`tree/` is a sibling of the engine and `<repo>` is the code-folder name. Do not
+write `<repo>/koi-structure/` when canonical tree storage is available.
 
-`onboard-brief.md` пиши **до или вместе** с `project.md`, заполненный по
-итогу слоёв и (если titles чуть уточнялись в §5 без смены смысла) согласованный
-с финальными titles. Удали draft `.koi-onboard-brief.draft.md`, если был.
-Файл уходит в orphan-sync вместе с остальным `koi-structure/`.
+Write `onboard-brief.md` before or with `project.md`, aligned with the final
+titles. Remove any `.koi-onboard-brief.draft.md`.
 
-### `project.md` frontmatter
+### project.md frontmatter
 
 ```yaml
 ---
-id: <slug-from-folder-or-agreed-id>   # латиница, kebab-case; не имя папки обязательно, но обычно совпадает
-title: <короткий заголовок problem — после prose-pass>
-description: <1–3 предложения — после prose-pass>
+id: <agreed-kebab-case-id>
+title: <short problem title after prose pass>
+description: <1–3 sentences after prose pass>
 updated: <ISO-8601 Z>
 format: koi/1
-git_repo: true                    # если есть <repo>/.git; иначе false / опустить и пропустить §6c
-git_sync_branch: koi/research     # default; другой — только если человек явно назвал
-programs:                         # из слоя 3PROG; опустить, если «без программы»
+git_repo: true                    # when <repo>/.git exists
+git_sync_branch: koi/research     # default unless user chooses another
+programs:                         # omit for explicit no-program decision
   - id: <program-id>
-    title: <title ≤ 8 слов>
+    title: <title at most 8 words>
 ---
 ```
 
-Если `<repo>/.git` есть — **всегда** ставь `git_repo: true` и
-`git_sync_branch` (по умолчанию `koi/research`). Без этих полей CLI sync
-не подхватит mount.
+For a git repository, always set `git_repo: true` and `git_sync_branch`, or the
+sync CLI will not discover the mount.
 
-### Дерево
+### Tree format
 
-- Заголовки: `# problem: <id>`, `## cause: <id>`, `### remediation:` или
-  `### cause_evidence:`, `#### method: <id>`.
-- Id: короткие осмысленные (`problem`, `c-…`, `r-…`, `m-…`) или вид `n-…` /
-  `c-…` как в существующих проектах. Id — технические; **видимый** текст рядом
-  с ними — только prose.
-- Под каждым method — kanban-таблица:
+- Headings: `# problem: <id>`, `## cause: <id>`, `### remediation:` or
+  `### cause_evidence:`, and `#### method: <id>`.
+- Use concise technical ids; visible text remains natural prose.
+- Add a kanban table under each method:
 
 ```markdown
 <!-- koi:kanban board-<method-id> -->
 | backlog | running | done | successful |
 | --- | --- | --- | --- |
-| <человекочитаемый title> <!-- id:<card-id> desc:<выход эксперимента; путь к скрипту можно в конце> --> |  |  |  |
+| <readable title> <!-- id:<card-id> desc:<experiment output; script path at end if needed> --> |  |  |  |
 ```
 
-- `verdict:` на cause не ставь при онбординге (всё `open` по умолчанию).
-- Текст узлов — проверяемые утверждения **и** естественный язык (оба требования).
-- Заголовок узла / карточки — **≤ 8 слов**; всё остальное — в описании или `desc`
-  (видно при открытии в UI).
+- Do not set cause `verdict:` during onboarding; default is open.
+- Node prose must be both testable and natural.
+- Node/card titles use at most eight words; put all details in description/desc.
 
-### Чеклист перед записью
+### Pre-write checklist
 
-- [ ] Prefight: нет существующего `project.md` (или явное «дополнить»)
-- [ ] Закрыты слои 3A → 3PROG → 3B → 3C (problem, program, cause/hyp, method)
-- [ ] `programs:` записан по итогам 3PROG или явно опущен («без программы»)
-- [ ] `koi-structure/onboard-brief.md` записан и согласован с диалогом
-- [ ] Clarity loop §5: ≤6 итераций по titles; сверка с brief; нет дрифта в пайплайн
-- [ ] Type-checks framing-checks пройдены на каждом узле
-- [ ] **koi-prose-style: PASS** на всех видимых фрагментах skeleton
-- [ ] Заголовки ≤ 8 слов (или ≤ 12 только на критических узлах после §5)
-- [ ] Нет EN/RU-каши и «лог-заголовков» (validate fail, trace, OOM в title)
-- [ ] 1 problem / ≤2 cause / ≤2 hyp / ≤2 method (или явный expand)
-- [ ] Method ≠ название фичи без протокола сравнения
-- [ ] `research.json` валидный JSON
-- [ ] `git_repo` / `git_sync_branch` согласованы с наличием `.git`
+- [ ] No existing project.md unless the user explicitly requested an addition
+- [ ] Layers 3A → 3PROG → 3B → 3C pass
+- [ ] programs decision recorded
+- [ ] onboard-brief.md agrees with the dialogue
+- [ ] Title-only clarity loop completed within six iterations without drift
+- [ ] Every node passes framing-checks
+- [ ] koi-prose-style PASS on all visible skeleton fragments
+- [ ] Titles at most eight words, or valid critical exceptions at most 12
+- [ ] No mixed-language or log-status titles
+- [ ] One problem, at most two causes/hypotheses/methods unless explicitly expanded
+- [ ] Method is a comparison protocol, not a feature name
+- [ ] research.json is valid JSON
+- [ ] git_repo/git_sync_branch match `.git` presence
 
-После записи: если есть `.git` — сразу §6c. Иначе кратко скажи путь к
-`project.md`, `id`, что сделать в UI, следующий шаг.
+After writing, continue immediately to 6c for git repositories. For a non-git
+folder, report the path/id/UI next step.
 
----
+### 6c. Layout and orphan branch
 
-### 6c. Layout + orphan-ветка (`install_cli`, если git-репо)
+For `<repo>/.git` with `git_repo: true`, store research data on the orphan
+`git_sync_branch` (default `koi/research`) and attach it under `tree/<repo>/` as
+a worktree. Do not change git config or commit secrets.
 
-**Когда:** у `<repo>` есть `.git` и в frontmatter `git_repo: true`.
-**Не когда:** локальная папка без git — достаточно записи в
-`tree/<repo>/koi-structure/`; sync недоступен.
-
-Цель: research-данные на **orphan-ветке** (`git_sync_branch`, default
-`koi/research`) и рабочая копия в `tree/<repo>/` (worktree), не в истории
-code-ветки. Не меняй `git config`. Не коммить `.env` и секреты.
-
-Из **корня engine** (`ReseachOS/`) — предпочтительно одной командой:
+From the engine root:
 
 ```bash
-# повесить/создать koi/research → tree/<repo>/koi-structure
 python -m koi.projects.install_cli install <repo>
-
-# дослать свежий skeleton на sync-ветку (если install ещё не запушил)
 python -m koi.projects.sync_cli push --project-id <id> \
   --message "projects(<id>): onboard skeleton tree"
-
 python -m koi.projects.sync_cli status
-# при необходимости: python -m koi.projects.install_cli status
 ```
 
-`install_cli` сам: создаст orphan при необходимости, добавит worktree в
-`tree/<repo>`, пропишет ignore на code-ветке, смигрирует legacy
-`<repo>/koi-structure` или `.koi-sync-worktree`.
+`install_cli` creates the orphan branch when needed, attaches the worktree,
+adds code-branch ignores, and migrates legacy `koi-structure` layouts.
 
-Если `install` / `push` падает (нет `origin`, нет прав, non-fast-forward):
+If install/push fails because of origin, permissions, or non-fast-forward:
 
-- покажи stderr;
-- **не** делай `--force`;
-- предложи человеку починить remote / права и повторить
-  `python -m koi.projects.install_cli install <repo>` /
-  `python -m koi.projects.sync_cli push --project-id <id>`;
-- локальный `tree/<repo>/koi-structure/` при этом уже записан — онбординг не
-  откатывай.
+- show stderr;
+- never force;
+- ask the user to repair remote/permissions and rerun install/push;
+- retain the valid local `tree/<repo>/koi-structure/`; do not roll it back.
 
-В финальном ответе человеку (prose): путь к
-`tree/<repo>/koi-structure/project.md`, `id`, имя orphan-ветки, что
-`install_cli`/`push` прошли или какая ошибка, что открыть в UI после
-`./scripts/koi-serve.sh restart` при необходимости.
-
----
+Final response states project.md path, project id, orphan branch, install/push
+result or error, and which UI URL to open after restarting when needed.
 
 ## 7. Handoff
 
-| Дальше | Скилл |
-|--------|--------|
-| Расписать карточку до прогона | **koi-grill-experiment** — перед новыми titles узлов перечитай `tree/<repo>/koi-structure/onboard-brief.md` |
-| Прогнать карточку | **koi-execute-card** |
-| Длинный прогон / remote с ролями | **koi-card-autoresearch** (+ project-скилл запуска, если есть) |
-| Дальнейший sync | **koi-project-sync** / `sync_cli push|pull` (working copy в `tree/`) |
-| Только layout / migrate | `python -m koi.projects.install_cli install|migrate <repo>` |
-| Полный Related Work для статьи | **literature-review-agent** / paper pipeline |
+| Next work | Skill |
+|-----------|-------|
+| Detail a card before execution | **koi-grill-experiment**; reread onboard-brief before new titles |
+| Execute a card | **koi-execute-card** |
+| Long remote role-based run | **koi-card-autoresearch** plus project launch skill |
+| Further sync | **koi-project-sync** / `sync_cli push|pull` |
+| Layout/migration only | `install_cli install|migrate <repo>` |
+| Full Related Work | literature-review agent / paper pipeline |
 
-Любая поздняя правка заголовков в `project.md` — сначала
-`onboard-brief.md`, потом title.
+Before any later `project.md` title edit, reread `onboard-brief.md`.
 
-Стиль при онбординге закрыт **koi-prose-style** на фиксациях слоёв и в §6a;
-отдельно «потом прогнать prose» не откладывать.
+## Out of scope for v1
 
----
+- Automatically creating a program in the UI
+- Migrating historical reports or experiment-tracker runs to done
+- Replacing an existing tree
+- Full BibTeX/Introduction/citation review
+- Force-pushing orphan or code branches
 
-## Вне scope v1
+## Related references
 
-- Автосоздание программы в UI
-- Миграция старых отчётов / wandb runs в `done`
-- Перезапись существующего дерева
-- Полный BibTeX / Intro / citation F1
-- Force-push orphan/code веток
-
-## Связанные документы и скиллы
-
-- Бриф-якорь: [onboard-brief.template.md](onboard-brief.template.md) →
-  `tree/<repo>/koi-structure/onboard-brief.md`
-- Стиль UI-текста (обязательный gate): `agents/skills/koi-prose-style/SKILL.md`
-- Install / migrate layout: `python -m koi.projects.install_cli`
-- Orphan sync CLI: `python -m koi.projects.sync_cli` · skill `koi-project-sync`
-- Discovery: `docs/adr-001-project-discovery.md` · `AGENTS.md` § Layout
-- Attach (human): `README.md` § «Add a project» · `docs-site/start/with-code.html`
-- Формат дерева: `docs/human/project-format.md`
-- Словарь узлов: `docs/human/getting-started.md` (§3–§5, §0a)
-- Grill карточки: `agents/skills/koi-grill-experiment/SKILL.md`
+- Brief template: [onboard-brief.template.md](onboard-brief.template.md)
+- Mandatory prose gate: `agents/skills/koi-prose-style/SKILL.md`
+- Layout install/migrate: `python -m koi.projects.install_cli`
+- Orphan sync: `python -m koi.projects.sync_cli` and `koi-project-sync`
+- Discovery: `docs/adr-001-project-discovery.md` and AGENTS.md Layout
+- Human attach guide: README Add a project and `docs-site/start/with-code.html`
+- Tree format: `docs/human/project-format.md`
+- Node glossary: `docs/human/getting-started.md`
+- Card grill: `agents/skills/koi-grill-experiment/SKILL.md`

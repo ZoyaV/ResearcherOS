@@ -129,14 +129,14 @@ Method
 <!-- koi:kanban board-m1 -->
 | backlog | running | done | successful |
 | --- | --- | --- | --- |
-| | Demo <!-- id:c-run desc:План\\n- [x] Sync\\n- [ ] Train --> | | |
+| | Demo <!-- id:c-run desc:Plan\\n- [x] Sync\\n- [ ] Train --> | | |
 """
     project = parse_project_md(text, project_id="proj-subtasks")
     card = project.boards[0].cards[0]
-    assert card.description == "План\n- [x] Sync\n- [ ] Train"
+    assert card.description == "Plan\n- [x] Sync\n- [ ] Train"
 
     reserialized = serialize_project_md(project)
-    assert "desc:План\\n- [x] Sync\\n- [ ] Train" in reserialized
+    assert "desc:Plan\\n- [x] Sync\\n- [ ] Train" in reserialized
     reloaded = parse_project_md(reserialized, project_id="proj-subtasks")
     assert reloaded.boards[0].cards[0].description == card.description
 

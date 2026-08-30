@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Вывод после готовой карточки · ResearcherOS</title>
-  <meta name="description" content="Из готового эксперимента сформулировать вопрос и ответ понятным языком и сохранить в базу выводов." />
+  <title>Finding from a completed card · ResearcherOS</title>
+  <meta name="description" content="Turn a completed experiment into a plain-language question and answer stored in the findings database." />
   <script>
     (function () {
       var t = localStorage.getItem("koi-theme");
@@ -20,16 +20,15 @@
 <body class="page-detail">
   <header class="site-header site-header--detail">
     <div class="site-header__inner">
-      <a class="brand" href="../index.html" aria-label="ResearcherOS — на главную">
+      <a class="brand" href="../index.html" aria-label="ResearcherOS — home">
         <img class="brand__logo" src="../assets/logo.png?v=6" alt="ResearcherOS" height="27" />
       </a>
-      <nav class="nav" aria-label="Основное">
+      <nav class="nav" aria-label="Main navigation">
         <a href="../index.html#about">About</a>
         <a href="../index.html#start">How to start</a>
         <a href="../index.html#skills" aria-current="page">Skills</a>
-        <a href="../index.html#lessons">Lessons</a>
         <a href="https://github.com/ZoyaV/ResearcherOS">GitHub</a>
-        <button type="button" id="btn-theme" class="btn-theme" title="Тёмная тема" aria-label="Тёмная тема">
+        <button type="button" id="btn-theme" class="btn-theme" title="Dark theme" aria-label="Dark theme">
           <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"/><path fill="currentColor" d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" stroke-width="2"/></svg>
           <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 14.5A8.5 8.5 0 0 1 9.5 3 7 7 0 1 0 21 14.5z"/></svg>
         </button>
@@ -38,49 +37,50 @@
   </header>
   <main class="article">
     <a class="back-link" href="../index.html#skills">← Skills</a>
-    <h1 class="article__title">Вывод после готовой карточки</h1>
+    <h1 class="article__title">Finding from a completed card</h1>
     <p class="skill-id">koi-done-research</p>
     <div class="article__meta">
-      <span class="chip">Карточка в колонке «готово»</span>
+      <span class="chip">A card reaches the done column</span>
     </div>
-    <p class="article__lead">Из готового эксперимента сформулировать вопрос и ответ понятным языком и сохранить в базу выводов.</p>
+    <p class="article__lead">Turn a completed experiment into a plain-language question and answer stored in the findings database.</p>
 
-    <h2>Что делает</h2>
-    <p>Берёт контекст метода, карточку и отчёт и пишет исследовательский вопрос и ответ так, чтобы их понял человек без жаргона проекта. Технические цифры и сокращения кладёт отдельно. Отмечает, точный вывод или предварительный, и насколько он важен для метода. Результат сохраняется в базу ответов проекта.</p>
+    <h2>What it does</h2>
+    <p>Reads the method context, card, and report, then writes a research question and answer understandable without project jargon. Technical figures are separated. It labels the finding as definite or tentative, records its importance, and saves it in the project&#x27;s answer database.</p>
 
-    <h2>Зачем</h2>
-    <p>Чтобы после эксперимента оставался не только отчёт, а короткий вывод, который можно читать в интерфейсе и дальше накапливать в знаниях лаборатории.</p>
+    <h2>Why use it</h2>
+    <p>Leave a concise, reusable answer after every experiment, not just a report.</p>
 
-    <h2>Когда вызывать</h2>
+    <h2>When to use it</h2>
     <ul class="skill-scenarios">
-      <li>Карточку только что перенесли в «готово»</li>
-      <li>В очереди есть необработанные завершённые эксперименты</li>
-      <li>Нужно обновить уже существующий вывод по методу, а не создать дубликат</li>
+      <li>A completed card has no structured finding</li>
+      <li>A result must be explained without internal jargon</li>
+      <li>The knowledge base needs certainty and importance metadata</li>
     </ul>
 
-    <h2>Как вызвать</h2>
-    <p>Попросите обработать очередь готовых экспериментов или конкретную карточку. AI-помощник соберёт контекст, сформулирует вывод и закроет запись в очереди.</p>
+    <h2>How to invoke it</h2>
+    <p>Ask the assistant to process a completed card and save its research finding. Provide the project and card ID or title.</p>
     <div class="example">
-      <p>Пример фразы AI-помощнику в редакторе:</p>
-      <pre><code>Обработай очередь готовых экспериментов:
-сформулируй выводы по сценарию «вывод после эксперимента».</code></pre>
+      <p>Example request for the AI assistant in your editor:</p>
+      <pre><code>Process completed card &lt;id&gt; in project &lt;project&gt;:
+formulate a clear research question and answer, then save the finding.</code></pre>
     </div>
 
-    <h2>Схема работы</h2>
-    <p class="diagram-caption">Схема — короткий конвейер на одну карточку: очередь → контекст → формулировка → сохранение → закрытие записи. Без закрытия очереди интерфейс будет считать задачу незавершённой.</p>
+    <h2>Workflow diagram</h2>
+    <p class="diagram-caption">Gather the method, card, and report; formulate a clear question and answer; separate technical detail; assign certainty and importance; save the result.</p>
     <div class="graph">
       <pre class="mermaid">
-flowchart TD
-  A[Очередь готовых карточек] --> B[Собрать контекст]
-  B --> C[Сформулировать вопрос и ответ]
-  C --> D[Сохранить в базу выводов]
-  D --> E[Закрыть запись в очереди]
+flowchart LR
+  A[Completed card] --> B[Read method and report]
+  B --> C[Write plain-language question]
+  C --> D[Write answer and technical details]
+  D --> E[Set certainty and importance]
+  E --> F[Save finding]
       </pre>
     </div>
 
     <div class="article__actions">
-      <a class="btn btn-ghost" href="https://github.com/ZoyaV/ResearcherOS/tree/main/agents/skills/koi-done-research">Исходник на GitHub</a>
-      <a class="btn btn-primary" href="../index.html#skills">К списку Skills</a>
+      <a class="btn btn-ghost" href="https://github.com/ZoyaV/ResearcherOS/tree/main/agents/skills/koi-done-research">Source on GitHub</a>
+      <a class="btn btn-primary" href="../index.html#skills">Back to Skills</a>
     </div>
   </main>
   <footer class="site-footer">

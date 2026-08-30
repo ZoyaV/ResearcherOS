@@ -24,15 +24,15 @@ def ingest_report(
 ) -> dict:
     path = Path(report_path)
     if not path.is_file():
-        raise ReportIngestError(f"Файл отчёта не найден: {path}")
+        raise ReportIngestError(f"Report file not found: {path}")
     claim = parse_run_report(path.read_text(encoding="utf-8"))
     project = load_project(project_id)
     if project is None:
-        raise ReportIngestError(f"Проект не найден: {project_id}")
+        raise ReportIngestError(f"Project not found: {project_id}")
 
     method = _find_node(project, claim.method_id)
     if method is None or method.node_type != NodeType.METHOD:
-        raise ReportIngestError(f"Узел-метод не найден: {claim.method_id}")
+        raise ReportIngestError(f"Method node not found: {claim.method_id}")
     board = next(
         (candidate for candidate in project.boards if candidate.owner_node_id == method.id),
         None,
@@ -44,7 +44,7 @@ def ingest_report(
     )
     if card is None:
         raise ReportIngestError(
-            f"Карточка {claim.card_id} не найдена на доске метода {method.id}"
+            f"Card {claim.card_id} was not found on method board {method.id}"
         )
 
     summary: dict = {
@@ -59,12 +59,12 @@ def ingest_report(
     if claim.verdict and claim.cause_id:
         cause = _find_node(project, claim.cause_id)
         if cause is None:
-            claim.warnings.append(f"Узел гипотезы не найден: {claim.cause_id}")
+            claim.warnings.append(f"Hypothesis node not found: {claim.cause_id}")
             summary["verdict"] = None
         else:
             if cause.node_type != NodeType.CAUSE:
                 claim.warnings.append(
-                    f"{claim.cause_id} имеет тип {cause.node_type}, не cause"
+                    f"{claim.cause_id} has type {cause.node_type}, not cause"
                 )
             summary["verdict"] = {
                 "node": cause.id,

@@ -1,95 +1,57 @@
-# Виджеты
+# Widgets
 
-<p class="lead">Проектные панели поверх локального ResearcherOS: пакет лежит в <code>koi-structure/widgets/</code>, ядро только обнаруживает манифест и монтирует <code>mount()</code> в <code>#koi-widgets-root</code>. Ядро приложения ради виджета не меняют.</p>
+<!-- lead: Project-local web extensions loaded from research materials. -->
 
-<div class="media-slot" data-media="widgets-hero" data-accept="png,jpg,webp,mp4,webm">
-  <strong>Слот для картинки или видео</strong>
-  Положите файл в <code>media/widgets-hero.png</code> (или <code>.jpg</code> / <code>.webp</code> / <code>.mp4</code> / <code>.webm</code>).
-</div>
+<div class="media-slot" data-media="widgets-hero" data-accept="png,jpg,webp,mp4,webm"><p>Media: widgets</p></div>
 
-## Как работает
+## How it works
 
-Виджет — папка в исследовании:
+A widget is a package under the research project:
 
 ```text
-tree/<repo>/koi-structure/widgets/<widget-id>/
-  manifest.yaml
-  README.md
-  web/
-    widget.js    # export async function mount(host, ctx)
-    widget.css
-  backend/       # опционально: fetch.py → dict
+koi-structure/widgets/<id>/
+├── widget.json
+├── README.md
+└── web/
+    ├── index.js
+    └── optional assets
 ```
 
-Манифест задаёт id (как имя папки), title, summary, visibility, surfaces (<code>web</code> / <code>desktop</code>), <code>default_enabled</code>, точку входа.
+The manifest declares identity, web entry point, surfaces, and default enablement. The loader imports the entry and calls its `mount` function with project context and API helpers.
 
-При загрузке главной страницы клиент запрашивает каталог <code>GET /api/widgets</code>, для каждого включённого с <code>web_url</code> динамически импортирует JS и вызывает <code>mount(host, ctx)</code>. Контекст: <code>api</code>, id/key виджета, <code>assetBase</code>, манифест.
+## How people use the interface
 
-Включение/выключение хранится в <code>.run/widgets.json</code> (ключ <code>project_id/widget_id</code>), не в Git проекта — локальный выбор на машине.
-
-Общие хелперы UI (например плавающее окно): <code>/widgets/_base/floating.js</code> из <code>widgets/base/web/</code> в репозитории ResearcherOS. Ассеты пакета: <code>/widgets/&lt;project_id&gt;/&lt;id&gt;/…</code>.
-
-Опционально бэкенд: если есть <code>backend/fetch.py</code> с <code>fetch() -> dict</code>, UI зовёт <code>GET /api/widgets/&lt;project&gt;/&lt;id&gt;/data</code> (квоты, метрики кластера и т.п.).
-
-Пример из манифеста: «Cursor usage» — кольцо остатка квоты Cursor; другие проекты кладут свои панели (ресурсы, кастомный мониторинг).
-
-## Как человек работает в интерфейсе
-
-1. Виджеты появляются сами на главном workspace, если пакет есть и включён (часто плавающий элемент поверх карты).
-2. Включение через CLI (или API), не через отдельную большую «витрину» в UI:
+1. Enabled packages appear automatically on the main workspace, often as floating elements over the map.
+2. Enable or inspect them through the CLI or API:
 
 ```bash
 python -m widgets.base.cli list
-python -m widgets.base.cli enable  <project_id>/<widget-id>
-python -m widgets.base.cli disable <project_id>/<widget-id>
+python -m widgets.base.cli enable <widget-id>
 ```
 
-3. Чтобы добавить виджет в проект: положить папку по контракту выше в <code>koi-structure/widgets/</code>, закоммитить в ветку исследования, перезагрузить страницу.
-4. Hub задуман как место публикации переиспользуемых виджетов (как скиллы); живая правка пакета — локально в своём проекте.
+3. To add one, place a valid package in `koi-structure/widgets/`, commit it to the research branch, and reload.
+4. Hub is intended to publish reusable packages; active development remains local to a project.
 
-Отдельного скилла «виджет» нет: это расширение UI, не сценарий агента. Агент может помочь написать <code>widget.js</code>, но монтирование — ответственность runtime.
+## Agent workflows
 
-## Какие сценарии для агента подключаются
+Widgets do not require an Inbox workflow. An IDE agent edits `widgets/<id>/` according to its README and manifest contract. Hub catalog browsing and downloads are planned; current use is project-local.
 
-| Что | Роль |
-|-----|------|
-| Нет обязательного skill | Виджет не в очереди Inbox |
-| Ручная разработка | Агент в IDE правит файлы в <code>widgets/&lt;id&gt;/</code> по контракту README |
-| Hub (каталог) | Позже — browse/download чужих пакетов; сейчас акцент на project-local |
+## Technical details
 
-## Как устроено технически
-
-### Engine vs project
-
-| Где | Что |
-|-----|-----|
-| <code>ReseachOS/widgets/base/</code> | манифест, registry, CLI, <code>floating.js</code> |
-| <code>tree/…/koi-structure/widgets/</code> | пакеты исследователя |
-| <code>web/widgets-loader.js</code> | загрузка и <code>mount</code> |
-| <code>#koi-widgets-root</code> в <code>index.html</code> | контейнер |
-| <code>api/routers/widgets.py</code> + <code>api/web_proxy.py</code> | каталог, data, раздача статики |
-
-Legacy: <code>cursor-usage-widget.js</code> — shim на тот же <code>initWidgets</code>.
-
-### Контракт mount
+| Location | Responsibility |
+|---|---|
+| `ReseachOS/widgets/base/` | manifest, registry, CLI, and `floating.js` |
+| `tree/…/koi-structure/widgets/` | researcher packages |
+| `web/widgets-loader.js` | loading and mounting |
+| `#koi-widgets-root` | page container |
+| `api/routers/widgets.py`, `api/web_proxy.py` | catalog, data, and static files |
 
 ```js
-export async function mount(host, ctx) {
-  // ctx.api, ctx.widgetId, ctx.widgetKey, ctx.assetBase, ctx.manifest
-  return () => { /* unmount */ };
+export function mount(root, context) {
+  // render into root; return optional cleanup function
 }
 ```
 
-### Ограничения
+A package without a valid manifest and `entry.web` is not exposed. Enablement is local in `.run/widgets.json`, so colleagues enable a widget separately unless `default_enabled` changes. Desktop surfaces are reserved; the current loader targets web.
 
-- Без валидного манифеста и <code>entry.web</code> пакет не попадёт в каталог с URL.
-- Состояние enable локальное (<code>.run/widgets.json</code>) — у коллеги виджет нужно включить отдельно (или сменить <code>default_enabled</code> в манифесте).
-- Desktop surface в манифесте зарезервирован; текущий loader — web.
-
-## Связанные страницы
-
-- <a href="paper.html">PaperDraft</a>
-- <a href="monitor.html">Монитор прогона</a>
-- <a href="index.html">Обзор архитектуры</a>
-
-<p class="callout">Текст: <code>content/widgets.md</code>. Медиа: <code>media/widgets-hero.*</code>. Контракт пакета: <code>widgets/README.md</code>.</p>
+Related: [PaperDraft](paper.html) · [Run monitor](monitor.html) · [Architecture](index.html)

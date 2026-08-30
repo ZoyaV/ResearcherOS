@@ -9,7 +9,7 @@ const COLUMN_LABELS = {
   backlog: "Backlog",
   running: "Running",
   done: "Done",
-  successful: "Успешные",
+  successful: "Successful",
 };
 
 let state = {
@@ -232,7 +232,7 @@ function syncBoardAttachHighlights() {
 function timelineHtml() {
   const items = sortMilestones(state.milestones);
   if (!items.length) {
-    return `<div class="ms-empty">Пока нет вех — добавьте первую по шкале времени</div>`;
+    return `<div class="ms-empty">No milestones yet — add the first one to the timeline</div>`;
   }
   const nodes = items
     .map((ms, idx) => {
@@ -242,7 +242,7 @@ function timelineHtml() {
       const title = escapeHtml(ms.title || "Milestone");
       const n = (ms.card_ids || []).length;
       const step = `${idx + 1}/${items.length}`;
-      const tip = `${title} · клик — фильтр доски · двойной клик — редактировать`;
+      const tip = `${title} · click to filter board · double-click to edit`;
       return `
       <li class="ms-node-wrap">
         <button type="button" class="ms-node${filtering}${editing}" data-ms-id="${escapeHtml(ms.id)}" aria-pressed="${
@@ -254,14 +254,14 @@ function timelineHtml() {
           <span class="ms-meta">
             <span class="ms-step">${step}</span>
             <span class="ms-count${n ? "" : " is-empty"}" data-ms-count="${escapeHtml(ms.id)}" title="${
-        n ? "Показать карточки" : "Нет привязанных карточек"
-      }">${n ? `${n} карт.` : "без карт."}</span>
+        n ? "Show cards" : "No linked cards"
+      }">${n ? `${n} cards` : "no cards"}</span>
           </span>
         </button>
       </li>`;
     })
     .join("");
-  return `<ol class="ms-track" aria-label="Вехи по дате">${nodes}</ol>`;
+  return `<ol class="ms-track" aria-label="Milestones by date">${nodes}</ol>`;
 }
 
 function editorHtml(ms) {
@@ -313,25 +313,25 @@ function editorHtml(ms) {
   }).join("");
 
   return `
-    <div class="ms-editor" data-edit-id="${escapeHtml(ms.id)}" role="region" aria-label="Редактирование вехи">
+    <div class="ms-editor" data-edit-id="${escapeHtml(ms.id)}" role="region" aria-label="Edit milestone">
       <div class="ms-editor__row">
         <label class="ms-field">
-          <span>Дата</span>
+          <span>Date</span>
           <input type="text" class="ms-input" data-field="date" value="${escapeHtml(
             ms.date || ""
-          )}" placeholder="ДД.ММ.ГГ" inputmode="numeric" ${state.readOnly ? "disabled" : ""} />
+          )}" placeholder="MM/DD/YY" inputmode="numeric" ${state.readOnly ? "disabled" : ""} />
         </label>
         <label class="ms-field ms-field--grow">
-          <span>Название</span>
+          <span>Title</span>
           <input type="text" class="ms-input" data-field="title" value="${escapeHtml(
             ms.title || ""
-          )}" placeholder="Краткое имя вехи" ${state.readOnly ? "disabled" : ""} />
+          )}" placeholder="Short milestone name" ${state.readOnly ? "disabled" : ""} />
         </label>
       </div>
       <div class="ms-attach">
         ${
           (ms.card_ids || []).length
-            ? `<ul class="ms-linked-list" aria-label="Привязанные карточки">${(ms.card_ids || [])
+            ? `<ul class="ms-linked-list" aria-label="Linked cards">${(ms.card_ids || [])
                 .map((id) => {
                   const card = cardById(state.board, id);
                   const title = card?.title || id;
@@ -348,20 +348,20 @@ function editorHtml(ms) {
                   }</li>`;
                 })
                 .join("")}</ul>`
-            : `<p class="ms-attach-empty">Пока нет привязанных карточек</p>`
+            : `<p class="ms-attach-empty">No linked cards yet</p>`
         }
         ${
           state.readOnly
             ? ""
-            : `<p class="ms-attach-tip">Клик по карточке на доске — привязать / отвязать · или отметьте ниже</p>
+            : `<p class="ms-attach-tip">Click a board card to link or unlink it, or select it below</p>
         <div class="ms-attach__head">
-          <span class="ms-attach__label">Все колонки</span>
+          <span class="ms-attach__label">All columns</span>
           <input type="search" class="ms-input ms-input--search" data-ms-filter value="${escapeHtml(
             state.filterQuery || ""
-          )}" placeholder="Фильтр по имени…" autocomplete="off" />
+          )}" placeholder="Filter by name…" autocomplete="off" />
         </div>
         <div class="ms-card-list">${
-          options || '<p class="ms-attach-empty">На доске пока нет карточек</p>'
+          options || '<p class="ms-attach-empty">There are no cards on the board yet</p>'
         }</div>`
         }
       </div>
@@ -369,10 +369,10 @@ function editorHtml(ms) {
         ${
           state.readOnly
             ? ""
-            : `<button type="button" class="btn btn-primary btn-small" data-ms-save>Сохранить</button>
-               <button type="button" class="btn btn-small ms-btn-danger" data-ms-delete>Удалить</button>`
+            : `<button type="button" class="btn btn-primary btn-small" data-ms-save>Save</button>
+               <button type="button" class="btn btn-small ms-btn-danger" data-ms-delete>Delete</button>`
         }
-        <button type="button" class="btn btn-small" data-ms-close>Закрыть</button>
+        <button type="button" class="btn btn-small" data-ms-close>Close</button>
       </div>
     </div>
   `;
@@ -395,9 +395,9 @@ function render() {
       <div class="ms-create-bar">
         <div class="ms-create-copy">
           <h3 class="ms-title">Milestones</h3>
-          <p class="ms-create-hint">Опциональная шкала вех метода · milestones.md</p>
+          <p class="ms-create-hint">Optional method milestone timeline · milestones.md</p>
         </div>
-        <button type="button" class="btn btn-primary btn-small" data-ms-create>+ Добавить</button>
+        <button type="button" class="btn btn-primary btn-small" data-ms-create>+ Add</button>
       </div>
     `;
     /* board filter owned by app.js */
@@ -418,21 +418,21 @@ function render() {
 
   const fileName = (state.relativePath || "milestones.md").split("/").pop();
   const filterHint = filtering
-    ? `Фильтр: ${escapeHtml(filtering.title || "веха")} · ещё клик — сбросить`
-    : "Клик — фильтр доски · двойной клик — редактировать";
+    ? `Filter: ${escapeHtml(filtering.title || "milestone")} · click again to reset`
+    : "Click to filter board · double-click to edit";
 
   el.innerHTML = `
     <div class="ms-shell">
       <div class="ms-head">
         <div class="ms-head__left">
           <h3 class="ms-title">Milestones</h3>
-          <span class="ms-sort-hint" title="Порядок на шкале — по дате">по дате →</span>
+          <span class="ms-sort-hint" title="Timeline order is based on date">by date →</span>
         </div>
         <span class="ms-path" title="${escapeHtml(state.relativePath)}">${escapeHtml(fileName)}</span>
         ${
           state.readOnly
             ? ""
-            : `<button type="button" class="btn btn-small" data-ms-add>+ Веха</button>`
+            : `<button type="button" class="btn btn-small" data-ms-add>+ Milestone</button>`
         }
       </div>
       ${timelineHtml()}
@@ -459,10 +459,10 @@ function wire() {
       state.exists = true;
       state.milestones = sortMilestones(data.milestones || []);
       state.relativePath = data.relative_path || "";
-      setStatus("Создан milestones.md");
+      setStatus("Created milestones.md");
       render();
     } catch (err) {
-      setStatus(err.message || "Не удалось создать milestones.md", true);
+      setStatus(err.message || "Could not create milestones.md", true);
     }
   });
 
@@ -470,15 +470,15 @@ function wire() {
     const created = {
       id: newLocalId(),
       date: todayLabel(),
-      title: "Новая веха",
+      title: "New milestone",
       card_ids: [],
     };
     try {
       await persist([...state.milestones, created]);
       openEditor(created.id);
-      setStatus("Веха добавлена");
+      setStatus("Milestone added");
     } catch (err) {
-      setStatus(err.message || "Не удалось сохранить веху", true);
+      setStatus(err.message || "Could not save the milestone", true);
     }
   });
 
@@ -556,17 +556,17 @@ function wire() {
     try {
       await persist(next);
       if (state.filterId === id) notifyBoardFilter();
-      setStatus("Веха сохранена");
+      setStatus("Milestone saved");
       render();
     } catch (err) {
-      setStatus(err.message || "Ошибка сохранения", true);
+      setStatus(err.message || "Save error", true);
     }
   });
 
   editor.querySelector("[data-ms-delete]")?.addEventListener("click", async () => {
     const id = editor.getAttribute("data-edit-id");
     if (!id) return;
-    if (!window.confirm("Удалить эту веху?")) return;
+    if (!window.confirm("Delete this milestone?")) return;
     try {
       await persist(state.milestones.filter((m) => m.id !== id));
       if (state.filterId === id) {
@@ -575,10 +575,10 @@ function wire() {
       }
       state.editingId = null;
       state.filterQuery = "";
-      setStatus("Веха удалена");
+      setStatus("Milestone deleted");
       render();
     } catch (err) {
-      setStatus(err.message || "Не удалось удалить", true);
+      setStatus(err.message || "Could not delete the milestone", true);
     }
   });
 }
@@ -656,11 +656,11 @@ export async function refreshKanbanMilestones({
     if (seq !== state.loadSeq) return;
     el.classList.add("hidden");
     el.innerHTML = "";
-    setStatus(err.message || "Milestones недоступны", true);
+    setStatus(err.message || "Milestones are unavailable", true);
   }
 }
 
-/** Clear milestone board filter from outside (e.g. "Сбросить" filters). */
+/** Clear the milestone board filter externally (for example, from Reset filters). */
 export function clearMilestoneBoardFilter() {
   if (!state.filterId && !state.editingId) {
     notifyBoardFilter();

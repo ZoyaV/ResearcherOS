@@ -1,57 +1,57 @@
-# ResearchOS Inbox — три чата Cursor
+# ResearchOS Inbox — three Cursor chats
 
-Режим **`cursor_inbox`**: три отдельных чата с **watcher**, которые будят агентов через wake-строки в логах (~1–3 с).
+In **`cursor_inbox`** mode, three separate chats use **watchers** to wake agents through log wake lines (about 1–3 seconds).
 
-| Чат | Страница UI | Лог | Тег |
+| Chat | UI page | Log | Tag |
 |-----|-------------|-----|-----|
-| **ResearchOS Chat Inbox** | Панель «Спросить агента» | `.run/logs/agent-chat-watch.log` | `AGENT_CHAT_WAKE` |
+| **ResearchOS Chat Inbox** | Ask Agent panel | `.run/logs/agent-chat-watch.log` | `AGENT_CHAT_WAKE` |
 | **ResearchOS Literature Inbox** | literature.html → Related Work | `.run/logs/related-work-watch.log` | `RELATED_WORK_WAKE` |
-| **ResearchOS Paper Inbox** | index.html → «Статья» | `.run/logs/paper-watch.log` | `PAPER_WAKE` |
+| **ResearchOS Paper Inbox** | index.html → Paper | `.run/logs/paper-watch.log` | `PAPER_WAKE` |
 
-## Быстрый старт (один раз на каждый чат)
+## Quick start (once per chat)
 
 ### Chat Inbox
 
-1. Настройки UI → **Inbox-чат** → Сохранить.
-2. `./scripts/koi-serve.sh start` — поднимает все три watcher.
-3. Создайте чат **ResearchOS Chat Inbox** в Cursor.
-4. На главной: **Скопировать сообщение для Cursor** → вставить в чат → отправить.
-5. Агент слушает `tail -f .run/logs/agent-chat-watch.log` по regex `^AGENT_CHAT_WAKE`.
-6. Нажмите **«Inbox готов»** в панели чата.
+1. UI Settings → **Inbox chat** → Save.
+2. Run `./scripts/koi-serve.sh start` to start all three watchers.
+3. Create a **ResearchOS Chat Inbox** chat in Cursor.
+4. On the main page, click **Copy message for Cursor**, paste it into chat, and send it.
+5. The agent listens to `tail -f .run/logs/agent-chat-watch.log` using the `^AGENT_CHAT_WAKE` regex.
+6. Click **Inbox ready** in the chat panel.
 
 ### Literature Inbox
 
-1. Откройте **literature.html** → Related Work.
-2. Создайте чат **ResearchOS Literature Inbox** в Cursor.
-3. Скопируйте bootstrap (кнопка на странице литературы) → вставьте в чат.
-4. Агент слушает `tail -f .run/logs/related-work-watch.log` по regex `^RELATED_WORK_WAKE`.
-5. Нажмите **«Inbox готов»** на странице литературы.
+1. Open **literature.html** → Related Work.
+2. Create a **ResearchOS Literature Inbox** chat in Cursor.
+3. Copy the bootstrap message from the literature page and paste it into chat.
+4. The agent listens to `tail -f .run/logs/related-work-watch.log` using the `^RELATED_WORK_WAKE` regex.
+5. Click **Inbox ready** on the literature page.
 
 ### Paper Inbox
 
-1. Откройте проект в **index.html** → модалка **«Статья»**.
-2. Создайте чат **ResearchOS Paper Inbox** в Cursor.
-3. Скопируйте bootstrap (кнопка в модалке) → вставьте в чат.
-4. Агент слушает `tail -f .run/logs/paper-watch.log` по regex `^PAPER_WAKE`.
-5. Нажмите **«Inbox готов»** в модалке статьи.
+1. Open a project in **index.html** → **Paper** modal.
+2. Create a **ResearchOS Paper Inbox** chat in Cursor.
+3. Copy the bootstrap message from the modal and paste it into chat.
+4. The agent listens to `tail -f .run/logs/paper-watch.log` using the `^PAPER_WAKE` regex.
+5. Click **Inbox ready** in the paper modal.
 
-## Команды
+## Commands
 
 ```bash
-# Чат
+# Chat
 .venv/bin/python -m koi.agent_chat.inbox_cli watch
 .venv/bin/python -m koi.agent_chat.inbox_cli pending
 .venv/bin/python -m koi.agent_chat.inbox_cli bootstrap
 
-# Литература / Related Work
+# Literature / Related Work
 .venv/bin/python -m koi.related_work.inbox_cli watch
 .venv/bin/python -m koi.related_work.inbox_cli pending
 .venv/bin/python -m koi.related_work.inbox_cli bootstrap
 
-# Статья / Paper
+# Paper
 .venv/bin/python -m koi.paper.inbox_cli watch
 .venv/bin/python -m koi.paper.inbox_cli pending
 .venv/bin/python -m koi.paper.inbox_cli bootstrap
 ```
 
-На macOS без `inotifywait` каждый watcher поллит свою очередь каждые 2 с.
+On macOS without `inotifywait`, each watcher polls its queue every two seconds.

@@ -2,21 +2,21 @@ import { latexToMathML } from "./morphology-tex.js?v=20260821h";
 
 const COPY = {
   ru: {
-    language: "Язык урока",
-    symbols: "Обозначения",
-    domain: "Область определения",
-    meaning: "Смысл выражения",
-    parts: "Как читать выражение",
-    example: "Пример",
-    result: "Результат",
-    plot: "Как переменные влияют на результат",
-    fixed: "Не меняются:",
-    nodes: "Связанные утверждения",
-    occurrences: (count) => `Сколько раз встречается в статье: ${count}`,
-    previous: "Предыдущая формула",
-    next: "Следующая формула",
-    open: "Открыть урок об этой формуле",
-    empty: "В статье нет математических выражений.",
+    language: "Lesson language",
+    symbols: "Notation",
+    domain: "Domain",
+    meaning: "Meaning of the expression",
+    parts: "How to read the expression",
+    example: "Example",
+    result: "Result",
+    plot: "How variables affect the result",
+    fixed: "Held constant:",
+    nodes: "Related claims",
+    occurrences: (count) => `Occurrences in the paper: ${count}`,
+    previous: "Previous formula",
+    next: "Next formula",
+    open: "Open a lesson about this formula",
+    empty: "The paper contains no mathematical expressions.",
   },
   en: {
     language: "Lesson language",
@@ -325,7 +325,7 @@ export function initFormulaLessons({ onSelectNode } = {}) {
         <label class="morph-formula-language">
           <span>${escapeHtml(copy.language)}</span>
           <select id="morph-formula-language">
-            <option value="ru"${language === "ru" ? " selected" : ""}>Русский</option>
+            <option value="ru"${language === "ru" ? " selected" : ""}>Russian</option>
             <option value="en"${language === "en" ? " selected" : ""}>English</option>
           </select>
         </label>

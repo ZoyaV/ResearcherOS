@@ -1,30 +1,31 @@
-"""Локальные агент-бэкенды KOI: Codex CLI, OpenRouter, Claude Code CLI и Cursor SDK.
+"""Local KOI agent backends: Codex CLI, OpenRouter, Claude Code CLI, and Cursor SDK.
 
-Единая точка запуска LLM-агента для авто-задач (ответы agent-chat,
-проверка гипотез с генерацией отчёта). Бэкенд выбирается через
-`KOI_AGENT_BACKEND` (по умолчанию `codex,openrouter,claude,cursor` — первый доступный):
+A single entry point for launching an LLM agent for automated tasks (agent-chat
+responses and hypothesis checks that generate reports). The backend is selected
+with `KOI_AGENT_BACKEND` (default: `codex,openrouter,claude,cursor`; the first
+available backend is used):
 
-- **codex** — локальный Codex CLI в non-interactive режиме (`codex exec`).
-  Требуется бинарь `codex` в PATH и локальная авторизация Codex. Модель —
-  `KOI_CODEX_MODEL`, доп. флаги — `KOI_CODEX_ARGS`.
+- **codex** — local Codex CLI in non-interactive mode (`codex exec`). Requires
+  the `codex` binary in PATH and local Codex authentication. Model:
+  `KOI_CODEX_MODEL`; additional flags: `KOI_CODEX_ARGS`.
 
-- **openrouter** — OpenRouter Chat Completions API. Требуется
-  `OPENAI_API_KEY` (по договорённости проекта используем его как ключ
-  OpenRouter), модель — `KOI_OPENROUTER_MODEL` (по умолчанию
+- **openrouter** — OpenRouter Chat Completions API. Requires `OPENAI_API_KEY`
+  (by project convention, it is used as the OpenRouter key). Model:
+  `KOI_OPENROUTER_MODEL` (default:
   `openai/gpt-5.4`).
 
-- **claude** — Claude Code CLI (headless: `claude -p`). Требуется бинарь
-  `claude` в PATH (или `KOI_CLAUDE_BIN`) и авторизация CLI
-  (`claude login` либо `ANTHROPIC_API_KEY`). Модель — `KOI_CLAUDE_MODEL`,
-  доп. флаги — `KOI_CLAUDE_ARGS`.
-- **cursor** — Cursor SDK (python-пакет `cursor_sdk`). Требуется
-  `CURSOR_API_KEY`; модель — `KOI_AGENT_CHAT_MODEL` (по умолчанию
+- **claude** — Claude Code CLI (headless: `claude -p`). Requires the `claude`
+  binary in PATH (or `KOI_CLAUDE_BIN`) and CLI authentication (`claude login`
+  or `ANTHROPIC_API_KEY`). Model: `KOI_CLAUDE_MODEL`; additional flags:
+  `KOI_CLAUDE_ARGS`.
+- **cursor** — Cursor SDK (the `cursor_sdk` Python package). Requires
+  `CURSOR_API_KEY`; model: `KOI_AGENT_CHAT_MODEL` (default:
   composer-2.5).
 
-`allow_edits=True` (для эксперимент-агента, который пишет файл отчёта)
-у Claude Code включает `--permission-mode acceptEdits` и набор
-инструментов из `KOI_CLAUDE_ALLOWED_TOOLS`; Cursor SDK и так работает
-в режиме локального агента с правом на правки.
+For Claude Code, `allow_edits=True` (used by the experiment agent that writes a
+report file) enables `--permission-mode acceptEdits` and the tools listed in
+`KOI_CLAUDE_ALLOWED_TOOLS`; Cursor SDK already runs as a local agent with edit
+permissions.
 """
 
 from __future__ import annotations
@@ -91,7 +92,7 @@ def run_codex_exec(
     timeout: int = DEFAULT_TIMEOUT_S,
     allow_edits: bool = False,
 ) -> Optional[str]:
-    """Non-interactive вызов локального Codex CLI; возвращает финальный текст или None."""
+    """Call the local Codex CLI non-interactively; return final text or None."""
     cwd = _resolve_cwd(cwd)
     bin_path = _codex_bin()
     if not bin_path:
@@ -148,11 +149,11 @@ def run_codex_exec(
 def run_openrouter(
     prompt: str,
     *,
-    cwd: Path | str | None = None,  # noqa: ARG001 — API backend не использует cwd
+    cwd: Path | str | None = None,  # noqa: ARG001 — the API backend does not use cwd
     timeout: int = DEFAULT_TIMEOUT_S,
-    allow_edits: bool = False,  # noqa: ARG001 — backend только текстовый
+    allow_edits: bool = False,  # noqa: ARG001 — this backend is text-only
 ) -> Optional[str]:
-    """Вызов OpenRouter Chat Completions API; возвращает финальный текст или None."""
+    """Call the OpenRouter Chat Completions API; return final text or None."""
     _resolve_cwd(cwd)
     api_key = _openrouter_api_key()
     if not api_key:
@@ -222,7 +223,7 @@ def run_claude_code(
     timeout: int = DEFAULT_TIMEOUT_S,
     allow_edits: bool = False,
 ) -> Optional[str]:
-    """Headless-вызов Claude Code; возвращает финальный текст или None."""
+    """Call Claude Code headlessly; return final text or None."""
     cwd = _resolve_cwd(cwd)
     bin_path = _claude_bin()
     if not bin_path:
@@ -259,10 +260,10 @@ def run_cursor_sdk(
     prompt: str,
     *,
     cwd: Path | str | None = None,
-    timeout: int = DEFAULT_TIMEOUT_S,  # noqa: ARG001 — SDK сам управляет временем
-    allow_edits: bool = False,  # noqa: ARG001 — локальный агент Cursor всегда полный
+    timeout: int = DEFAULT_TIMEOUT_S,  # noqa: ARG001 — the SDK manages its own timing
+    allow_edits: bool = False,  # noqa: ARG001 — the local Cursor agent always has full access
 ) -> Optional[str]:
-    """Вызов Cursor SDK; возвращает финальный текст или None."""
+    """Call the Cursor SDK; return final text or None."""
     cwd = _resolve_cwd(cwd)
     api_key = os.environ.get("CURSOR_API_KEY", "").strip()
     if not api_key:
@@ -280,7 +281,7 @@ def run_cursor_sdk(
                 local=LocalAgentOptions(cwd=str(cwd)),
             ),
         )
-    except Exception:  # noqa: BLE001 — сетевые/SDK ошибки → попробует другой бэкенд
+    except Exception:  # noqa: BLE001 — network/SDK errors fall through to another backend
         return None
     text = (getattr(result, "result", None) or "").strip()
     if not text:
@@ -308,7 +309,7 @@ def backend_order() -> list[str]:
 
 
 def backend_status() -> dict:
-    """Что доступно на этой машине — для диагностики и эндпоинта."""
+    """Report what is available on this machine for diagnostics and the endpoint."""
     return {
         "order": backend_order(),
         "codex": {
@@ -349,10 +350,10 @@ def run_agent(
     allow_edits: bool = False,
     backend: Optional[str] = None,
 ) -> tuple[Optional[str], Optional[str]]:
-    """Запустить агента первым доступным бэкендом.
+    """Launch the agent with the first available backend.
 
-    Возвращает (текст_ответа, имя_бэкенда) либо (None, None), если ни один
-    бэкенд не доступен или все вернули пустой результат.
+    Return (response_text, backend_name), or (None, None) if no backend is
+    available or every backend returned an empty result.
     """
     cwd = _resolve_cwd(cwd)
     order = [backend] if backend else backend_order()

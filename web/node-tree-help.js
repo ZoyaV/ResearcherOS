@@ -1,82 +1,82 @@
-/** Пояснения типов узлов дерева проекта и подсказки при добавлении. */
+/** Explanations of project-tree node types and hints for adding nodes. */
 
 export const NODE_TYPE_HELP = {
   problem: {
-    title: "Проблема",
-    subtitle: "Проблемная ситуация в предметной области",
+    title: "Problem",
+    subtitle: "A problem situation in the domain",
     what:
-      "Что не так в научной или инженерной задаче и как это проявляется на практике. Только наблюдаемый провал — без объяснения «почему».",
+      "What is wrong in the scientific or engineering task and how it manifests in practice. State only the observed failure, without explaining why.",
     content:
-      "Заголовок — суть проблемы. В описании — контекст, условия воспроизведения, метрики, как именно видите сбой.",
+      "Use the title for the essence of the problem. In the description, provide context, reproduction conditions, metrics, and the observed failure.",
     example:
-      "«На длинных эпизодах агент плохо принимает решения: не помнит, что было раньше»",
+      "“On long episodes, the agent makes poor decisions because it does not remember earlier events”",
   },
   cause: {
-    title: "Причина",
-    subtitle: "Объяснительная гипотеза",
+    title: "Cause",
+    subtitle: "Explanatory hypothesis",
     what:
-      "Предположение о механизме: из-за чего возникает проблема. Это не решение, а ответ на вопрос «почему так?».",
+      "A proposed mechanism for why the problem occurs. This is not a solution; it answers the question “why does this happen?”",
     content:
-      "Заголовок: «Причина: …». В описании — какой компонент, процесс или ограничение даёт сбой и при каких условиях.",
-    example: "«Причина: у агента нет модуля памяти — контекст прошлых шагов теряется»",
+      "Title: “Cause: …”. In the description, identify which component, process, or constraint fails and under what conditions.",
+    example: "“Cause: the agent lacks a memory module, so the context of earlier steps is lost”",
   },
   cause_evidence: {
-    title: "Доказательство",
-    subtitle: "Эмпирическая проверка причины",
+    title: "Evidence",
+    subtitle: "Empirical test of a cause",
     what:
-      "Какие наблюдения или измерения покажут, верна ли объяснительная гипотеза — до того как предлагать устранение.",
+      "Which observations or measurements will show whether the explanatory hypothesis is correct, before proposing a remediation.",
     content:
-      "Заголовок: «Доказательство: …». В описании — что именно измеряете или сравниваете. Протокол эксперимента — в методе ниже.",
+      "Title: “Evidence: …”. In the description, state exactly what you measure or compare. Put the experiment protocol in a method below.",
     example:
-      "«Доказательство: на эпизодах 50+ шагов в логе нет ссылок на ранние события»",
+      "“Evidence: in episodes longer than 50 steps, the log contains no references to early events”",
   },
   remediation: {
-    title: "Гипотеза устранения",
-    subtitle: "Интервенционная гипотеза",
+    title: "Remediation hypothesis",
+    subtitle: "Intervention hypothesis",
     what:
-      "Предположение, как ослабить причину, обойти её или убрать проблему целиком — снизить влияние или решить напрямую.",
+      "A proposal for weakening or bypassing the cause, or removing the problem entirely by reducing its impact or solving it directly.",
     content:
-      "Заголовок: «Устранение: …». В описании — что меняете в системе, какой эффект ждёте и по какой метрике поймёте успех.",
+      "Title: “Remediation: …”. In the description, state what you will change, the expected effect, and the success metric.",
     example:
-      "«Устранение: episodic memory с суммаризацией прошлых шагов перед каждым действием»",
+      "“Remediation: episodic memory that summarizes earlier steps before each action”",
   },
   method: {
-    title: "Метод",
-    subtitle: "Протокол проверки",
+    title: "Method",
+    subtitle: "Test protocol",
     what:
-      "Конкретный способ проверить доказательство или гипотезу устранения: что делаем, что измеряем, как интерпретируем результат.",
+      "A specific way to test evidence or a remediation hypothesis: what to do, what to measure, and how to interpret the result.",
     content:
-      "Заголовок — название протокола. В описании — шаги, датасет, метрики, критерий supported/refuted. Карточки прогонов — в канбане.",
+      "Use the protocol name as the title. In the description, give steps, dataset, metrics, and supported/refuted criteria. Put run cards on the kanban board.",
     example:
-      "«A/B: агент с памятью vs без на эпизодах 50+ шагов, метрика — success rate»",
+      "“A/B: agent with memory vs. without on episodes longer than 50 steps; metric: success rate”",
   },
 };
 
-/** Зачем добавлять дочерний узел от данного родителя. */
+/** Explain why a child node should be added to a given parent. */
 export const ADD_CHILD_WHY = {
   problem: {
-    cause: "Сформулировать объяснительную гипотезу — почему проблема возникает.",
+    cause: "Formulate an explanatory hypothesis for why the problem occurs.",
   },
   cause: {
     cause_evidence:
-      "Проверить причину данными: что должно наблюдаться, если гипотеза верна.",
+      "Test the cause with data: what should be observed if the hypothesis is correct.",
     remediation:
-      "Предложить интервенцию: как ослабить эту причину или обойти её.",
+      "Propose an intervention that weakens or bypasses this cause.",
   },
   cause_evidence: {
-    method: "Спланировать эксперимент, который соберёт эти наблюдения.",
+    method: "Plan an experiment that will collect these observations.",
   },
   remediation: {
-    method: "Спланировать эксперимент, который проверит гипотезу устранения.",
+    method: "Plan an experiment that will test the remediation hypothesis.",
   },
 };
 
 const TYPE_LABELS_FALLBACK = {
-  problem: "Проблема",
-  cause: "Причина",
-  cause_evidence: "Доказательство",
-  remediation: "Гипотеза",
-  method: "Метод",
+  problem: "Problem",
+  cause: "Cause",
+  cause_evidence: "Evidence",
+  remediation: "Hypothesis",
+  method: "Method",
 };
 
 function escapeHtml(s) {
@@ -105,9 +105,9 @@ export function addChildPreviewItems(parentType, allowedTypes, labels) {
 export function formatAddChildFormatHint(nodeType) {
   const h = NODE_TYPE_HELP[nodeType];
   if (!h) return "";
-  let html = `<strong>Формат блока:</strong> ${escapeHtml(h.content)}`;
+  let html = `<strong>Block format:</strong> ${escapeHtml(h.content)}`;
   if (h.example) {
-    html += `<br><span class="add-child-format-example">Пример заголовка: ${escapeHtml(h.example)}</span>`;
+    html += `<br><span class="add-child-format-example">Example title: ${escapeHtml(h.example)}</span>`;
   }
   return html;
 }
@@ -122,10 +122,10 @@ export function formatAddParentIntro(parentType, allowedTypes, labels) {
   const items = addChildPreviewItems(parentType, allowedTypes, labels);
   if (!items.length) return "";
   if (items.length === 1) {
-    return `От «${typeLabel(parentType, labels)}» добавится узел «${items[0].label}».`;
+    return `A “${items[0].label}” node will be added under “${typeLabel(parentType, labels)}”.`;
   }
-  const names = items.map((i) => `«${i.label}»`).join(" или ");
-  return `От «${typeLabel(parentType, labels)}» можно добавить ${names} — выберите тип ниже.`;
+  const names = items.map((i) => `“${i.label}”`).join(" or ");
+  return `Under “${typeLabel(parentType, labels)}”, you can add ${names}; select a type below.`;
 }
 
 let helpOverlay = null;
@@ -136,8 +136,8 @@ function buildHelpPanelHtml(help) {
     <p class="node-type-help-popover-title">${escapeHtml(help.title)}</p>
     ${help.subtitle ? `<p class="node-type-help-popover-subtitle">${escapeHtml(help.subtitle)}</p>` : ""}
     <p class="node-type-help-popover-what">${escapeHtml(help.what)}</p>
-    <p class="node-type-help-popover-content"><span class="node-type-help-popover-label">Что писать:</span> ${escapeHtml(help.content)}</p>
-    ${help.example ? `<p class="node-type-help-popover-example"><span class="node-type-help-popover-label">Пример:</span> ${escapeHtml(help.example)}</p>` : ""}`;
+    <p class="node-type-help-popover-content"><span class="node-type-help-popover-label">What to write:</span> ${escapeHtml(help.content)}</p>
+    ${help.example ? `<p class="node-type-help-popover-example"><span class="node-type-help-popover-label">Example:</span> ${escapeHtml(help.example)}</p>` : ""}`;
 }
 
 function ensureHelpOverlay() {
@@ -149,7 +149,7 @@ function ensureHelpOverlay() {
   helpOverlay.innerHTML = `
     <div class="node-type-help-backdrop" data-close="node-type-help"></div>
     <div class="node-type-help-panel" role="dialog" aria-modal="true" aria-labelledby="node-type-help-title">
-      <button type="button" class="node-type-help-close" aria-label="Закрыть">×</button>
+      <button type="button" class="node-type-help-close" aria-label="Close">×</button>
       <div class="node-type-help-panel-body"></div>
     </div>`;
 
@@ -197,7 +197,7 @@ export function openNodeTypeHelp(nodeType) {
 }
 
 /**
- * «?» в углу карточки узла — открывает полноэкранную подсказку.
+ * The “?” in a node card corner opens full-screen help.
  */
 export function mountNodeTypeHelp(wrap, nodeType) {
   const help = NODE_TYPE_HELP[nodeType];
@@ -252,7 +252,7 @@ function buildAddPreviewGhosts(items) {
 }
 
 /**
- * Кнопка «+» с подсветкой родителя и превью добавляемых типов.
+ * “+” button with parent highlighting and a preview of the node types to add.
  * @param {{ readOnly?: boolean }} opts
  */
 export function mountAddNodeButton({
@@ -268,7 +268,7 @@ export function mountAddNodeButton({
   const size = { w: 80, h: 80, round: "50%" };
   const items = addChildPreviewItems(parent.node_type, allowedTypes, labels);
   const singleLabel = items.length === 1 ? items[0].label : null;
-  const hubHint = "В Hub нельзя добавлять узлы — только просмотр";
+  const hubHint = "Nodes cannot be added in Hub; it is read-only";
 
   const el = document.createElement("button");
   el.type = "button";
@@ -282,12 +282,12 @@ export function mountAddNodeButton({
   } else {
     const ariaLabel =
       items.length === 1
-        ? `Добавить ${items[0].label.toLowerCase()}`
-        : `Добавить: ${items.map((i) => i.label.toLowerCase()).join(" или ")}`;
+        ? `Add ${items[0].label.toLowerCase()}`
+        : `Add: ${items.map((i) => i.label.toLowerCase()).join(" or ")}`;
     el.setAttribute("aria-label", ariaLabel);
   }
   el.innerHTML = `
-    <span class="node-label add-node-dynamic-label">${singleLabel ? `+ ${singleLabel}` : "Добавить"}</span>
+    <span class="node-label add-node-dynamic-label">${singleLabel ? `+ ${singleLabel}` : "Add"}</span>
     <span class="add-plus">+</span>`;
 
   const addWrap = document.createElement("div");

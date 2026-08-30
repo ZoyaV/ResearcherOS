@@ -47,8 +47,8 @@
     } catch (e) {}
     var btn = document.getElementById("btn-theme");
     if (btn) {
-      btn.setAttribute("aria-label", t === "dark" ? "Светлая тема" : "Тёмная тема");
-      btn.title = t === "dark" ? "Светлая тема" : "Тёмная тема";
+      btn.setAttribute("aria-label", t === "dark" ? "Light theme" : "Dark theme");
+      btn.title = t === "dark" ? "Light theme" : "Dark theme";
     }
     syncSchemaTheme(document.getElementById("features-content"));
   }
@@ -77,14 +77,14 @@
       if (!id) return;
       el.id = id;
       // Stable anchors used in nav
-      if (/три слоя|тр[её]х слоях/i.test(el.textContent)) el.id = "three-layers";
-      if (/^(общая )?схема$/i.test(el.textContent.trim()) || /схема целиком/i.test(el.textContent)) el.id = "schema";
-      if (/каталог локальных (фич|возможностей)/i.test(el.textContent) || /локальные фичи/i.test(el.textContent)) el.id = "feature-catalog";
-      if (/^(синхронизация|три механизма согласования состояния)$/i.test(el.textContent.trim())) el.id = "sync";
-      if (/^как работает$/i.test(el.textContent.trim())) el.id = "how-it-works";
-      if (/как человек работает/i.test(el.textContent)) el.id = "ui";
-      if (/какие (скиллы|сценарии)/i.test(el.textContent)) el.id = "skills";
-      if (/как устроено технически/i.test(el.textContent)) el.id = "tech";
+      if (/three layers/i.test(el.textContent)) el.id = "three-layers";
+      if (/^(complete )?diagram$/i.test(el.textContent.trim())) el.id = "schema";
+      if (/local feature catalog/i.test(el.textContent)) el.id = "feature-catalog";
+      if (/^(synchronization|three state-coordination mechanisms)$/i.test(el.textContent.trim())) el.id = "sync";
+      if (/^how it works$/i.test(el.textContent.trim())) el.id = "how-it-works";
+      if (/how people use/i.test(el.textContent)) el.id = "ui";
+      if (/agent workflows/i.test(el.textContent)) el.id = "skills";
+      if (/technical details/i.test(el.textContent)) el.id = "tech";
     });
   }
 
@@ -163,7 +163,7 @@
 
     fetch(src)
       .then(function (res) {
-        if (!res.ok) throw new Error("Не удалось загрузить " + src);
+        if (!res.ok) throw new Error("Could not load " + src);
         return res.text();
       })
       .then(function (md) {
@@ -178,7 +178,7 @@
       })
       .catch(function (err) {
         mount.innerHTML =
-          '<p class="error">Не удалось открыть страницу. Запустите локальный сервер из <code>docs/features</code> (см. README) — браузер блокирует <code>fetch</code> с <code>file://</code>.</p><p class="error">' +
+          '<p class="error">Could not open the page. Start a local server from <code>docs/features</code> (see README); browsers block <code>fetch</code> from <code>file://</code>.</p><p class="error">' +
           String(err.message || err) +
           "</p>";
       });

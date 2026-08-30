@@ -45,22 +45,22 @@ def _paper_script() -> str:
 def cursor_chat_message(item_id: str) -> str:
     py = _python_bin()
     script = _paper_script()
-    return f"""ResearchOS Paper Inbox — статья `{item_id}`.
+    return f"""ResearchOS Paper Inbox — paper `{item_id}`.
 
-Скилл **koi-paper** (или выполни шаги ниже):
+Use **koi-paper** or follow these steps:
 
-0. **Сразу** отметь задачу принятой (UI покажет «Агент работает»):
+0. **Immediately** claim the task so the UI shows Agent is working:
    `{py} {script} claim {item_id}`
 
-1. Контекст и промпт:
+1. Context and prompt:
    `{py} {script} context {item_id}`
 
-2. Напиши статью на английском в LaTeX (формат TITLE: / ===LATEX=== из промпта).
+2. Write the paper in English LaTeX using the prompt's TITLE: / ===LATEX=== format.
 
-3. **Обязательно** отправь результат в систему (без этого PDF не появится):
+3. **Always** return the result to the system or no PDF will appear:
    `{py} {script} answer {item_id} -f paper-body.txt`
 
-Шаг 0 и 3 обязательны — UI опрашивает очередь, а не чат Cursor."""
+Steps 0 and 3 are mandatory because the UI polls the queue, not Cursor chat."""
 
 
 def _public_item(item: PaperItem) -> dict[str, object]:
@@ -87,7 +87,7 @@ def submit_paper_request(
         raise KeyError(f"Project not found: {project_id}")
 
     if not start_paper_generation(project_id, paper_slug):
-        raise RuntimeError("Генерация статьи уже идёт — дождитесь завершения")
+        raise RuntimeError("Paper generation is already running; wait for it to finish")
 
     mode = get_agent_chat_mode()
     if mode != "cursor_inbox":

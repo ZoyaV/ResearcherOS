@@ -1,10 +1,10 @@
 # Features docs (`docs/features`)
 
-Отдельный набор страниц про устройство ResearcherOS: архитектура и локальные фичи.
+A separate page set describing ResearcherOS architecture and local features.
 
-Стиль — как у ResearcherOS (Outfit / Syne, те же токены). CSS самодостаточный в `css/features.css`. Пока не вшито в продукт: правите файлы здесь, смотрите локально.
+The style matches ResearcherOS (Outfit/Syne and the same tokens). `css/features.css` is self-contained. These pages are not embedded in the product yet; edit them here and view them locally.
 
-## Локально
+## Run locally
 
 ```bash
 cd ReseachOS/docs/features
@@ -12,27 +12,27 @@ python3 -m http.server 8766
 # http://127.0.0.1:8766/
 ```
 
-## Структура
+## Structure
 
-| Путь | Назначение |
+| Path | Purpose |
 |------|------------|
-| `index.html` + `content/overview.md` | Главная (архитектура) |
-| `research-tree.html` + `content/research-tree.md` | Исследовательское дерево |
-| `kanban.html` + `content/kanban.md` | Канбан экспериментов |
-| `monitor.html` + `content/monitor.md` | Монитор прогона |
-| `knowledge.html` + `content/knowledge.md` | База знаний |
+| `index.html` + `content/overview.md` | Architecture overview |
+| `research-tree.html` + `content/research-tree.md` | Research tree |
+| `kanban.html` + `content/kanban.md` | Experiment kanban |
+| `monitor.html` + `content/monitor.md` | Run monitor |
+| `knowledge.html` + `content/knowledge.md` | Knowledge base |
 | `chat.html` + `content/chat.md` | Research Chat |
 | `related-work.html` + `content/related-work.md` | Related Work |
 | `paper.html` + `content/paper.md` | PaperDraft |
-| `widgets.html` + `content/widgets.md` | Виджеты |
-| `full_schema.html` | Интерактивная схема архитектуры |
-| `media/` | Картинки и видео (вставляете сами) |
-| `css/`, `js/` | Общий каркас раздела |
+| `widgets.html` + `content/widgets.md` | Widgets |
+| `full_schema.html` | Interactive architecture diagram |
+| `media/` | Images and videos supplied separately |
+| `css/`, `js/` | Shared section shell |
 
-## Состав
+## Contents
 
-1. **Главная (overview)** — три слоя: Research Project · Local · Hub + схема
-2. **Каталог локальных фич** — восемь страниц (дерево … виджеты)
-3. **Шаблон страницы фичи** — медиа → как работает → UI → сценарии агента → техника
+1. **Overview** — three layers: Research Project · Local · Hub, plus the diagram.
+2. **Local feature catalog** — eight pages, from the tree through widgets.
+3. **Feature page pattern** — media → how it works → UI → agent workflows → technical details.
 
-Контент — Markdown в `content/`. Медиа — в `media/`.
+Content is Markdown under `content/`; media belongs under `media/`.

@@ -428,7 +428,7 @@ def report_path_info(
 
 
 def _board_chain(project: Project, board_id: str):
-    """(cause, method) для доски: владелец — метод, причина — вверх по дереву."""
+    """Return (cause, method) for a board: the method owns it; cause is above it."""
     board = next((b for b in project.boards if b.id == board_id), None)
     if board is None:
         return None, None
@@ -444,26 +444,26 @@ def _board_chain(project: Project, board_id: str):
 
 
 def report_scaffold(project: Project, board_id: str, card_id: str, card_title: str) -> str:
-    """Шаблон отчёта с уже подставленной привязкой (§0, §5.1, §5.2)."""
+    """Return a report template with Sections 0, 5.1, and 5.2 prefilled."""
     cause, method = _board_chain(project, board_id)
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     try:
         text = TEMPLATE_PATH.read_text(encoding="utf-8")
     except OSError:
-        cause_id = cause.id if cause else "<id-причины>"
-        method_id = method.id if method else "<id-метода>"
+        cause_id = cause.id if cause else "<cause-id>"
+        method_id = method.id if method else "<method-id>"
         return (
-            f"# Отчёт: {card_title}\n\n## 0. Привязка\n\n"
-            "| Поле | Значение |\n|------|----------|\n"
-            f"| Гипотеза (cause) | `{cause_id}` |\n"
-            f"| Метод / карточка | `{method_id}` / `{card_id}` |\n"
-            f"| Дата прогона | {today} |\n"
+            f"# Report: {card_title}\n\n## 0. References\n\n"
+            "| Field | Value |\n|------|----------|\n"
+            f"| Hypothesis (cause) | `{cause_id}` |\n"
+            f"| Method / card | `{method_id}` / `{card_id}` |\n"
+            f"| Run date | {today} |\n"
         )
     text = text.replace(
-        "# Отчёт о прогоне эксперимента (рабочий)", f"# Отчёт: {card_title}", 1
+        "# Experiment run report (working copy)", f"# Report: {card_title}", 1
     )
     if cause is not None:
-        text = text.replace("`c-…` — короткое имя", f"`{cause.id}` — {cause.title}", 1)
+        text = text.replace("`c-…` — short name", f"`{cause.id}` — {cause.title}", 1)
         text = text.replace("- `c-…` →", f"- `{cause.id}` →", 1)
     if method is not None:
         text = text.replace("`m-…` / `…`", f"`{method.id}` / `{card_id}`", 1)
@@ -505,8 +505,8 @@ def read_report(project: Project, board_id: str, card_id: str, card_title: str) 
     if meta["content"].strip():
         meta["source"] = "saved"
         return meta
-    # Публичный отчёт пуст: показать рабочий .run.md (основание вердикта и
-    # инсайтов после автоинтеграции), а если нет и его — заполненный шаблон.
+    # When the public report is empty, show the working .run.md that supports the
+    # verdict/insights after integration; otherwise show a prefilled template.
     run_path = path.with_name(path.stem + RUN_EXT)
     run_text = ""
     if run_path.is_file():

@@ -44,14 +44,14 @@
       var skills = data.skills || [];
       if (!skills.length) {
         root.innerHTML =
-          '<p class="hub-empty">Пока здесь пусто. Когда авторы публичных проектов ' +
-          "поделятся скилами, они появятся в этом каталоге.</p>";
+          '<p class="hub-empty">Nothing here yet. When authors of public projects ' +
+          "share skills, they will appear in this catalog.</p>";
         return;
       }
       root.innerHTML = skills.map(card).join("");
       if (status) status.textContent = skills.length + " skills";
     } catch (err) {
-      if (status) status.textContent = "Не удалось загрузить: " + (err.message || err);
+      if (status) status.textContent = "Could not load: " + (err.message || err);
     }
   }
 

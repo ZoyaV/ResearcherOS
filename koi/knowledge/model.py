@@ -8,9 +8,9 @@ from koi.core.models import NodeType, Project, Verdict
 
 
 VERDICT_MARK = {
-    Verdict.SUPPORTED: "✔ подтверждена",
-    Verdict.REFUTED: "✗ опровергнута",
-    Verdict.OPEN: "… открыта",
+    Verdict.SUPPORTED: "✔ supported",
+    Verdict.REFUTED: "✗ refuted",
+    Verdict.OPEN: "… open",
 }
 
 

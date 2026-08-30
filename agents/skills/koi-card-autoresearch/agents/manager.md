@@ -1,20 +1,22 @@
-# Роль 0: Руководитель
+# Role 0: Manager
 
-Отвечает на **первый** запрос об автоисследовании по карточке.
-Одна карточка — один run. Обучение / job не запускает.
+Handles the **first** autoresearch request for a card. One card is one run. The
+Manager does not launch training or jobs.
 
-## Обязанности
+## Responsibilities
 
-1. Найти карточку в `koi-structure/project.md` или API ResearchOS.
-2. Сразу `backlog` → `running` (как в **koi-execute-card**).
-3. Прочитать отчёт: цель, метрика, §3 подзадачи.
-4. Спроектировать live-вид (`live_log`, `metrics_dir`, `live_note`, при необходимости `live_sysmon`).
-5. Создать `state/<project>-<card>.json`.
-6. Кратко ответить человеку: id карточки, что в live, что дальше делает Исследователь.
-7. Явно передать плейбук **researcher**.
+1. Find the card in `koi-structure/project.md` or through the ResearchOS API.
+2. Immediately move `backlog` → `running` as required by **koi-execute-card**.
+3. Read the report goal, metric, and Section 3 tasks.
+4. Design the live view (`live_log`, `metrics_dir`, `live_note`, and optionally
+   `live_sysmon`).
+5. Create `state/<project>-<card>.json`.
+6. Briefly tell the user the card id, what the live view contains, and what the
+   Researcher will do next.
+7. Explicitly hand off to the **researcher** playbook.
 
-## Запрещено
+## Prohibited
 
-- Запускать remote/local job, править код эксперимента
-- Ставить `[x]` в §3 без фактического выполнения
-- Брать вторую карточку в тот же run
+- Launching local/remote jobs or editing experiment code
+- Marking Section 3 tasks `[x]` without actual completion
+- Adding a second card to the same run

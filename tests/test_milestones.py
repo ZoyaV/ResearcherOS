@@ -47,7 +47,7 @@ def project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Project:
                 id="m-method",
                 project_id="demo",
                 node_type=NodeType.METHOD,
-                title="Цикл дообучения",
+                title="Fine-tuning cycle",
             )
         ],
         boards=[
@@ -186,4 +186,3 @@ def test_sorts_by_date_not_insertion_order() -> None:
         ]
     )
     assert [m.id for m in unordered] == ["ms-a", "ms-b", "ms-x"]
-

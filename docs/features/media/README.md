@@ -1,13 +1,13 @@
-# Медиа для feature-страниц
+# Media for feature pages
 
-Сюда кладите скриншоты, схемы и видео.
+Place screenshots, diagrams, and videos here.
 
-В Markdown:
+In Markdown:
 
 ```markdown
-![Подпись](../media/имя-файла.png)
+![Caption](../media/file-name.png)
 
-<video controls src="../media/имя-файла.mp4"></video>
+<video controls src="../media/file-name.mp4"></video>
 ```
 
-На главной уже есть слот `media/overview-hero.*` — положите файл с таким именем, и он подхватится на странице (см. `content/overview.md`).
+The overview page already has a `media/overview-hero.*` slot. Add a file with that name and the page will load it automatically (see `content/overview.md`).

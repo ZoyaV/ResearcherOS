@@ -2,89 +2,105 @@
 name: koi-execute-card
 description: >-
   Execute a KOI/ResearchOS kanban card in strict order: (1) move to running
-  immediately before any other work, (2) mark §3 «Подзадачи» [x] as each item
-  completes, (3) move to done when finished. Use when the user asks to run,
-  execute, or проверить a kanban card or experiment card; also with
-  `koi.projects.report_ingest.cli` or «выполни карточку».
+  immediately before any other work, (2) mark Section 3 Tasks [x] as each item
+  completes, and (3) move to done when finished. Use when the user asks to run,
+  execute, or check a kanban/experiment card, with
+  `koi.projects.report_ingest.cli`, or says “execute the card.”
 ---
 
-# KOI: выполнение карточки канбана
+# KOI: execute a kanban card
 
-Когда пользователь просит **выполнить карточку** (эксперимент на канбане) — это не разовая правка кода, а проход по отчёту и статусу карточки. **Обязательно** вести чеклист подзадач и синхронизировать колонку канбана.
+Executing an experiment card is not a one-off code edit. It requires following
+the report and card status, maintaining the task checklist, and synchronizing
+the kanban column.
 
-## Три обязательных шага (порядок не менять)
+## Three mandatory steps (keep this order)
 
-1. **Старт** — `backlog` → **`running`** сразу после того, как нашёл карточку (до чтения отчёта, кода, эксперимента).
-2. **По ходу** — после каждой выполненной подзадачи: `- [ ]` → `- [x]` в §3 и **сохрани** отчёт (не копи галочки «на конец»).
-3. **Финиш** — `running` → **`done`** когда все подзадачи `[x]`, §4/§5 готовы — **до** ответа пользователю и **koi-done-research**.
+1. **Start:** move `backlog` → **`running`** immediately after locating the card,
+   before reading the report/code or running the experiment.
+2. **During work:** after each completed task, change `- [ ]` → `- [x]` in
+   Section 3 and **save** the report immediately.
+3. **Finish:** move `running` → **`done`** when every task is checked and
+   Sections 4/5 are complete, before replying to the user and before
+   **koi-done-research**.
 
-## Когда запускать
+## When to run
 
-1. «Выполни / проверь / сделай карточку …» (по id или заголовку).
-2. `python -m koi.projects.report_ingest.cli <project> <card>` — перед прогоном прочитай этот скилл.
-3. Карточка уже в **running**, но подзадачи в отчёте не отмечены — доведи до конца.
-4. Пользователь ссылается на конкретный эксперимент с канбана метода.
+1. The user asks to execute/check/do a card by id or title.
+2. Before `python -m koi.projects.report_ingest.cli <project> <card>`.
+3. A card is already running but its report tasks are not checked.
+4. The user refers to a specific experiment on a method's kanban.
 
-Сначала **koi-execute-card** (прогресс и канбан), затем при переносе в **done** — **koi-done-research** (вывод в research.json).
+Use **koi-execute-card** first for progress and kanban, then
+**koi-done-research** after moving to done to record the research conclusion.
 
-## Главное правило (не пропускать)
+## Primary rule
 
-Канбан в `project.md` и отчёт синхронизируются **вместе** с работой над отчётом:
+Synchronize kanban in `project.md` and the report **as the work happens**:
 
-1. **Первое действие** — если карточка в `backlog`, перенеси в **`running`** (колонка «в работе» / in-process) **до** любой правки отчёта, кода или данных.
-2. **Последнее действие** — когда все подзадачи `[x]` и §4/§5 готовы, перенеси в **`done`** **до** ответа пользователю и **koi-done-research**.
+1. First action: if the card is in `backlog`, move it to `running` before
+   editing reports, code, or data.
+2. Last action: when all tasks are `[x]` and Sections 4/5 are complete, move it
+   to `done` before replying and before koi-done-research.
 
-Типичная ошибка: отчёт заполнен, карточка осталась в `backlog` — так быть не должно.
+A completed report with a card still in backlog is invalid.
 
-## Старт: контекст карточки
+## Start: card context
 
-1. Найди карточку в `koi-structure/project.md` проекта (таблица `<!-- koi:kanban … -->`; также `projects/<id>/koi-structure/project.md`) или через API.
-2. **Сразу** — если карточка в `backlog`, перенеси в **`running`** (см. «Перенос карточки» ниже) и сохрани. Только после этого переходи к шагам 3–4.
-3. Путь к отчёту:
+1. Find the card in the project's `koi-structure/project.md`
+   (`<!-- koi:kanban … -->` table), at
+   `projects/<id>/koi-structure/project.md`, or through the API.
+2. If it is in backlog, **immediately** move it to running and save. Only then
+   continue.
+3. Resolve the report path:
 
 ```bash
 curl -s "http://127.0.0.1:8010/projects/<project_id>/boards/<board_id>/cards/<card_id>/report-path"
 ```
 
-Или на диске: `projects/<id>/koi-structure/reports/<метод>/<карточка>.md` (см. `reports/index.json`).
+Or locate it on disk at
+`projects/<id>/koi-structure/reports/<method>/<card>.md` using
+`reports/index.json`.
 
-4. Прочитай отчёт целиком: §1–§2 (цель и метрика), **§3 «Подзадачи»** (`- [ ]` / `- [x]`), §4+ если уже есть результаты.
+4. Read the complete report: Sections 1–2 (goal/metric), Section 3 Tasks
+   (`- [ ]` / `- [x]`), and existing Section 4+ results.
 
-Если отчёт пустой — скопируй `../koi-report-review/report-skeleton.md`, заполни §1–§3 (**koi-report-review**, критики 1–3), затем продолжай выполнение.
+If the report is empty, copy `../koi-report-review/report-skeleton.md`, fill
+Sections 1–3, run **koi-report-review** critics 1–3, then continue execution.
 
-## Правило TODO (обязательно)
+## Task rule (mandatory)
 
-Подзадачи живут **только в §3** отчёта, блок «Подзадачи:»:
+Tasks live **only in Section 3** under `Tasks:`:
 
 ```markdown
-Подзадачи:
+Tasks:
 
-- [ ] Действие + объект + критерий готово → артефакт / §N.1 / §N.2
-- [x] Уже сделано — критерий из строки выполнен
+- [ ] Action + object + completion criterion → artifact / Section N.1 / N.2
+- [x] Already complete — the criterion on this line is satisfied
 ```
 
-| Момент | Действие агента |
-|--------|-----------------|
-| Взял карточку в работу (до отчёта/кода) | **Сразу** `backlog` → **`running`** в `project.md` (или API) — не откладывать |
-| **Закончил** подзадачу (критерий из строки выполнен) | Сразу `- [ ]` → `- [x]` в отчёте и **сохрани** файл |
-| Все подзадачи `[x]` + §2 закрыт + §4/§5 заполнены | **Сразу** `running` → **`done`** в `project.md` (или API), затем koi-done-research |
-| Подзадача не сделана | Оставь `[ ]`; в §4 явно «не выполнено потому что …» |
+| Moment | Agent action |
+|--------|--------------|
+| Card is taken into work | Immediately move `backlog` → `running` in `project.md` or API |
+| A task's criterion is met | Immediately change `[ ]` → `[x]` and save the report |
+| All tasks `[x]`, Section 2 resolved, Sections 4/5 filled | Immediately move `running` → `done`, then run koi-done-research |
+| Task not completed | Leave `[ ]`; write “not completed because …” in Section 4 |
 
-**Не** ставь `[x]` «на будущее» и **не** закрывай карточку в done, пока в §3 остались невыполненные пункты без объяснения.
+Never check work in advance and never move to done while Section 3 has
+unexplained incomplete items. A checkbox means the SMART criterion on the same
+line is met; see `../koi-report-review/report-rules.md`.
 
-Галочка = критерий из той же строки SMART-подзадачи (см. `../koi-report-review/report-rules.md` § Подзадачи). Критик 3 в **koi-report-review** проверяет соответствие.
+## Kanban columns
 
-## Колонки канбана
+| Column | Meaning |
+|--------|---------|
+| `backlog` | Not started |
+| `running` | Work is in progress; report or experiment started |
+| `done` | Tasks checked, report has results/conclusions, and Section 2 is resolved or explicitly open/abandoned |
 
-| Колонка | Когда |
-|---------|-------|
-| `backlog` | Ещё не брали в работу |
-| `running` | В работе (in-process); отчёт или эксперимент начаты |
-| `done` | Все подзадачи отмечены, результаты и выводы в отчёте, критерий §2 выполнен или зафиксирован отказ/open |
+### Move the card
 
-### Перенос карточки
-
-**Через API** (dev-сервер 8010):
+Through the API on port 8010:
 
 ```bash
 curl -s -X PATCH "http://127.0.0.1:8010/projects/<project_id>/boards/<board_id>/cards/<card_id>" \
@@ -92,117 +108,120 @@ curl -s -X PATCH "http://127.0.0.1:8010/projects/<project_id>/boards/<board_id>/
   -d '{"column_id": "running"}'
 ```
 
-Для **done** — то же с `"column_id": "done"`. Перенос в done пополняет очередь done-research.
+Use `{"column_id": "done"}` to finish. Moving to done fills the
+done-research queue.
 
-**Без API** — переставь карточку в нужную ячейку таблицы в `koi-structure/project.md` (колонки `backlog | running | done`), **сохрани файл сразу** — это не опциональный шаг.
+Without the API, move the card row to the appropriate cell in the
+`backlog | running | done` table in `koi-structure/project.md` and save
+immediately.
 
-При старте работы (**обязательно, первым делом**): `backlog` → `running`.  
-При полном завершении (**обязательно, перед ответом**): `running` → `done`.
+## Live panel in the UI
 
-## Live-окно в UI (pull, без стрим-API)
-
-Пока карточка в `running`, на карте у метода есть 🔍. UI читает файлы с диска — агент **курирует**, что туда попадает:
-
-В **description карточки** или в **отчёте** (в начале текста), опционально:
+While a card is running, the method map shows a live inspector. The UI reads
+files from disk; the agent curates the displayed fields. Add optional lines to
+the card description or report header:
 
 ```text
 live_log: projectcode/runs/train.log
 metrics_dir: projectcode/runs/plots
-live_note: эпоха 3, loss 0.38
+live_note: epoch 3, loss 0.38
 compute_cost: wall_h=2.4; gpu_h=4.8; n_gpus=2; until=SMA SR≥0.8; source=measured
 ```
 
-Пути — от корня репозитория проекта (`code_root` в `project.md`) или соседнего каталога с кодом эксперимента.
+Paths are relative to the project repository root (`code_root` in project.md)
+or its sibling experiment-code directory.
 
-| Когда | Что писать агенту |
-|-------|-------------------|
-| Старт remote job | `live_log:` на tail-лог; `live_note:` одной строкой; в лог job — ISO `started_at` + `n_gpus` |
-| Веха (epoch, ошибка) | обновить `live_note:` и/или `[x]` подзадачу |
-| Появились графики | `metrics_dir:` или скопировать png в `reports/.../assets/` |
-| Финиш GPU/train job | посчитать wall/GPU-h и **опционально** дописать `compute_cost:` в шапку отчёта (см. ниже) |
-| Финиш карточки | `running` → `done`; live-строки можно убрать; `compute_cost:` оставить |
+| Moment | Update |
+|--------|--------|
+| Start remote job | Point `live_log:` at the tailed log; add one-line `live_note:`; write ISO `started_at` + `n_gpus` to job state |
+| Milestone/error | Update `live_note:` and/or check a completed task |
+| Plots appear | Set `metrics_dir:` or copy PNG files to `reports/.../assets/` |
+| GPU/training job finishes | Calculate wall/GPU hours and optionally add `compute_cost:` |
+| Card finishes | Move to done; live fields may be removed; retain `compute_cost:` |
 
-Не дублировать весь stderr — только осмысленные обновления.
+Do not duplicate all stderr; provide meaningful updates only.
 
-### `compute_cost:` (опционально)
+### Optional `compute_cost:`
 
-Строка **не обязательна**: analysis / literature / карточки без train — просто не пиши её. UI показывает чип на канбане и бейдж в углу отчёта только если строка есть.
-
-Формат (ключи через `;`, все опциональны, нужен хотя бы `wall_h` или `gpu_h`):
+Do not add this line for analysis, literature, or non-training cards. The UI
+shows a kanban chip and report badge only when it exists.
 
 ```text
-compute_cost: wall_h=<часы>; gpu_h=<часы>; n_gpus=<N>; until=<веха>; source=measured|estimated|recovered
+compute_cost: wall_h=<hours>; gpu_h=<hours>; n_gpus=<N>; until=<milestone>; source=measured|estimated|recovered
 ```
 
-- `wall_h` — календарные часы измеренного отрезка (весь job или до порога метрики).
-- `gpu_h` — обычно `wall_h × n_gpus` при эксклюзивных GPU; иначе по факту.
-- `until` — веха («SMA SR≥0.8», «budget 300 updates»); пробелы ок при `;`.
-- `source=recovered` — восстановлено из старых логов; `estimated` — грубая оценка.
+At least `wall_h` or `gpu_h` is required; all other keys are optional.
 
-При старте job пиши в лог/state: `started_at` (ISO UTC) и `n_gpus`. На финише: `finished_at` или timestamp достижения порога → заполни `compute_cost:`.
+- `wall_h`: elapsed hours for the measured segment
+- `gpu_h`: usually `wall_h × n_gpus` for exclusive GPUs, otherwise measured use
+- `until`: milestone such as `SMA SR≥0.8` or `budget 300 updates`
+- `source=recovered`: reconstructed from logs; `estimated`: rough estimate
 
-## Workflow (одна карточка)
+Write `started_at` in ISO UTC and `n_gpus` to log/state at launch. At completion,
+use `finished_at` or the threshold timestamp to fill `compute_cost:`.
 
+## One-card workflow
+
+```text
+1. Find card in project.md (id, board, column)
+2. BLOCKING: backlog → running immediately, before step 3
+3. Read report and card description
+4. For every Section 3 task:
+     do work → immediately [x] → save report
+5. Fill Sections 4/5 or .run.md for ingest
+6. Run koi-report-review critic 4 on results
+7. BLOCKING: running → done after full checklist and report
+8. Run koi-done-research
+9. Run koi-project-sync when needed
 ```
-1. Найти карточку в project.md (id, board, колонка)
-2. БЛОКИРУЮЩИЙ ШАГ: backlog → running в project.md (или API) — сразу, до шага 3
-3. Контекст: прочитать отчёт + описание карточки
-4. Для каждой подзадачи в §3:
-     выполнить работу → сразу [x] → сохранить отчёт (не откладывать галочки)
-5. Заполнить §4+ / §5 (или .run.md для ingest)
-6. koi-report-review на фазу результатов (критик 4)
-7. БЛОКИРУЮЩИЙ ШАГ: running → done в project.md (или API) — когда чеклист §3 полный и отчёт готов
-8. koi-done-research — вывод по карточке
-9. koi-project-sync — при необходимости
-```
 
-### Сохранение отчёта
+### Save the report
 
-- **Файл на диске** — прямая правка `koi-structure/reports/.../*.md`.
-- **API**:
+Edit `koi-structure/reports/.../*.md` directly, or use:
 
 ```bash
 curl -s -X PUT "http://127.0.0.1:8010/projects/<project_id>/boards/<board_id>/cards/<card_id>/report" \
   -H "Content-Type: application/json" \
-  -d '{"content": "<полный markdown отчёта>"}'
+  -d '{"content": "<complete report Markdown>"}'
 ```
 
-После каждого значимого прогресса (отмеченная подзадача, новый §4) — сохраняй. Пользователь в UI видит галочки в превью отчёта.
+Save after every meaningful change. The UI report preview then shows current
+checkboxes and results.
 
-### Ingest / гипотеза
+### Ingest a hypothesis
 
-Если нужна автоинтеграция в БЗ:
+For automatic knowledge integration:
 
 ```bash
 python -m koi.projects.report_ingest.cli <project_id> <card_id>
-# или после ручного .run.md:
+# or after a manual .run.md:
 python -m koi.projects.report_ingest.cli <project_id> <card_id> --ingest-only
 ```
 
-Ingest сам переносит карточку в done — но **до ingest** подзадачи в публичном отчёте уже должны быть `[x]`, иначе канбан и отчёт разъедутся.
+Ingest moves the card to done itself, but public-report tasks must already be
+`[x]` so report and kanban do not diverge.
 
-## Чеклист перед ответом пользователю
+## Checklist before replying
 
-- [ ] Карточка была перенесена в `running` **в начале** работы (если стартовала из `backlog`)
-- [ ] В §3 отмечены все выполненные подзадачи (`[x]`)
-- [ ] Отчёт сохранён (файл или API)
-- [ ] В `project.md` колонка канбана соответствует факту (`running` во время работы; `done` при завершении)
-- [ ] При `done` — запущен или запланирован **koi-done-research**
+- [ ] Card moved to `running` at the beginning if it started in backlog
+- [ ] Every completed Section 3 task is `[x]`
+- [ ] Report is saved through file or API
+- [ ] Kanban column in `project.md` matches reality
+- [ ] At done, **koi-done-research** has run or is scheduled
 
-## Длинные / remote-эксперименты
+## Long or remote experiments
 
-При фразе «проведи системное исследование» / «автоисследование» / ролях
-руководитель–исследователь–дебаггер — **koi-card-autoresearch** (протокол ролей
-и cadence). Канбан, §3 и отчёт по-прежнему ведёт **koi-execute-card**.
+For “systematic research,” “autoresearch,” or Manager/Researcher/Debugger roles,
+use **koi-card-autoresearch**. Kanban, Section 3, and report still follow this
+skill.
 
-Для запуска job / sysmon / remote-скриптов дополнительно проверь
-**project-specific skill** в `/.cursor/skills/` (корень репозитория, не
-`ReseachOS/.cursor/skills/`), например `verl-experiment-run` для verl/CrafText.
+Also inspect project-specific skills under `/.cursor/skills/` in the project
+root for job, sysmon, or remote scripts, such as `verl-experiment-run`.
 
-## Связанные скиллы
+## Related skills
 
-- **koi-card-autoresearch** — длинный прогон: Manager / Researcher / Debugger
-- **koi-report-review** — качество отчёта и подзадач (критик 3)
-- **koi-done-research** — после done: question/narrative в research.json
-- **koi-prose-style** — человекочитаемые формулировки в отчёте
-- **koi-project-sync** — commit/push `projects/` после значимых изменений
+- **koi-card-autoresearch** — long Manager / Researcher / Debugger runs
+- **koi-report-review** — report and task quality
+- **koi-done-research** — question/narrative after done
+- **koi-prose-style** — readable report prose
+- **koi-project-sync** — commit/push project changes

@@ -1,55 +1,37 @@
 # Related Work
 
-<p class="lead">Отдельная страница литературы: коллекция статей (поиск, Zotero, CSV), вопрос исследователя, кластеризация ответов и черновик Related Works. Результаты лежат в <code>koi-structure/literature/</code>; агент будится через Literature Inbox.</p>
+<p class="lead">A literature workspace for search, Zotero, or CSV collections; a research question; clustered analysis; and a Related Work draft. Results live in <code>koi-structure/literature/</code>, and Literature Inbox wakes the agent.</p>
 
-<div class="media-slot" data-media="related-work-hero" data-accept="png,jpg,webp,mp4,webm">
-  <strong>Слот для картинки или видео</strong>
-  Положите файл в <code>media/related-work-hero.png</code> (или <code>.jpg</code> / <code>.webp</code> / <code>.mp4</code> / <code>.webm</code>).
-</div>
+<div class="media-slot" data-media="related-work-hero" data-accept="png,jpg,webp,mp4,webm"><p>Media: Related Work</p></div>
 
-## Как работает
+## How it works
 
-Вход с главной рабочей области — пункт **RelatedWork** (открывает <code>literature.html</code>, можно с <code>?project=…</code>).
+Open **RelatedWork** from the workspace. Collections can come from keyword/arXiv search, a Zotero user and collection, or a local CSV.
 
-Три источника коллекции:
+1. Collect and select papers.
+2. Enter a research question.
+3. Start prompt analysis or clustering; agents read selected texts relative to the question.
+4. Review clusters, findings, and the Related Work draft.
+5. Access run history through `literature/index.json` and **Past questions**.
 
-| Источник | Что делает |
-|----------|------------|
-| Найти | поиск (в т.ч. arXiv / настройки режима поиска) по ключевым словам |
-| Zotero | подключение user id + API key, выбор коллекции |
-| CSV | загрузка локальной таблицы статей |
+The multi-agent clustering workflow assigns non-overlapping papers to 3–4 workers, exchanges similarity judgments, builds clusters and a draft, then runs critic and editor passes. Each run stores `report.md` and `related_work.md`.
 
-Дальше типичный цикл:
+The shorter UI queue writes `.run/related-work-queue.json`; `koi-related-work` claims the task, writes 2–5 paragraphs using only prompt/cluster facts, and returns Markdown to the page. Article morphology is a separate single-paper claim-graph tool and does not replace collection analysis.
 
-1. Собрать и отметить статьи слева.
-2. Задать **исследовательский вопрос** в центре.
-3. Запустить анализ (промпт / кластеризация) — агенты читают выбранные тексты относительно вопроса.
-4. Смотреть кластеры, findings, черновик Related Works справа / в панелях.
-5. История прогонов — в <code>literature/index.json</code> и по ссылке «Прошлые вопросы».
+## How people use the interface
 
-Мультиагентная кластеризация (скилл orchestrator): 3–4 агента-работника без пересечения статей → обмен суждениями о похожести → оркестратор собирает кластеры и черновик Related Work → критик и правщик → <code>report.md</code> и <code>related_work.md</code> в каталоге прогона.
+1. Open RelatedWork and select a project if needed.
+2. For an empty collection, choose Search, Zotero, or CSV; then select all/reset or add more.
+3. Enter a question and start analysis. Bootstrap **ResearchOS Literature Inbox** once and mark it ready.
+4. Watch agent status and the timer, then inspect reports, findings, and clusters.
+5. Search settings choose internet/library mode and store Zotero credentials.
 
-Короткая очередь UI → Markdown Related Works: кнопка Related Work ставит задачу в <code>.run/related-work-queue.json</code>; скилл <code>koi-related-work</code> делает claim → пишет 2–5 абзацев только по фактам из промпта → <code>answer</code> возвращает текст на страницу.
+## Agent workflows
 
-Разбор **одной** статьи как графа утверждений (морфология) — соседний инструмент (<code>morphology.html</code>), часто из карточки статьи; к Related Work по коллекции не подменяет.
-
-## Как человек работает в интерфейсе
-
-1. С workspace: клик **RelatedWork** в доке (или прямой URL). Выберите проект в селекте, если нужно.
-2. Пустая коллекция: три кнопки Найти / Zotero / CSV. После загрузки — список, «Все» / «Сброс», «+» для добавления ещё.
-3. Введите вопрос → «Промпт» (или связанный запуск кластеризации — по текущему UI сценарию). Настройте Inbox литературы один раз: скопировать bootstrap → чат **ResearchOS Literature Inbox** → «Inbox готов».
-4. Пока агент работает — статус «Агент работает» / таймер. Появление отчёта и Related Works — в колонке insights / панелях просмотра.
-5. Навигация по кластерам слева; настройки поиска (шестерёнка) — режим internet/library, ключи Zotero.
-6. «←» к проекту возвращает в <code>index.html</code>.
-
-## Какие сценарии для агента подключаются
-
-| Сценарий (skill) | Роль |
-|------------------|------|
-| <code>literature-cluster-orchestrator</code> | Полный прогон: работники → таблица похожести → кластеры → Related Work + критик → файлы в <code>literature/&lt;run_id&gt;/</code>. |
-| <code>koi-related-work</code> | Очередь из UI: короткий синтез Related Works в Markdown обратно на страницу. |
-| Literature Inbox | <code>koi.related_work.inbox_cli</code>, wake <code>RELATED_WORK_WAKE</code> в <code>.run/logs/related-work-watch.log</code>. |
-| Article morphology (внешний скилл / <code>morphology.html</code>) | Граф утверждений одной статьи со ссылками на места в тексте. |
+- `literature-cluster-orchestrator`: workers → similarity table → clusters → Related Work → critic → run files.
+- `koi-related-work`: short UI-queue synthesis returned to the page.
+- Literature Inbox: `koi.related_work.inbox_cli`, wake signal `RELATED_WORK_WAKE`.
+- Article morphology: external workflow and `morphology.html` for one paper.
 
 ```bash
 python -m koi.related_work.cli pending
@@ -59,16 +41,14 @@ python -m koi.related_work.cli answer <queue_id> -f related-work.md
 python -m koi.related_work.inbox_cli watch
 ```
 
-## Как устроено технически
-
-### Хранение прогонов
+## Technical details and limits
 
 ```text
 koi-structure/literature/
-  index.json                 # история run_id
-  <run_id>/                  # {query_hash}_{UTC}
+  index.json
+  <run_id>/
     index.json
-    report.md                # основной рендер в UI
+    report.md
     findings.json
     similarity.json
     related_work.draft.md
@@ -77,25 +57,6 @@ koi-structure/literature/
     workers/…
 ```
 
-<code>query_hash</code> — отпечаток вопроса; <code>run_id</code> уникален на каждый запуск.
+The client is `web/literature.html` plus `web/literature.js`; queue code is `koi/related_work/`. Settings use `koi-rw-settings` in localStorage. Clustering requires selected papers and a question. Queue synthesis must not invent papers, and PDF/full-text availability depends on downloaded or attached library material.
 
-### Клиент и очереди
-
-Страница: <code>web/literature.html</code> + <code>web/literature.js</code>. Связь с проектом с главной: <code>btn-related-work</code> в <code>web/app.js</code>. Очередь Related Work: пакет <code>koi/related_work/</code>. Морфология: <code>web/morphology.html</code> (+ JS рядом).
-
-Настройки RW в <code>localStorage</code> (<code>koi-rw-settings</code>): режим поиска, Zotero.
-
-### Ограничения
-
-- Без выбранных статей и вопроса кластеризация не стартует.
-- Related Works из очереди не выдумывает статьи — только материал промпта/кластеров.
-- PDF и полные тексты зависят от того, что удалось скачать/приложить к записи библиотеки.
-
-## Связанные страницы
-
-- <a href="chat.html">Research Chat</a> (тот же Inbox-паттерн, другая очередь)
-- <a href="knowledge.html">База знаний</a>
-- <a href="index.html">Обзор архитектуры</a>
-- <a href="paper.html">PaperDraft</a>
-
-<p class="callout">Текст: <code>content/related-work.md</code>. Медиа: <code>media/related-work-hero.*</code>.</p>
+Related: [Research Chat](chat.html) · [Knowledge base](knowledge.html) · [Architecture](index.html) · [PaperDraft](paper.html)

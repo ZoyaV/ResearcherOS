@@ -1,172 +1,202 @@
-# <Название карточки как в канбане>
+# <Card title exactly as shown on the kanban board>
 
-> HOW-TODO (шапка): Статус синхронизировать с колонкой канбана (backlog → running → done). Одна строка «что блокирует закрытие» — если карточка не done. Без жирного — см. [report-rules.md](report-rules.md). После GPU/train-прогона опционально: `compute_cost: wall_h=2.4; gpu_h=4.8; n_gpus=2; until=SMA SR≥0.8` (чип на канбане; analysis/literature — не писать).
+> HOW-TO (header): Keep Status synchronized with the kanban column (backlog →
+> running → done). If the card is not done, add one line describing what blocks
+> completion. Do not use bold; see [report-rules.md](report-rules.md). After a
+> GPU/training run, optionally add
+> `compute_cost: wall_h=2.4; gpu_h=4.8; n_gpus=2; until=SMA SR≥0.8` (shown as a
+> kanban chip). Omit it for analysis or literature work.
 
-Статус: запланирован  
-Канбан: `kb-…`  
-Зависимости: `kb-…` (…) → эта карточка → `kb-…`
-
----
-
-## 1. Описание эксперимента и зачем
-
-> HOW-TODO: Сначала зачем, потом как измеряем (§2), потом план (§3), потом прогоны (§4+). Тон — от лица команды, текст для статьи: без `*.json` и локальных путей — только публичные имена (см. [no-ai-report-rules.md](../no-ai-report-rules.md)). Не смешивать с метриками.
-
-Цель: …
-
-> HOW-TODO (цель): одно измеримое изменение («mean diversity ≥ 1.78»), не название метода («провести SFT»).
-
-Зачем в гипотезе: …
-
-> HOW-TODO (гипотеза): 1–2 предложения — узел дерева, что передаём в `kb-…`.
-
-Что не является целью: …
-
-> HOW-TODO (границы): 2–4 пункта — что этот прогон не доказывает.
+Status: planned
+Kanban: `kb-…`
+Dependencies: `kb-…` (…) → this card → `kb-…`
 
 ---
 
-## 2. Основная метрика (финальный тест)
+## 1. Experiment description and rationale
 
-> HOW-TODO: Один главный критерий закрытия карточки в done. Явно перечислить, что не входит в финальный тест.
+> HOW-TO: Explain why first, then measurement (Section 2), plan (Section 3), and
+> runs (Sections 4+). Write in the team's voice and in paper-ready prose: no
+> `*.json` or local paths, only public names (see
+> [no-ai-report-rules.md](../no-ai-report-rules.md)). Do not mix in metrics.
 
-### Определение
+Goal: …
 
-| Параметр | Значение |
-|----------|----------|
-| Метрика | … |
-| Агрегация | … |
-| Протокол | публичные имена выборок, N, temperature, seed |
-| Бейзлайн | base / предыдущий чекпоинт |
-| Скрипт / артефакты | пути к логам, jsonl, summary |
+> HOW-TO (goal): State one measurable change (for example, `mean diversity ≥
+> 1.78`), not the name of an activity such as “run SFT.”
 
-> HOW-TODO (§2): в prose и «Протокол» — имена для статьи; пути — в «Скрипт / артефакты» или в §3.
+Role in the hypothesis: …
+
+> HOW-TO (hypothesis): In 1–2 sentences, name the tree node and what this card
+> passes to `kb-…`.
+
+Out of scope: …
+
+> HOW-TO (boundaries): Give 2–4 points describing what this run does not establish.
 
 ---
 
-## 3. Постановки и подготовка
+## 2. Primary metric (final test)
 
-> HOW-TODO: Постановка, TODO и сбор — только в §3. На каждый §4 / §5 — свой §3.x с «Подзадачи». Каждая строка — SMART насколько возможно, но коротко: действие + объект + критерий готово (артефакт / таблица / §N.2). См. [no-ai-report-rules.md](../no-ai-report-rules.md#подзадачи-smart-лаконично). Не интерпретация, не «улучшить модель».
+> HOW-TO: Define one primary criterion for moving the card to done. Explicitly
+> list what is excluded from the final test.
 
-### 3.1 <Масштаб или вариант A> → §4
+### Definition
 
-> HOW-TODO: заголовок `###` — смысл («мини-пилот на fails»), не slug файла. Публичные имена вводятся здесь; если нет — придумать или спросить автора.
+| Parameter | Value |
+|-----------|-------|
+| Metric | … |
+| Aggregation | … |
+| Protocol | public dataset names, N, temperature, seed |
+| Baseline | base / previous checkpoint |
+| Script / artifacts | paths to logs, jsonl, summary |
 
-Кратко: …
+> HOW-TO (Section 2): Use paper-facing names in prose and Protocol. Put paths only
+> in Script / artifacts or Section 3.
 
-- Используемые данные: <публичное имя> — описание; локально `путь.json`, N items, pool/фильтр
-- Используемая модель: `Qwen/…`, LoRA rank, эпохи
-- Обучение / скрипт: `run_….sh`, run id `…-20260520-…`
-- Отличие от предыдущего прогона: одна строка
-- Статус: запланирован → [§4](#4-эксперимент-1--короткое-имя)
+---
 
-Подзадачи:
+## 3. Setup and preparation
 
-- [ ] На <публичное имя выборки>: <что именно измерить/сгенерировать, с какими N или эпохами> → артефакт с числами (лок.: `run_….sh`, `….json`)
-- [ ] В [§4.1](#41-результаты): табл. A — <что в строках/столбцах>; при необходимости табл. B (протокол §2)
-- [ ] В [§4.2](#42-выводы): <вопрос, на который отвечаем этим прогоном>, без сравнения с другим прогоном, если оно в §5
-- [ ] _(если нужно)_ После [§3.2](#32-…): сводное сравнение в §5.1
+> HOW-TO: Setup, TODO items, and collection belong only in Section 3. Every
+> Section 4/5 run needs a corresponding Section 3.x with Tasks. Make each line as
+> SMART as practical but concise: action + object + completion artifact/table/
+> Section N.2. See
+> [no-ai-report-rules.md](../no-ai-report-rules.md#subtasks-smart-and-concise).
+> Do not write interpretations or vague goals such as “improve the model.”
 
-#### Сбор данных
+### 3.1 <Scale or variant A> → Section 4
 
-> HOW-TODO: prose с числами (collect, augment, объёмы train) или «collect не было; …». Пути `json`/`parquet` — здесь. Не смешивать с таблицами качества чекпоинта (это §4.1).
+> HOW-TO: Use a meaningful `###` title such as “mini-pilot on failures,” not a
+> file slug. Introduce public names here; if none exist, create them or ask the
+> author.
+
+Summary: …
+
+- Data used: <public dataset name> — description; local `path.json`, N items, pool/filter
+- Model used: `Qwen/…`, LoRA rank, epochs
+- Training / script: `run_….sh`, run id `…-20260520-…`
+- Difference from the previous run: one line
+- Status: planned → [Section 4](#4-experiment-1--short-descriptive-name)
+
+Tasks:
+
+- [ ] On <public dataset name>, <what to measure/generate and with what N or epoch count> → numeric artifact (local: `run_….sh`, `….json`)
+- [ ] In [Section 4.1](#41-results), table A — <rows/columns>; table B if needed (Section 2 protocol)
+- [ ] In [Section 4.2](#42-conclusions), answer <question addressed by this run>, without comparing another run if that comparison belongs in Section 5
+- [ ] _(if needed)_ After [Section 3.2](#32-), provide an aggregate comparison in Section 5.1
+
+#### Data collection
+
+> HOW-TO: Describe collection, augmentation, and training volume with numbers, or
+> state “no collection; …”. Put `json`/`parquet` paths here. Do not mix in
+> checkpoint-quality tables; those belong in Section 4.1.
 
 …
 
 ```bash
-# команды запуска / collect, если воспроизводимо
+# launch / collection commands, when reproducible
 ```
 
-### 3.2 <Масштаб или вариант B> → §5 _(опционально)_
+### 3.2 <Scale or variant B> → Section 5 _(optional)_
 
-> HOW-TODO: у каждого §3.x обязательны поля, «Подзадачи» и «Сбор данных» — не только у первого прогона.
+> HOW-TO: Every Section 3.x must include the fields, Tasks, and Data collection —
+> not only the first run.
 
-Кратко: …
+Summary: …
 
-- Используемые данные: …
-- Используемая модель: …
-- Обучение / скрипт: …
-- Отличие от §3.1: …
-- Статус: запланирован → [§5](#5-эксперимент-2--короткое-имя)
+- Data used: …
+- Model used: …
+- Training / script: …
+- Difference from Section 3.1: …
+- Status: planned → [Section 5](#5-experiment-2--short-descriptive-name)
 
-Подзадачи:
+Tasks:
 
-- [ ] … _(смысл без контекста репо; лок.: в скобках в конце)_
-- [ ] В [§5.1](#51-результаты): <какие таблицы, что сравниваем>; в [§5.2](#52-выводы): <вопрос карточки из §1>
+- [ ] … _(self-contained description; add local context in parentheses at the end)_
+- [ ] In [Section 5.1](#51-results), specify tables and comparisons; in [Section 5.2](#52-conclusions), answer the card question from Section 1
 
-#### Сбор данных
+#### Data collection
 
 …
 
 ```bash
-# при необходимости
+# when needed
 ```
 
-### 3.3 Критерий завершения карточки
+### 3.3 Card completion criterion
 
-> HOW-TODO: проверяемый чеклист + таблица «проверка → результат». Какой чекпоинт уходит в следующую карточку.
+> HOW-TO: Provide a verifiable checklist and a check → result table. State which
+> checkpoint proceeds to the next card.
 
-| Проверка | Результат |
-|----------|-----------|
-| … | _(после прогона)_ |
+| Check | Result |
+|-------|--------|
+| … | _(after the run)_ |
 
 ---
 
-## 4. Эксперимент 1 — <короткое имя по смыслу>
+## 4. Experiment 1 — <short descriptive name>
 
-> HOW-TODO: только проведение прогона — таблицы и выводы. Постановка и сбор — [§3.1](#31-масштаб-или-вариант-a--4). Заголовок `##` без slug датасета и run id.
+> HOW-TO: This section contains only run results and conclusions. Setup and data
+> collection belong in [Section 3.1](#31-scale-or-variant-a--section-4). The `##`
+> heading must not contain a dataset slug or run id.
 
-### 4.1 Результаты
+### 4.1 Results
 
-> HOW-TODO: таблицы без выводов между ними. (1) таблица A — финальный протокол §2; (2) B, C — диагностика. `Протокол:` — публичные имена, не файлы. Артефакты с путями — в конце подраздела.
+> HOW-TO: Do not place conclusions between tables. Table A is the final Section 2
+> protocol; B and C are diagnostics. Protocol uses public names, not files. Put
+> artifact paths at the end of the subsection.
 
-#### Таблица A. …
+#### Table A. …
 
-Протокол: §2, …
+Protocol: Section 2, …
 
 | model | mean | … |
 |-------|------|---|
 
-#### Таблица B. … _(диагностика, опционально)_
+#### Table B. … _(diagnostic, optional)_
 
-Протокол: … ; не финальный тест.
+Protocol: … ; not the final test.
 
 | … | … |
 
-Артефакты: `…`
+Artifacts: `…`
 
-### 4.2 Выводы
+### 4.2 Conclusions
 
-> HOW-TODO: текст для статьи; «Из таблицы A/B/C» + «Общий вывод». Статус прогона, `global_step_…` для канбана.
+> HOW-TO: Write paper-ready prose: “Table A/B/C shows …” followed by an overall
+> conclusion. Include run status and `global_step_…` for the kanban.
 
-Из таблицы A: …
+From Table A: …
 
-Общий вывод: …
+Overall conclusion: …
 
-Статус прогона: … Чекпоинт для следующего шага: `global_step_…`
-
----
-
-## 5. Эксперимент 2 — <короткое имя> _(опционально)_
-
-> HOW-TODO: постановка и сбор — §3.2; здесь только §5.1 Результаты и §5.2 Выводы.
-
-### 5.1 Результаты
-
-_(после прогона — таблица A, затем диагностика)_
-
-### 5.2 Выводы
-
-_(после прогона)_
+Run status: … Checkpoint for the next step: `global_step_…`
 
 ---
 
-## Приложение _(опционально)_
+## 5. Experiment 2 — <short descriptive name> _(optional)_
 
-> HOW-TODO: сырые таблицы, per-prompt jsonl, полные пути — здесь. В §4.1 / §5.1 — агрегаты.
+> HOW-TO: Setup and collection are in Section 3.2; this section contains only
+> Section 5.1 Results and Section 5.2 Conclusions.
+
+### 5.1 Results
+
+_(after the run: table A, then diagnostics)_
+
+### 5.2 Conclusions
+
+_(after the run)_
+
+---
+
+## Appendix _(optional)_
+
+> HOW-TO: Put raw tables, per-prompt jsonl, and full paths here. Sections 4.1 and
+> 5.1 contain aggregate results.
 
 <details>
-<summary>Детализация / сырые таблицы</summary>
+<summary>Detailed / raw tables</summary>
 
 …
 

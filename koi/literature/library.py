@@ -129,7 +129,7 @@ ARXIV_QUERY_STOPWORDS = STOPWORDS | {
     "your",
 }
 
-# Слишком общие для arXiv — без пары с доменными терминами тянут нерелевантные статьи.
+# Too broad for arXiv; without domain terms they attract irrelevant papers.
 ARXIV_QUERY_WEAK_TERMS = {
     "approach",
     "based",

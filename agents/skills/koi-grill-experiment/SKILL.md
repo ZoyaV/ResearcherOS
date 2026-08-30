@@ -3,124 +3,129 @@ name: koi-grill-experiment
 description: >-
   Relentless one-question-at-a-time interview to design a new KOI experiment
   before any run: hypothesis, setup, implementation, plots/tables, and done
-  criteria — with a recommended answer on every turn. Use when the user asks
-  for a new experiment, карточку канбана, гипотезу, постановку эксперимента,
-  or mentions «grill», «прогрели план», «спроектируй эксперимент».
+  criteria, with a recommended answer on every turn. Use when the user asks for
+  a new experiment, kanban card, hypothesis, experiment setup, or says “grill,”
+  “pressure-test the plan,” or “design the experiment.”
 ---
 
-# KOI: grill эксперимента
+# KOI: grill an experiment
 
-Интервью по образцу [grill-me](https://www.aihero.dev/skills-grill-me) (Matt Pocock):
-не соглашаться с черновиком, а **дожать постановку до общего понимания** до
-запуска, карточки в done или правки кода.
+This interview follows [grill-me](https://www.aihero.dev/skills-grill-me) by
+Matt Pocock: do not accept a rough idea; **push the setup to shared
+understanding** before a run, moving a card to done, or editing code.
 
-Это **планирование**, не выполнение. После сессии — черновик отчёта §1–§3
-(или `hypothesis-spec.md`), карточка в канбане; прогон — **koi-execute-card**.
+This is **planning**, not execution. The output is a draft report covering
+Sections 1–3 (or `hypothesis-spec.md`) and a kanban card. Use
+**koi-execute-card** for the actual run.
 
-## Когда запускать
+## When to run
 
-1. «Новый эксперимент / карточка / гипотеза» — с нуля или из одной фразы.
-2. «Спроектируй / прогрей постановку» — есть идея, но нет §2, подзадач или порога.
-3. Перед **koi-report-review** — если §1–§3 сырые и решения не зафиксированы.
-4. Пользователь явно просит grill / «задавай вопросы по одному».
+1. A new experiment, card, or hypothesis starting from scratch or one sentence.
+2. The user asks to design or pressure-test a setup that lacks a Section 2
+   metric, tasks, or threshold.
+3. Before **koi-report-review** when Sections 1–3 are still vague.
+4. The user explicitly requests a grill or one-question-at-a-time interview.
 
-**Не** запускать, если карточка уже в `running`/`done` и нужен только прогон —
-тогда **koi-execute-card**.
+Do not run it when a card is already `running` or `done` and only execution is
+needed; use **koi-execute-card**.
 
-## Правила интервью (как grill-me)
+## Interview rules
 
-1. **Один вопрос за ход.** Никогда не списком из 5–20 пунктов.
-2. **Рекомендуемый ответ** к каждому вопросу: позиция + одно предложение «почему».
-   Пользователь может сказать «да», поправить или «другой вариант».
-3. **Сначала код и проект.** Если ответ в репозитории — прочитай `project.md`,
-   `KNOWLEDGE.md`, `research.json`, соседние отчёты, скрипты; **не спрашивай**
-   то, что уже видно в коде. Сформулируй находку и попроси подтвердить.
-4. **Дерево решений — в глубину.** Закрой ветку, потом следующую. Зависимость
-   (метрика ← claim ← узел гипотезы) — спрашивай родителя раньше потомка.
-5. **Не начинай прогон** и не переноси карточку в `running`, пока не закрыты
-   ветки A–G ниже (или явный open с причиной).
-6. **Pushback.** Если claim нефalsifiable, порог «после прогона решим» или нет
-   контроля — оспорь и предложи исправление.
+1. **One question per turn.** Never send a list of 5–20 questions.
+2. Give a **recommended answer** to every question: a position and one sentence
+   explaining why. The user may accept, correct, or choose another option.
+3. **Inspect code and project first.** Read `project.md`, `KNOWLEDGE.md`,
+   `research.json`, nearby reports, and scripts instead of asking what the
+   repository already shows. State the finding and ask for confirmation.
+4. Explore the decision tree depth-first. Close one branch before another and
+   ask dependency parents before children (metric ← claim ← hypothesis node).
+5. Do not start the run or move the card to `running` until branches A–G are
+   closed, or explicitly recorded open with a reason.
+6. Push back on unfalsifiable claims, post-hoc thresholds, and missing controls;
+   recommend a concrete repair.
 
-Формат хода:
+Turn format:
 
 ```text
-Q[i]/[~N]: <вопрос>
+Q[i]/[~N]: <question>
 
-Рекомендация: <ответ> — <краткое обоснование>.
+Recommendation: <answer> — <brief rationale>.
 
-(Или: посмотрел <файл/отчёт>: <находка>. Подтверждаешь?)
+(Or: I inspected <file/report> and found <finding>. Confirm?)
 ```
 
-Дождись ответа пользователя. Не генерируй Q[i+1] в том же сообщении.
+Wait for the user's answer. Do not include Q[i+1] in the same message.
 
-## Дерево веток (обязательный охват)
+## Required decision branches
 
-Порядок — по зависимостям; детали в [experiment-tree.md](experiment-tree.md).
+Follow dependency order; see [experiment-tree.md](experiment-tree.md).
 
-| Ветка | Тема | Куда попадает в артефактах |
-|-------|------|----------------------------|
-| **A** | Контекст: проект, cause-узел, claim, зачем | §1, `hypothesis-spec.md` |
-| **B** | Основная метрика и правило supported/refuted/open | §2, §5.2 в `.run.md` |
-| **C** | Границы: что не доказываем, зависимости канбана | §1, шапка отчёta |
-| **D** | Реализация: данные, модель, команда, бюджет, seeds | §3.x, «Сбор данных» |
-| **E** | Таблицы и графики для §4.1 / §5.1 | подзадачи §3, заголовки таблиц |
-| **F** | SMART-подзадачи и критерий закрытия карточки | §3 «Подзадачи», §3.3 |
-| **G** | Карточка канбана: id, board, колонка `backlog` | `project.md` |
+| Branch | Topic | Artifact destination |
+|--------|-------|----------------------|
+| **A** | Context: project, cause node, claim, rationale | Section 1, `hypothesis-spec.md` |
+| **B** | Primary metric and supported/refuted/open rule | Section 2, `.run.md` Section 5.2 |
+| **C** | Boundaries and kanban dependencies | Section 1, report header |
+| **D** | Implementation: data, model, command, budget, seeds | Section 3.x, Data collection |
+| **E** | Tables and plots for Sections 4.1/5.1 | Section 3 tasks and table titles |
+| **F** | SMART tasks and card completion criterion | Section 3 Tasks and 3.3 |
+| **G** | Kanban card id, board, and `backlog` column | `project.md` |
 
-Пропуск ветки — только если пользователь явно сказал «не нужно»; зафиксируй в итоге.
+Skip a branch only when the user explicitly says it is unnecessary; record the
+skip in the final summary.
 
-## Старт сессии
+## Start the session
 
-1. Определи `project_id` (из cwd, `projects/`, или спроси одним вопросом).
-2. Прочитай `koi-structure/project.md`, `KNOWLEDGE.md` / `research.json` —
-   что уже известно про метод и соседние карточки.
-3. Кратко перескажи, что понял из контекста (2–4 предложения).
-4. Задай **Q1** по ветке A (или по самой блокирующей неясности).
+1. Determine `project_id` from cwd or `projects/`, or ask one question.
+2. Read `koi-structure/project.md`, `KNOWLEDGE.md`, and `research.json` to learn
+   what is known about the method and adjacent cards.
+3. Summarize the context in 2–4 sentences.
+4. Ask Q1 from branch A or the most blocking uncertainty.
 
-Если пользователь дал только «хочу проверить X» — первый вопрос про **claim**
-(направление эффекта, не «изучить X»).
+If the user only says “I want to test X,” ask first for the directional claim,
+not a vague request to study X.
 
-## Завершение сессии
+## End the session
 
-Когда все нужные ветки закрыты, выдай **без новых вопросов**:
+When all required branches are closed, provide **without further questions**:
 
-1. **Резюме решений** — таблица: решение | зафиксированное значение.
-2. **Черновик артефактов** (не финальный файл, пока пользователь не попросит записать):
-   - §1–§3 по [`../koi-report-review/report-skeleton.md`](../koi-report-review/report-skeleton.md)
-     **или** заполненный [`../koi-execute-card/hypothesis-spec.md`](../koi-execute-card/hypothesis-spec.md);
-   - перечень таблиц/графиков (имя → строки/столбцы → протокол);
-   - правило §2 и пороги supported/refuted/open **до прогона**.
-3. **Следующий шаг** — что сделать явно:
-   - записать отчёт и завести карточку в `backlog`;
-   - **koi-report-review** (критики 1–3) на §1–§3;
-   - **koi-prose-style** на заголовок карточки / §1, если prose сырой.
+1. A decision-summary table: decision → recorded value.
+2. Draft artifacts, not final files unless the user asked to write:
+   - Sections 1–3 following
+     [`../koi-report-review/report-skeleton.md`](../koi-report-review/report-skeleton.md),
+     or a completed
+     [`../koi-execute-card/hypothesis-spec.md`](../koi-execute-card/hypothesis-spec.md);
+   - table/plot inventory: name → rows/columns → protocol;
+   - Section 2 supported/refuted/open thresholds fixed **before the run**.
+3. Explicit next steps:
+   - write the report and create the card in `backlog`;
+   - run **koi-report-review** critics 1–3 on Sections 1–3;
+   - run **koi-prose-style** on the card title and Section 1 when prose is rough.
 
-Карточку в **`running`** не переносить — это делает **koi-execute-card** в начале прогона.
+Do not move the card to `running`; **koi-execute-card** does that when execution
+begins.
 
-## Чеклист перед записью в репозиторий
+## Checklist before writing to the repository
 
-Пользователь просит «запиши / создай карточку» — проверь:
+When the user asks to write or create the card, verify:
 
-- [ ] Claim проверяем, с направлением эффекта
-- [ ] §2: одна основная метрика + пороги supported/refuted/open
-- [ ] §3: у каждого прогона есть «Подзадачи» с критерием готово → артефакт/§N
-- [ ] Таблицы §4.1 названы (A/B/…); графики — путь или `metrics_dir`
-- [ ] Зависимости канбана в шапке отчёта
-- [ ] Карточка в `backlog`, не `running`
+- [ ] Claim is falsifiable and directional
+- [ ] Section 2 has one primary metric and supported/refuted/open thresholds
+- [ ] Every Section 3 run has Tasks with artifact/Section N completion criteria
+- [ ] Section 4.1 tables are named A/B/etc.; plots have a path or `metrics_dir`
+- [ ] Kanban dependencies appear in the report header
+- [ ] Card is in `backlog`, not `running`
 
-После записи — **koi-report-review** (фаза постановки, критики 1+2+3 параллельно).
+After writing, run **koi-report-review** for setup with critics 1+2+3 in parallel.
 
-## Связанные скиллы
+## Related skills
 
-- **koi-report-review** — качество §1–§3 после grill
-- **koi-execute-card** — прогон, галочки §3, `running` → `done`
-- **koi-prose-style** — человекочитаемые формулировки claim и §1
-- **koi-done-research** — только после done, не на этапе планирования
+- **koi-report-review** — Sections 1–3 quality after the grill
+- **koi-execute-card** — execution, Section 3 checkboxes, `running` → `done`
+- **koi-prose-style** — readable claim and Section 1 prose
+- **koi-done-research** — only after done, never during planning
 
-## Образец (grill-me)
+## Origin
 
-Оригинал — минимальный промпт Matt Pocock: «Interview relentlessly… one question
-at a time… provide your recommended answer… explore the codebase first».
-Этот скилл сохраняет дисциплину интервью и переносит ветки на KOI-отчёт,
-гипотезу и канбан ResearchOS.
+Matt Pocock's minimal prompt says to interview relentlessly, ask one question at
+a time, recommend an answer, and inspect the codebase first. This skill keeps
+that discipline and maps the branches to KOI reports, hypotheses, and kanban.

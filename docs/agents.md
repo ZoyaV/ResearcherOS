@@ -1,71 +1,72 @@
-# Агенты в ResearchOS
+# Agents in ResearchOS
 
-ResearchOS рассчитан на выполнение исследовательских задач агентами разных
-сред: Cursor, Codex, Claude и другими. Общие инструкции репозитория находятся в
-[`AGENTS.md`](../AGENTS.md), а содержательные skills — в [`agents/skills/`](../agents/skills/).
+ResearchOS is designed for research tasks performed by agents in different
+environments, including Cursor, Codex, and Claude. Shared repository instructions
+are in [`AGENTS.md`](../AGENTS.md), and substantive skills are in
+[`agents/skills/`](../agents/skills/).
 
-## Layout проектов
+## Project layout
 
 ```text
 workspace/
 ├── ReseachOS/                         # engine
-├── tree/<repo>/koi-structure/         # исследование (ветка koi/research)
-└── <repo>/                            # код (любая ветка)
+├── tree/<repo>/koi-structure/         # research (koi/research branch)
+└── <repo>/                            # code (any branch)
 ```
 
-Установка / миграция: `python -m koi.projects.install_cli install <repo>`.
-Discovery входит в папку `tree` и ищет `*/koi-structure/project.md`.
+Install or migrate with `python -m koi.projects.install_cli install <repo>`.
+Discovery enters the `tree` directory and searches for `*/koi-structure/project.md`.
 
-## Где находится источник правды
+## Sources of truth
 
-| Сущность | Расположение |
+| Entity | Location |
 |---|---|
-| Дерево исследования и канбан | `tree/<repo>/koi-structure/project.md` (legacy: `<repo>/koi-structure/`) |
-| Исследовательские выводы | `…/koi-structure/research.json` |
-| Публичные и рабочие отчёты | `…/koi-structure/reports/` |
-| Курируемые знания | `…/koi-structure/knowledge/*.md` |
-| Генерируемый индекс знаний | `KNOWLEDGE.md`, обновляет `koi/knowledge` |
-| Содержательные agent skills | `agents/skills/` |
+| Research tree and kanban | `tree/<repo>/koi-structure/project.md` (legacy: `<repo>/koi-structure/`) |
+| Research findings | `…/koi-structure/research.json` |
+| Public and working reports | `…/koi-structure/reports/` |
+| Curated knowledge | `…/koi-structure/knowledge/*.md` |
+| Generated knowledge index | `KNOWLEDGE.md`, updated by `koi/knowledge` |
+| Substantive agent skills | `agents/skills/` |
 
 ## Skills
 
-- `koi-project-onboard` — подключить code-репо: диалог + prose + дерево в
-  `tree/<repo>/koi-structure/`; затем `install_cli` (orphan `koi/research`);
-- `koi-grill-experiment` — спроектировать карточку эксперимента до прогона;
-- `koi-execute-card` — выполнить карточку эксперимента;
-- `koi-card-autoresearch` — длинный прогон с ролями Руководитель / Исследователь / Дебаггер;
-- `koi-report-review` — подготовить и проверить отчёт;
-- `koi-done-research` — сформулировать вывод завершённого эксперимента;
-- `koi-agent-chat` — ответить на вопрос из UI;
-- `koi-knowledge-curator` — синтезировать накопленные знания;
-- `koi-paper` и `koi-related-work` — подготовить материалы статьи;
-- `koi-project-sync` — синхронизировать `tree/<repo>/koi-structure` с веткой sync;
-- `koi-prose-style` — проверить человекочитаемый текст.
+- `koi-project-onboard` — attach a code repository through dialog + prose + a tree
+  in `tree/<repo>/koi-structure/`, followed by `install_cli` (orphan `koi/research`);
+- `koi-grill-experiment` — design an experiment card before a run;
+- `koi-execute-card` — execute an experiment card;
+- `koi-card-autoresearch` — run long research with Manager / Researcher / Debugger roles;
+- `koi-report-review` — prepare and review a report;
+- `koi-done-research` — formulate the conclusion of a completed experiment;
+- `koi-agent-chat` — answer a question from the UI;
+- `koi-knowledge-curator` — synthesize accumulated knowledge;
+- `koi-paper` and `koi-related-work` — prepare paper materials;
+- `koi-project-sync` — synchronize `tree/<repo>/koi-structure` with the sync branch;
+- `koi-prose-style` — review human-readable text.
 
-Шаблоны и правила хранятся рядом с тем skill, который их применяет. Отдельного
-глобального каталога стандартов нет.
+Templates and rules live beside the skill that uses them. There is no separate
+global standards directory.
 
 ## Cursor
 
-Локальный `.cursor/` (gitignored) только подключает IDE:
+The local, gitignored `.cursor/` directory only integrates the IDE:
 
-- `.cursor/hooks.json` — скопируй из [`agents/cursor-hooks.json`](../agents/cursor-hooks.json);
-- `.cursor/skills/<name>` — symlink на `agents/skills/<name>` (без копирования).
+- `.cursor/hooks.json` — copy from [`agents/cursor-hooks.json`](../agents/cursor-hooks.json);
+- `.cursor/skills/<name>` — symlink to `agents/skills/<name>` without copying.
 
-Сами hooks лежат рядом со скиллами:
+The hooks themselves live beside the skills:
 
-| Скилл / место | Hooks |
+| Skill / location | Hooks |
 |---|---|
-| `agents/hooks/` | `koi-session-start.sh` (старт API) |
-| `agents/skills/koi-agent-chat/hooks/` | session / stop → очередь UI-чата |
-| `agents/skills/koi-done-research/hooks/` | session / stop → очередь done-research |
+| `agents/hooks/` | `koi-session-start.sh` (starts the API) |
+| `agents/skills/koi-agent-chat/hooks/` | session / stop → UI chat queue |
+| `agents/skills/koi-done-research/hooks/` | session / stop → done-research queue |
 | `agents/skills/koi-project-sync/hooks/` | session / stop → pull / push reminders |
 
-Developer-скиллы продукта (например channel news) остаются только в локальном
-`.cursor/skills/` и в `agents/skills/` не кладутся — см. [`AGENTS.md`](../AGENTS.md).
+Product developer skills, such as channel news, remain only in local
+`.cursor/skills/` and are not placed in `agents/skills/`; see [`AGENTS.md`](../AGENTS.md).
 
-Содержательные skills — в [`agents/skills/`](../agents/skills/).
+Substantive skills are in [`agents/skills/`](../agents/skills/).
 
-Подробнее: [исследовательский workflow](research-workflow.md),
-[доменная модель](domain-model.md), [Inbox](agent-chat-inbox.md),
+Learn more in the [research workflow](research-workflow.md),
+[domain model](domain-model.md), [Inbox guide](agent-chat-inbox.md),
 [ADR-001 discovery](adr-001-project-discovery.md).

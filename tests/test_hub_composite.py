@@ -53,7 +53,7 @@ def _project(project_id: str, problem_title: str, extra_nodes: list | None = Non
 
 
 def test_hub_groups_explicit_and_auto_composite_by_problem_title():
-    problem = "Проблема обучения LLM принятию решений в OOD средах"
+    problem = "Training LLMs to make decisions in OOD environments"
     talking = _project(
         "talking-heads",
         problem,
@@ -107,8 +107,8 @@ def test_hub_composites_include_member_programs():
     problem = "Shared problem"
     prog = [
         {
-            "id": "мультимодальное-обучение-с-подкреплением",
-            "title": "Мультимодальное обучение с подкреплением",
+            "id": "multimodal-reinforcement-learning",
+            "title": "Multimodal reinforcement learning",
             "description": "",
         }
     ]
@@ -119,4 +119,4 @@ def test_hub_composites_include_member_programs():
         (_hub("b", composite_id="shared", programs=prog), b),
     ]
     summaries = list_hub_composites(members)
-    assert summaries[0]["programs"] == ["мультимодальное-обучение-с-подкреплением"]
+    assert summaries[0]["programs"] == ["multimodal-reinforcement-learning"]

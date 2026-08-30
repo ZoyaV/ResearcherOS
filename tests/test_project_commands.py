@@ -182,7 +182,7 @@ def test_create_card_coordinates_domain_persistence_and_report(
     assert command_context["saved_projects"] == [project]
     assert command_context["reports"][0][2] == card.id
     assert command_context["sync"] == [
-        ("demo", "kanban_updated", "новая карточка: Card C")
+        ("demo", "kanban_updated", "new card: Card C")
     ]
 
 
@@ -241,7 +241,7 @@ def test_replace_project_rebuilds_snapshot_and_enqueues_sync(
     assert result.boards[0].cards[0].title == "New card"
     assert command_context["saved_projects"] == [result]
     assert command_context["sync"] == [
-        ("demo", "project_saved", "полное сохранение проекта из UI")
+        ("demo", "project_saved", "full project save from UI")
     ]
 
 
@@ -294,7 +294,7 @@ def test_suggest_board_dependencies_applies_persists_and_enqueues_sync(
     assert result.applied == 1
     assert command_context["updated_boards"] == [(project, project.boards[0])]
     assert command_context["sync"] == [
-        ("demo", "kanban_updated", "применены предложения DAG")
+        ("demo", "kanban_updated", "applied DAG suggestions")
     ]
 
 
@@ -359,7 +359,7 @@ def test_update_card_renames_report_and_enqueues_edit(
     assert result.boards[0].cards[0].created_at
     assert command_context["renames"][0][2:] == ("card-a", "Renamed")
     assert command_context["sync"] == [
-        ("demo", "kanban_updated", "правка карточки Renamed")
+        ("demo", "kanban_updated", "edited card Renamed")
     ]
 
 
@@ -384,7 +384,7 @@ def test_delete_node_removes_owned_boards_and_card_reports(
     assert result.boards == []
     assert command_context["deletions"] == [("demo", "card-a"), ("demo", "card-b")]
     assert command_context["sync"] == [
-        ("demo", "tree_updated", "удалён узел method")
+        ("demo", "tree_updated", "removed node method")
     ]
 
 
@@ -403,7 +403,7 @@ def test_create_node_uses_repository_rule_and_enqueues_sync(
 
     assert result.nodes[-1].node_type == NodeType.CAUSE
     assert command_context["sync"] == [
-        ("demo", "tree_updated", "новый узел: Cause")
+        ("demo", "tree_updated", "new node: Cause")
     ]
 
 

@@ -40,7 +40,7 @@ def _repo_root(tex_path: Path) -> Path:
 def normalize_commit(sha: str) -> str:
     value = (sha or "").strip()
     if not _SHA.match(value):
-        raise ValueError("Некорректный идентификатор версии")
+        raise ValueError("Invalid version identifier")
     return value
 
 
@@ -148,7 +148,7 @@ def pull_paper_versions(project_id: str, tex_path: Path) -> dict[str, Any]:
     if pulled.returncode != 0:
         fallback = _run_git(repo, "pull", "--quiet", timeout=30)
         if fallback.returncode != 0:
-            raise RuntimeError(_git_error(fallback) or _git_error(pulled) or "Не удалось забрать обновления")
+            raise RuntimeError(_git_error(fallback) or _git_error(pulled) or "Could not fetch updates")
     return list_paper_versions(project_id, tex_path)
 
 
@@ -168,18 +168,18 @@ def commit_and_push_paper(project_id: str, tex_path: Path, *, slug: str) -> dict
     if to_add:
         added = _run_git(repo, "add", "--", *to_add)
         if added.returncode != 0:
-            raise RuntimeError(_git_error(added) or "Не удалось добавить файлы статьи")
+            raise RuntimeError(_git_error(added) or "Could not add paper files")
     staged = _run_git(repo, "diff", "--cached", "--quiet")
     committed = False
     if staged.returncode == 1:
         message = f"Update {slug} paper"
         committed_run = _run_git(repo, "commit", "-m", message)
         if committed_run.returncode != 0:
-            raise RuntimeError(_git_error(committed_run) or "Не удалось закоммитить статью")
+            raise RuntimeError(_git_error(committed_run) or "Could not commit the paper")
         committed = True
     pushed = _run_git(repo, "push", "--quiet", "origin", "HEAD", timeout=30)
     if pushed.returncode != 0:
-        raise RuntimeError(_git_error(pushed) or "Не удалось отправить коммит")
+        raise RuntimeError(_git_error(pushed) or "Could not push the commit")
     versions = list_paper_versions(project_id, tex_path)
     return {"ok": True, "committed": committed, "pushed": True, **versions}
 
@@ -190,5 +190,5 @@ def paper_tex_at_commit(project_id: str, tex_path: Path, sha: str) -> str:
     repo = _repo_root(tex_path)
     shown = _run_git(repo, "show", f"{commit}:{_relative_tex(tex_path, repo)}")
     if shown.returncode != 0:
-        raise FileNotFoundError("В этой версии нет main.tex")
+        raise FileNotFoundError("This version has no main.tex")
     return shown.stdout

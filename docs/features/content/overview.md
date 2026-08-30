@@ -1,166 +1,71 @@
-# Как устроен ResearcherOS
+# How ResearcherOS is structured
 
-<p class="lead">ResearcherOS связывает гипотезы, эксперименты, отчёты, накопленные знания и текст статьи в состояние одного исследовательского проекта. Это состояние хранится в Research Project независимо от интерфейса: локальное приложение читает и изменяет его, агенты работают с теми же материалами, а Hub публикует снимки для просмотра. Код экспериментов остаётся отдельно. Для разных типов совместной работы используются разные механизмы: Git сохраняет долговременную историю, обработка отчётов превращает результаты запусков в исследовательские выводы, а отдельный канал поддерживает одновременное редактирование статьи.</p>
+<p class="lead">ResearcherOS connects hypotheses, experiments, reports, accumulated knowledge, and paper text as one Research Project state. The local app and agents edit the same files; Hub publishes read-only snapshots. Experiment code remains separate. Git provides durable history, report processing turns runs into findings, and a separate channel supports simultaneous paper editing.</p>
 
-<div class="media-slot" data-media="overview-hero" data-accept="png,jpg,webp,mp4,webm">
-  <strong>Обзор ResearcherOS</strong>
-  Здесь отображается схема или демонстрация связи Research Project, локального приложения и Hub.
-</div>
+<div class="media-slot" data-media="overview-hero" data-accept="png,jpg,webp,mp4,webm"><strong>ResearcherOS overview</strong><p>Diagram or demonstration of Research Project, local application, and Hub.</p></div>
 
-## Архитектура в трёх слоях
-
-ResearcherOS разделяет хранимое состояние исследования, локальные инструменты работы и опубликованные представления. Поэтому проект не зависит от одного интерфейса, а публикация не даёт Hub права изменять исходные материалы.
+## Architecture in three layers
 
 <div class="layer-grid">
-  <article class="layer-card layer-card--project">
-    <span class="layer-card__kicker">1 · Research Project</span>
-    <h3>Состояние исследования</h3>
-    <p>Дерево гипотез, канбан экспериментов, отчёты, знания, статья, сценарии агента и виджеты хранятся в файлах проекта. Код экспериментов находится отдельно.</p>
-  </article>
-  <article class="layer-card layer-card--local">
-    <span class="layer-card__kicker">2 · Local</span>
-    <h3>Локальный ResearcherOS</h3>
-    <p>Веб-клиент и локальный API читают и изменяют файлы Research Project. Они предоставляют дерево, канбан, монитор, базу знаний, Related Work, Research Chat, PaperDraft и проектные виджеты.</p>
-  </article>
-  <article class="layer-card layer-card--hub">
-    <span class="layer-card__kicker">3 · Hub</span>
-    <h3>ResearcherOS Hub</h3>
-    <p>Hub публикует снимки проектов как представления только для чтения. Он показывает состояние исследования, но не заменяет локальный проект и не становится источником истины.</p>
-  </article>
+  <article class="layer-card layer-card--project"><span class="layer-card__kicker">1 · Research Project</span><h3>Research state</h3><p>Hypothesis tree, experiment kanban, reports, knowledge, paper, agent workflows, and widgets live in project files. Experiment code is separate.</p></article>
+  <article class="layer-card layer-card--local"><span class="layer-card__kicker">2 · Local</span><h3>Local ResearcherOS</h3><p>The web client and local API read and edit Research Project files through the tree, kanban, monitor, knowledge base, Related Work, Research Chat, PaperDraft, and widgets.</p></article>
+  <article class="layer-card layer-card--hub"><span class="layer-card__kicker">3 · Hub</span><h3>ResearcherOS Hub</h3><p>Hub publishes read-only snapshots. It displays research state but never replaces the local project as the source of truth.</p></article>
 </div>
 
-## Общая схема
+## Complete diagram
 
-На схеме показаны два исследователя с отдельными локальными копиями проекта, удалённый Git-репозиторий, канал совместного редактирования статьи и Hub. Эти связи решают разные задачи и не образуют единую универсальную синхронизацию.
+<div class="schema-frame schema-frame--embed"><iframe src="full_schema.html?embed=1&v=4" title="ResearcherOS architecture diagram" loading="lazy"></iframe></div>
 
-<div class="schema-frame schema-frame--embed">
-  <iframe src="full_schema.html?embed=1&v=4" title="Схема архитектуры ResearcherOS" loading="lazy"></iframe>
-</div>
+<p class="callout"><strong>How to read it.</strong> Researchers work in separate local copies. Git exchanges durable state, Hub shows a read-only published snapshot, and collaborative editing transfers changes to the open paper without creating commits.</p>
 
-<p class="callout"><strong>Как читать схему.</strong> Исследователи A и B работают со своими локальными копиями Research Project. Если для проекта включена Git-синхронизация, обмен долговременным состоянием идёт через общий удалённый репозиторий. Hub показывает опубликованный снимок только для чтения. Совместное редактирование передаёт изменения открытой статьи, но не создаёт коммиты и не заменяет историю в Git.</p>
+## Research Project: source of research state
 
-## Research Project: источник исследовательского состояния
+A Research Project is a set of files, not a server or database:
 
-Research Project — это набор файлов, а не отдельный сервер или база данных. В них ResearcherOS хранит путь от исследовательской проблемы к накопленному знанию:
+`problem → causes → hypotheses → methods → experiments → reports → verdicts and findings`
 
-`проблема → причины → гипотезы → методы проверки → эксперименты → отчёты → вердикты и выводы`
+The recommended location is `tree/<repo>/koi-structure/`, discovered through `project.md`.
 
-Код экспериментов находится в соседнем каталоге и может развиваться по правилам команды. Рекомендуемая схема размещения исследовательских материалов — `tree/<repo>/koi-structure/`. ResearcherOS обнаруживает такой каталог по маркеру `project.md`.
+<div class="tree-list">tree/&lt;repo&gt;/koi-structure/<br>├── project.md <span class="muted">← hypothesis tree and method kanban</span><br>├── research.json <span class="muted">← method questions and findings</span><br>├── knowledge/ <span class="muted">← curated notes</span><br>├── reports/ <span class="muted">← experiment reports</span><br>├── paper/ <span class="muted">← paper assets and LaTeX</span><br>├── skills/ <span class="muted">← project agent workflows</span><br>└── widgets/ <span class="muted">← project widgets</span></div>
 
-<div class="tree-list">
-tree/&lt;repo&gt;/koi-structure/<br>
-├── project.md <span class="muted">← дерево гипотез и канбан методов</span><br>
-├── research.json <span class="muted">← исследовательские вопросы и выводы по методам</span><br>
-├── knowledge/ <span class="muted">← курируемые заметки</span><br>
-├── reports/ <span class="muted">← отчёты по экспериментам</span><br>
-├── paper/ <span class="muted">← материалы и LaTeX-исходники статьи</span><br>
-├── skills/ <span class="muted">← сценарии агента этого проекта</span><br>
-└── widgets/ <span class="muted">← виджеты этого проекта</span>
-</div>
+`project.md` links hypotheses to methods and gives each method a kanban. Reports and findings enrich the model, but a raw run log is not research knowledge by itself. Composite views may combine several projects while leaving source data in its repositories.
 
-Основные связи исследования задаёт `project.md`: гипотеза ведёт к методу проверки, а канбан экспериментов относится к конкретному методу. Отчёты и структурированные выводы дополняют эту модель, но журнал отдельного запуска сам по себе не становится исследовательским знанием.
+### Local and Git-synchronized projects
 
-Хранилище остаётся раздельным и для составных проектов. ResearcherOS может объединить несколько проектов в одно представление при чтении, однако исходные данные продолжают храниться в своих репозиториях. Составной проект — это слой представления, а не новое общее хранилище.
-
-### Локальный проект и проект с Git-синхронизацией
-
-Git не обязателен для работы ResearcherOS. Проект может оставаться локальным: приложение продолжит читать и изменять его файлы, но обмен через Git выполняться не будет.
-
-Для участия в Git-синхронизации в метаданных `project.md` указывают `git_repo: true`, а корень проекта должен принадлежать Git-репозиторию. В рекомендуемой схеме исследовательские материалы подключаются отдельным рабочим деревом Git (`worktree`) на ветке `koi/research`, тогда как код остаётся в соседнем каталоге.
-
-Команды подключения и обмена состоянием:
+Git is optional. Set `git_repo: true` for synchronization and place research materials in a `koi/research` worktree while code remains beside it.
 
 ```bash
-python -m koi.projects.install_cli install <имя>
-python -m koi.projects.install_cli install <имя> --create
+python -m koi.projects.install_cli install <name>
+python -m koi.projects.install_cli install <name> --create
 python -m koi.projects.sync_cli push --project-id <project-id>
 python -m koi.projects.sync_cli pull --project-id <project-id>
 ```
 
-`install` подключает существующий проект, а вариант с `--create` создаёт новый. При `push` ResearcherOS копирует актуальный `koi-structure` в рабочее дерево синхронизации, добавляет изменения в индекс Git, создаёт коммит и отправляет ветку в удалённый репозиторий. Перед `pull` система проверяет исследовательское рабочее дерево и блокирует получение изменений, если в нём уже есть незакоммиченные изменения.
+Push copies current materials, commits, and sends the branch. Pull refuses to overwrite a dirty research worktree. Runtime state under the engine's `.run/` is not part of the Research Project.
 
-Локальное служебное состояние среды выполнения хранится отдельно, в `.run/` репозитория движка ResearcherOS. Оно не входит в Research Project и не переносится как состояние исследования.
+## Local ResearcherOS and Hub
 
-## Локальный ResearcherOS: работа с проектом
+The local FastAPI server and web client expose all editable project views. Agents use the same files and workflows; `ProjectMount` resolves recommended and supported legacy layouts. Hub registers a repository branch (normally `koi/research`) and publishes public, network, or unlisted read-only snapshots. Public project skills enter the shared catalog only when both project and skill are public. A shared widget catalog remains future work.
 
-Локальный ResearcherOS состоит из веб-клиента и FastAPI-сервера на машине пользователя. Сервер предоставляет API над подключёнными проектами, а клиент показывает их содержимое через исследовательское дерево, канбан и граф зависимостей, монитор активной карточки, базу знаний, Related Work, Research Chat, PaperDraft и виджеты.
+## Three state-coordination mechanisms
 
-Эти представления работают с одним состоянием. Эксперимент относится к методу из дерева, отчёт может изменить вердикт гипотезы и добавить структурированные выводы, а накопленное знание становится контекстом для дальнейшего анализа и статьи.
+1. **Git** provides reproducible file history and exchange between local copies.
+2. **Result processing** turns a run into structured research state. `report_ingest` reads a valid §5 verdict and insights; alternatively, a new done card enters the completed-research queue when it has no finding. `save_project` rebuilds generated knowledge indexes but never invents one curated note per report.
+3. **Paper collaboration** uses Yjs CRDT plus WebRTC or server relay for a small group. Peers need compatible Git state and CRDT epoch; realtime changes do not create commits. Relay-only mode does not guarantee strict room isolation by `HEAD`, so compatible Git state remains necessary.
 
-Агент в редакторе кода может работать с теми же файлами. Сценарии агента задают повторяемый порядок действий, но не создают отдельное хранилище поверх Research Project.
+External editor changes become pending proposals. A person accepts, rejects, or resolves fragments before any proposal reaches the live paper.
 
-Короткая техническая деталь: разрешение путей подключённых проектов внутри сервера проходит через `ProjectMount`, чтобы локальный API одинаково работал с рекомендуемой и поддерживаемыми устаревшими схемами каталогов.
+The boundaries are deliberate: a realtime paper change is not a durable Git version, and a completed computation is not a research finding until ingestion or an agent records it.
 
-## Hub: опубликованное представление
-
-ResearcherOS Hub хранит и показывает снимки зарегистрированных проектов только для чтения. По умолчанию источником служит ветка `koi/research`, но при регистрации можно выбрать другую существующую ветку репозитория. Последующие снимки строятся из выбранной ветки.
-
-Изменения продолжают выполняться в локальной копии Research Project. Hub не предоставляет редактирование опубликованного представления и не становится источником истины.
-
-Доступность снимка определяется режимом видимости: `public`, `network` или `unlisted`. Публикация общих сценариев агента имеет дополнительные условия: сценарий из `koi-structure/skills/` попадает в общий каталог только при синхронизации включённого публичного проекта и при собственной видимости `public`. Непубличный проект не публикует сценарии независимо от их локальных манифестов.
-
-Общий каталог виджетов описан только как направление развития Hub и не является реализованным каналом публикации.
-
-## Три механизма согласования состояния
-
-Три механизма ResearcherOS отличаются носителем и критерием сохранённого результата. Git переносит версию файлов между копиями, обработка отчёта вводит результат запуска в исследовательскую модель, а совместное редактирование поддерживает оперативное состояние открытой статьи.
-
-### 1. Git: долговременная история проекта
-
-Git хранит версионную историю файлов Research Project и переносит её между локальными копиями. Этот контур охватывает дерево, канбан, отчёты, знания, статью, сценарии агента и виджеты, если они находятся в синхронизируемой исследовательской ветке.
-
-Команда `push` подготавливает и отправляет новый коммит автоматически. Команда `pull` получает удалённое состояние только при чистом локальном рабочем дереве исследования. Для проекта без `git_repo: true` этот контур не используется.
-
-### 2. Обработка результата: от запуска к исследовательскому выводу
-
-ResearcherOS не унифицирует среду выполнения эксперимента: запуск может происходить в локальном скрипте, на кластере или во внешней платформе. Система унифицирует способы, которыми результат входит в Research Project.
-
-Первый путь — явная обработка отчёта через `report_ingest`. Агент или другой вызывающий процесс передаёт отчёт с корректно оформленным разделом `§5`; обработчик извлекает из него вердикт и выводы и записывает их в структурированное состояние исследования.
-
-Второй путь начинается, когда пользователь или агент переводит карточку в состояние «готово» (`done`). ResearcherOS помещает такую карточку в очередь обработки завершённых экспериментов, только если для неё ещё нет связанного исследовательского вывода. Затем агент читает материалы карточки и формулирует вывод. Карточка, уже обработанная через `report_ingest`, обычно пропускает очередь, поскольку структурированный вывод для неё уже записан. Само перемещение карточки не создаёт курируемую заметку автоматически.
-
-При сохранении проекта `save_project` пересобирает производные файлы `KNOWLEDGE.md` и `knowledge/hypotheses.md`. Остальные материалы в `knowledge/*.md` остаются курируемыми заметками: ResearcherOS не создаёт отдельную такую заметку из каждого отчёта.
-
-Таким образом, завершённый вычислительный запуск и оформленное знание — разные состояния. Если проект синхронизируется через Git, передача записанного результата на другую машину происходит уже через Git-контур.
-
-### 3. Совместное редактирование статьи: оперативный обмен текстом
-
-PaperDraft использует Yjs и CRDT — модель данных, которая согласует параллельные изменения совместного документа. Поддерживается работа не более пяти участников.
-
-Фактический транспорт зависит от конфигурации. В режиме только серверной ретрансляции (`relay-only`) изменения документа, комментарии и служебные CRDT-сообщения идут через службу согласования соединений (`signaling`) — сервер, который поддерживает соединение участников и пересылает сообщения между ними. Такая пересылка называется ретрансляцией. В конфигурации без режима серверной ретрансляции ResearcherOS может использовать прямые WebRTC DataChannel между браузерами, а служба согласования помогает участникам установить эти соединения.
-
-Для обычной CRDT-синхронизации участникам нужны совместимый Git-коммит и одна эпоха CRDT. При несовместимости транспорт через ретрансляцию может перейти к передаче снимка TeX и повторной синхронизации вместо прямого объединения CRDT-историй. Независимо созданные истории Yjs напрямую не сливаются, поскольку это может продублировать исходный текст.
-
-В режиме серверной ретрансляции есть существенное ограничение: текущий путь пересылки не гарантирует строгую изоляцию участников комнаты по `HEAD`. Поэтому совпадение базовой версии Git остаётся необходимым условием командной работы, но его нельзя считать полной транспортной границей безопасности в этом режиме.
-
-Совместное редактирование не создаёт Git-коммиты. Долговременной контрольной точкой остаются файлы статьи в Git. Для подключения участники используют согласованные параметры службы согласования и совместимую конфигурацию; сетевые и проверочные условия описаны в `docs/paper-collaboration-spike-b.md`.
-
-### Предложения внешних правок
-
-Механизм предложений действует внутри активной сессии совместного редактирования. Когда интеграция с буфером внешнего редактора передаёт изменённый текст в такую сессию, ResearcherOS создаёт ожидающее решения предложение. Пользователь может принять или отклонить его целиком либо разрешить отдельные фрагменты. До этого решения внешняя правка не применяется к основному тексту статьи.
-
-## Как связаны механизмы
-
-У каждого контура своя граница сохранности:
-
-- Git отвечает за воспроизводимую версию файлов и обмен между локальными копиями.
-- Обработка отчёта определяет, когда запуск становится структурированным исследовательским результатом.
-- Yjs поддерживает оперативное состояние открытой статьи через доступный транспорт.
-- Hub публикует снимок сформированного состояния и не участвует в его редактировании.
-
-Поэтому текст, появившийся у другого участника в PaperDraft, ещё не является долговременной версией в Git. Аналогично, завершённый запуск ещё не становится исследовательским выводом, пока явный обработчик или агент не оформит его в состоянии проекта.
-
-## Каталог локальных возможностей
-
-Следующие страницы описывают продуктовую модель, работу пользователя, действия агента, хранение состояния и технические границы каждой возможности.
+## Local feature catalog
 
 <div class="feature-list">
-  <a class="feature-row" href="research-tree.html"><span class="feature-row__num">01</span><span><p class="feature-row__title">Исследовательское дерево</p><p class="feature-row__desc">Узлы исследования, вердикты, структура <code>project.md</code> и связь метода с канбаном.</p></span><span class="feature-row__meta">открыть</span></a>
-  <a class="feature-row" href="kanban.html"><span class="feature-row__num">02</span><span><p class="feature-row__title">Канбан экспериментов</p><p class="feature-row__desc">Состояния карточек, зависимости между экспериментами и отчёты.</p></span><span class="feature-row__meta">открыть</span></a>
-  <a class="feature-row" href="monitor.html"><span class="feature-row__num">03</span><span><p class="feature-row__title">Монитор прогона</p><p class="feature-row__desc">Текущее состояние, логи, метрики и графики активного эксперимента.</p></span><span class="feature-row__meta">открыть</span></a>
-  <a class="feature-row" href="knowledge.html"><span class="feature-row__num">04</span><span><p class="feature-row__title">База знаний</p><p class="feature-row__desc">Структурированные выводы в <code>research.json</code>, производные сводки и курируемые заметки в <code>knowledge/</code>.</p></span><span class="feature-row__meta">открыть</span></a>
-  <a class="feature-row" href="chat.html"><span class="feature-row__num">05</span><span><p class="feature-row__title">Research Chat</p><p class="feature-row__desc">Вопросы к накопленному контексту проекта и ответы в локальном интерфейсе.</p></span><span class="feature-row__meta">открыть</span></a>
-  <a class="feature-row" href="related-work.html"><span class="feature-row__num">06</span><span><p class="feature-row__title">Related Work</p><p class="feature-row__desc">Работа с локальной библиотекой, arXiv и Zotero; группировка публикаций и подготовка обзора.</p></span><span class="feature-row__meta">открыть</span></a>
-  <a class="feature-row" href="paper.html"><span class="feature-row__num">07</span><span><p class="feature-row__title">PaperDraft</p><p class="feature-row__desc">LaTeX, предложения внешних правок, совместное редактирование через Yjs и сохранение статьи в Git.</p></span><span class="feature-row__meta">открыть</span></a>
-  <a class="feature-row" href="widgets.html"><span class="feature-row__num">08</span><span><p class="feature-row__title">Виджеты</p><p class="feature-row__desc">Проектные панели, которые используют локальный API ResearcherOS.</p></span><span class="feature-row__meta">открыть</span></a>
+<a class="feature-row" href="research-tree.html"><span class="feature-row__num">01</span><span><p class="feature-row__title">Research tree</p><p class="feature-row__desc">Nodes, verdicts, project.md structure, and method kanban links.</p></span><span class="feature-row__meta">open</span></a>
+<a class="feature-row" href="kanban.html"><span class="feature-row__num">02</span><span><p class="feature-row__title">Experiment kanban</p><p class="feature-row__desc">Card states, dependencies, and reports.</p></span><span class="feature-row__meta">open</span></a>
+<a class="feature-row" href="monitor.html"><span class="feature-row__num">03</span><span><p class="feature-row__title">Run monitor</p><p class="feature-row__desc">Live status, logs, metrics, and charts.</p></span><span class="feature-row__meta">open</span></a>
+<a class="feature-row" href="knowledge.html"><span class="feature-row__num">04</span><span><p class="feature-row__title">Knowledge base</p><p class="feature-row__desc">Structured findings, generated summaries, and curated notes.</p></span><span class="feature-row__meta">open</span></a>
+<a class="feature-row" href="chat.html"><span class="feature-row__num">05</span><span><p class="feature-row__title">Research Chat</p><p class="feature-row__desc">Questions and answers grounded in project context.</p></span><span class="feature-row__meta">open</span></a>
+<a class="feature-row" href="related-work.html"><span class="feature-row__num">06</span><span><p class="feature-row__title">Related Work</p><p class="feature-row__desc">Library, arXiv, Zotero, clusters, and review drafts.</p></span><span class="feature-row__meta">open</span></a>
+<a class="feature-row" href="paper.html"><span class="feature-row__num">07</span><span><p class="feature-row__title">PaperDraft</p><p class="feature-row__desc">LaTeX, reviewed proposals, Yjs collaboration, and Git history.</p></span><span class="feature-row__meta">open</span></a>
+<a class="feature-row" href="widgets.html"><span class="feature-row__num">08</span><span><p class="feature-row__title">Widgets</p><p class="feature-row__desc">Project panels using the local API.</p></span><span class="feature-row__meta">open</span></a>
 </div>

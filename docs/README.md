@@ -1,27 +1,27 @@
-# Документация ReseachOS
+# ResearchOS documentation
 
-Два входа — по аудитории:
+Two entry points are organized by audience:
 
-| Аудитория | Каталог | С чего начать |
+| Audience | Directory | Start here |
 |-----------|---------|---------------|
-| **Человек** | [human/](human/) | [getting-started.md](human/getting-started.md) |
-| **Агент IDE** | [agents.md](agents.md) | [AGENTS.md](../AGENTS.md) |
+| **Human** | [human/](human/) | [getting-started.md](human/getting-started.md) |
+| **IDE agent** | [agents.md](agents.md) | [AGENTS.md](../AGENTS.md) |
 
-Страницы фич платформы (отдельно, стиль как у docs-site): [features/](features/) — начать с [features/README.md](features/README.md).
+Platform feature pages, styled like docs-site, live in [features/](features/); start with [features/README.md](features/README.md).
 
-## Человек (`docs/human/`)
+## Humans (`docs/human/`)
 
-Путеводители, форматы данных, как устроена база знаний.
+Guides, data formats, and an explanation of the knowledge base.
 
-## Агенты
+## Agents
 
-- **`AGENTS.md`** — роль агента, очереди, рабочие циклы, форматные ворота.
-- **`agents/skills/`** — содержательные исследовательские skills и их шаблоны.
-- **`docs/agents.md`** — устройство агентной работы.
-- **`docs/research-workflow.md`** — процесс отчётов и накопления знаний.
+- **`AGENTS.md`** — agent role, queues, workflows, and format gates.
+- **`agents/skills/`** — substantive research skills and their templates.
+- **`docs/agents.md`** — how agent work is organized.
+- **`docs/research-workflow.md`** — report and knowledge-accumulation process.
 
-Cursor получает доступ к общим skills через ссылки в `.cursor/skills/`.
+Cursor accesses shared skills through links in `.cursor/skills/`.
 
-## Совместимость
+## Compatibility
 
-Старые пути в корне `docs/` — symlink: `GETTING_STARTED.md`, `PROJECT_FORMAT.md`, `domain-model.md` и т.д.
+Legacy paths at the root of `docs/` are symlinks: `GETTING_STARTED.md`, `PROJECT_FORMAT.md`, `domain-model.md`, and so on.

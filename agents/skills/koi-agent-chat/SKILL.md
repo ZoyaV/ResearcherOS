@@ -3,153 +3,170 @@ name: koi-agent-chat
 description: >-
   Answer questions sent from the ResearchOS UI chat panel. First use the project
   research question database (research.json); only read experiment reports when
-  details are missing. Use when agent-chat queue has items or the user asks
+  details are missing. Use when the agent-chat queue has items or the user asks
   about a KOI UI question.
 ---
 
-# KOI: вопрос из UI → ответ агента
+# KOI: UI question → agent answer
 
-Пользователь задаёт вопрос в панели **«Спросить агента»** на localhost:8080. Вопрос попадает в очередь `.run/agent-chat-queue.json`.
+The user asks a question in the **Ask the agent** panel at localhost:8080. The
+question enters `.run/agent-chat-queue.json`.
 
-**Автоответ:** если вопрос хорошо совпадает с `research.json`, API отвечает сразу.
+**Automatic answer:** when a question closely matches `research.json`, the API
+answers immediately.
 
-**Режим в настройках UI** (`Настройки → Агент в чате`):
+**UI mode** (`Settings → Chat agent`):
 
-| Режим | Поведение |
-|-------|-----------|
-| **Inbox-чат** (`cursor_inbox`, рекомендуется) | Watcher → `AGENT_CHAT_WAKE` в `.run/logs/agent-chat-watch.log` (~1–3 с) |
-| **Hooks** (`cursor_ide`) | Очередь при старте/stop любого чата агента |
-| **Фоновый API** (`api`) | Воркер + `CURSOR_API_KEY` |
+| Mode | Behavior |
+|------|----------|
+| **Inbox chat** (`cursor_inbox`, recommended) | Watcher writes `AGENT_CHAT_WAKE` to `.run/logs/agent-chat-watch.log` in about 1–3 seconds |
+| **Hooks** (`cursor_ide`) | Process the queue when any agent chat starts or stops |
+| **Background API** (`api`) | Worker using `CURSOR_API_KEY` |
 
-Инструкция: `docs/agent-chat-inbox.md`. Bootstrap: `python -m koi.agent_chat.inbox_cli bootstrap`.
+See `docs/agent-chat-inbox.md`. Bootstrap with
+`python -m koi.agent_chat.inbox_cli bootstrap`.
 
-## Когда запускать
+## When to run
 
-1. В очереди есть необработанные вопросы (проверь при старте сессии с KOI).
-2. Hook `stop` прислал follow-up про agent-chat.
-3. Пользователь явно ссылается на вопрос из ResearchOS UI.
+1. The queue contains unanswered questions; check it when starting a KOI session.
+2. A `stop` hook sent an agent-chat follow-up.
+3. The user explicitly refers to a question from the ResearchOS UI.
 
 ```bash
 KOI/.venv/bin/python -m koi.agent_chat.cli pending
 ```
 
-## Главное правило ответа
+## Primary answer rule
 
-**Сначала база исследовательских вопросов, потом отчёты.**
+**Use the research-question database first and reports second.**
 
-| Шаг | Источник | Когда |
-|-----|----------|-------|
-| 1 | `projects/<id>/research.json` и поле `research_database` в context | **Всегда первым** — ищи релевантные записи по смыслу вопроса |
-| 2 | `narrative` + `answer` из найденной записи | Формируй ответ пользователю; `narrative` — основной текст, `answer` — технические детали |
-| 3 | Отчёт эксперимента (`experiment.report_path` / `report_markdown`) | **Только если** в базе нет подходящего ответа или пользователю нужны детали (цифры, графики, методология), которых нет в `narrative`/`answer` |
-| 4 | `card_id` → канбан-карточка | Ссылка на источник вывода; не открывай отчёт «на всякий случай» |
+| Step | Source | When |
+|------|--------|------|
+| 1 | `projects/<id>/research.json` and `research_database` in context | **Always first**: find entries relevant to the meaning of the question |
+| 2 | `narrative` + `answer` from matching entries | Build the user answer; `narrative` is primary prose and `answer` contains technical detail |
+| 3 | Experiment report (`experiment.report_path` / `report_markdown`) | **Only when** the database has no matching answer or the user needs numbers, figures, or methodology missing from `narrative`/`answer` |
+| 4 | `card_id` → kanban card | Cite the conclusion source; do not open the report “just in case” |
 
-Не читай все отчёты подряд. Не дублируй в ответе сырой markdown отчёта, если достаточно `narrative`.
+Do not read every report. Do not repeat raw report Markdown when `narrative` is
+enough.
 
-Файл базы на диске: `projects/<project_id>/research.json` (см. также `research_database_path` в context).
+The database file is `projects/<project_id>/research.json`; context also contains
+`research_database_path`.
 
-## Workflow (на один вопрос)
+## Workflow for one question
 
-### 0. Принять задачу (Inbox)
+### 0. Claim the item (Inbox)
 
-Сразу отметь вопрос принятым — UI покажет «прочитано» и анимацию «Агент пишет…»:
+Claim the question immediately so the UI shows Read and the Agent is typing
+animation:
 
 ```bash
 KOI/.venv/bin/python -m koi.agent_chat.cli claim <queue_id>
 ```
 
-### 1. Собрать контекст
+### 1. Gather context
 
 ```bash
 KOI/.venv/bin/python -m koi.agent_chat.cli context <queue_id>
 ```
 
-В JSON:
+The JSON contains:
 
-- `user_question` — текст вопроса из UI
+- `user_question` — question from the UI
 - `project_id`, `project_title`
-- `scope_method` / `scope_node` — опциональный контекст (если пользователь был на методе/узле)
-- `research_database` — **все** выводы по методам проекта (id, method_title, question, narrative, answer, certainty, importance, card_id, experiment.report_path)
-- `answer_policy` — краткое напоминание политики
+- `scope_method` / `scope_node` — optional context from the method/node being viewed
+- `research_database` — every method conclusion in the project: id,
+  method_title, question, narrative, answer, certainty, importance, card_id, and
+  experiment.report_path
+- `answer_policy` — compact policy reminder
 
-### 2. Ответить
+### 2. Compose the answer
 
-1. Сопоставь `user_question` с записями `research_database` (по смыслу, не только по точному совпадению формулировки).
-2. Если есть релевантные записи — раскрой тему **свободным связным текстом**: объедини факты, поясни нюансы, укажи ограничения (`definite` / `tentative`).
-3. Если одной записи мало — уточни по `answer`, затем при необходимости прочитай **только** `experiment.report_path` для связанного `card_id`.
-4. Если в базе ничего нет — честно скажи; предложи завершить эксперимент (done → koi-done-research) или уточни вопрос.
-5. Учитывай `scope_method` / `scope_node`, но не ограничивай поиск только ими, если вопрос шире.
+1. Match `user_question` to `research_database` semantically, not only by exact wording.
+2. If relevant entries exist, explain them in **clear connected prose**: combine
+   facts, explain nuances, and name `definite` / `tentative` limitations.
+3. If one entry is insufficient, inspect `answer`; then, only if necessary, read
+   the linked `experiment.report_path` for that `card_id`.
+4. If the database has no answer, say so plainly and suggest completing the
+   relevant experiment (done → koi-done-research) or narrowing the question.
+5. Respect `scope_method` / `scope_node`, but search beyond them when the question
+   is broader.
 
-**Формат текста для UI** (см. `koi/agent_chat/formatting.py`):
+**UI text format** (see `koi/agent_chat/formatting.py`):
 
-- Основная часть — развёрнутый ответ по-русски, без лишних аббревиатур.
-- В конце обязательно блок **«Источники:»** — список методов и экспериментов, на которых основан ответ:
+- The main part is a complete answer in natural English with minimal jargon.
+- End with a mandatory **Sources:** block listing the methods and experiments
+  that support the answer:
 
+```text
+Sources:
+• Method “…” → experiment “…”
+• Method “…” → experiment “…”
 ```
-Источники:
-• Метод «…» → эксперимент «…»
-• Метод «…» → эксперимент «…»
-```
 
-Используй `method_title` и `experiment.card_title` из `research_database`.
+Use `method_title` and `experiment.card_title` from `research_database`.
 
-### 3. Отправить ответ в UI (обязательно)
+### 3. Send the answer to the UI (required)
 
-Пользователь ждёт ответ **в панели ResearchOS**, не только в Cursor. После формулировки ответа:
+The user is waiting in ResearchOS, not only in Cursor. After composing the answer:
 
 ```bash
-KOI/.venv/bin/python -m koi.agent_chat.cli answer <queue_id> "Текст ответа…"
+KOI/.venv/bin/python -m koi.agent_chat.cli answer <queue_id> "Answer text…"
 ```
 
-Или длинный текст из файла:
+For long text from a file:
 
 ```bash
 KOI/.venv/bin/python -m koi.agent_chat.cli answer <queue_id> -f /tmp/answer.md
 ```
 
-Или API:
+Or through the API:
 
 ```bash
 curl -s -X PATCH "http://127.0.0.1:8010/agent-chat/<queue_id>" \
   -H "Content-Type: application/json" \
-  -d '{"answer": "Текст ответа…"}'
+  -d '{"answer": "Answer text…"}'
 ```
 
-Без этого шага вопрос остаётся «в очереди» в интерфейсе. Не вызывай `answer`, если ждёшь уточнения от пользователя.
+Without this step, the UI still shows the question as queued. Do not call
+`answer` while waiting for user clarification.
 
-## Очередь и hooks
+## Queue and hooks
 
-Скрипты: `agents/skills/koi-agent-chat/hooks/`. IDE: `.cursor/hooks.json` ← `agents/cursor-hooks.json`.
+Scripts live in `agents/skills/koi-agent-chat/hooks/`. IDE configuration:
+`.cursor/hooks.json` from `agents/cursor-hooks.json`.
 
-| Hook | Скрипт | Поведение |
-|------|--------|-----------|
-| `sessionStart` | `koi-agent-chat-session.sh` | `additional_context` со списком вопросов |
-| `stop` | `koi-agent-chat-stop.sh` | `followup_message` — обработать следующий (приоритет над done-research) |
+| Hook | Script | Behavior |
+|------|--------|----------|
+| `sessionStart` | `koi-agent-chat-session.sh` | Adds the question list through `additional_context` |
+| `stop` | `koi-agent-chat-stop.sh` | Sends a `followup_message` to process the next item, ahead of done-research |
 
-| API | Назначение |
-|-----|------------|
-| `POST /agent-chat` | вопрос из UI |
-| `GET /agent-chat?project_id=` | история + статусы для UI |
-| `PATCH /agent-chat/{id}` | ответ агента → показ в UI |
+| API | Purpose |
+|-----|---------|
+| `POST /agent-chat` | Submit a question from the UI |
+| `GET /agent-chat?project_id=` | UI history and statuses |
+| `PATCH /agent-chat/{id}` | Send the agent answer to the UI |
 
-## Автозапуск агента (без открытого чата в IDE)
+## Start an agent without an open IDE chat
 
-1. Создайте `KOI/.env`:
+1. Create `KOI/.env`:
    ```
-   CURSOR_API_KEY=ваш_ключ
-   # опционально: KOI_AGENT_CHAT_MODEL=composer-2.5
+   CURSOR_API_KEY=your_key
+   # optional: KOI_AGENT_CHAT_MODEL=composer-2.5
    ```
-2. `KOI/.venv/bin/pip install cursor-sdk`
-3. `KOI/scripts/koi-serve.sh restart` — поднимет воркер, если ключ есть.
+2. Run `KOI/.venv/bin/pip install cursor-sdk`.
+3. Run `KOI/scripts/koi-serve.sh restart`; it starts the worker when the key is present.
 
-Вручную обработать очередь:
+Process the queue manually:
+
 ```bash
 KOI/.venv/bin/python -m koi.agent_chat.worker --once
 ```
 
-Без ключа в режиме `cursor_ide`: мгновенный ответ из `research.json`; остальное — hooks в IDE.
+Without a key in `cursor_ide` mode, matching questions still receive immediate
+answers from `research.json`; the IDE hooks handle the rest.
 
-## Связанные скиллы
+## Related skills
 
-- База выводов пополняется через **koi-done-research** (карточка → done).
-- Dev-сервер: **koi-dev-server** (8010 + 8080).
+- **koi-done-research** adds conclusions to the database when a card reaches done.
+- **koi-dev-server** manages the development server on ports 8010 and 8080.

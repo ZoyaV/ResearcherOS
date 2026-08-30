@@ -5,17 +5,18 @@ from __future__ import annotations
 from koi.adapters.settings_store import CURSOR_API_KEY_URL
 
 ANSWER_FORMAT_INSTRUCTIONS = """
-Формат ответа для панели UI:
-1. Основная часть — свободный связный текст по-русски: раскрой тему, свяжи факты,
-   поясни нюансы и ограничения. Не ограничивайся одним предложением.
-2. Опирайся на narrative и answer из research_database; отчёт читай только при нехватке деталей.
-3. В конце обязательно блок источников (после пустой строки):
+Answer format for the UI panel:
+1. Write connected natural English that explains the subject, related facts,
+   nuances, and limitations. Do not stop at one sentence.
+2. Use narrative and answer from research_database; open a report only when
+   details are missing.
+3. End with a Sources block after a blank line:
 
-Источники:
-• Метод «…» → эксперимент «…»
+Sources:
+• Method “…” → experiment “…”
 • …
 
-Укажи все методы и эксперименты, на которых основан ответ. Если эксперимента нет — только метод.
+List every method and experiment supporting the answer. If no experiment exists, list only the method.
 """.strip()
 
 
@@ -35,12 +36,12 @@ def format_sources_block(records: list[dict]) -> str:
             continue
         seen.add(key)
         if exp:
-            lines.append(f"• Метод «{method}» → эксперимент «{exp}»")
+            lines.append(f"• Method “{method}” → experiment “{exp}”")
         else:
-            lines.append(f"• Метод «{method}»")
+            lines.append(f"• Method “{method}”")
     if not lines:
         return ""
-    return "Источники:\n" + "\n".join(lines)
+    return "Sources:\n" + "\n".join(lines)
 
 
 def append_sources(body: str, records: list[dict]) -> str:
@@ -53,9 +54,9 @@ def append_sources(body: str, records: list[dict]) -> str:
 
 def no_cursor_key_warning() -> str:
     return (
-        "⚠️ Ключ Cursor API не настроен.\n\n"
-        "Сейчас агент может ответить только по готовым выводам из базы research.json. "
-        "Для полноценных ответов на произвольные вопросы укажите ключ в настройках ResearchOS "
-        "(кнопка «Настройки» в верхней панели).\n\n"
-        f"Как получить ключ: {CURSOR_API_KEY_URL}"
+        "⚠️ Cursor API key is not configured.\n\n"
+        "The agent can currently answer only from existing research.json conclusions. "
+        "For complete answers to arbitrary questions, add the key in ResearchOS settings "
+        "using the Settings button in the top bar.\n\n"
+        f"Get a key: {CURSOR_API_KEY_URL}"
     )

@@ -127,7 +127,7 @@ def test_history_keeps_earlier_runs_for_the_same_paper(project) -> None:
 def test_list_filters_by_paper_key(project) -> None:
     first = morphology.stage_paper_morphology(project, PAPER)
     other = morphology.stage_paper_morphology(
-        project, {"title": "Другая статья", "url": "https://arxiv.org/abs/2001.00001"}
+        project, {"title": "Another paper", "url": "https://arxiv.org/abs/2001.00001"}
     )
 
     filtered = morphology.list_morphology_runs(project, paper_key_filter=first["paper_key"])

@@ -1,85 +1,93 @@
-# Процесс накопления знаний
+# Knowledge accumulation process
 
-Как знание проходит путь от вопроса до записи в реестр. Источник правды —
-файлы проекта; производные `KNOWLEDGE.md` пересобираются автоматически.
+How knowledge moves from a question to a registry entry. Project files are the
+source of truth; derived `KNOWLEDGE.md` files are rebuilt automatically.
 
-Шаги 3–4 и 7–8 автоматизированы: `python -m koi.projects.report_ingest.cli <project> <card>`
-поручает проверку агенту (Claude Code / Cursor), который пишет `.run.md` по шаблону,
-а `koi/projects/report_ingest/` вливает отчёт (вердикт из §5.1, инсайты из json-блока §5.2,
-карточка → done) и запускает автопересборку БЗ. Ручное ревью по матрице ниже остаётся
-рекомендованным контролем качества — готовый отчёт можно влить и после ревью:
-`python -m koi.projects.report_ingest.cli <project> <card> --ingest-only`. Подробности и переменные
-окружения — `docs/human/knowledge-base.md`.
+Steps 3–4 and 7–8 are automated. Running
+`python -m koi.projects.report_ingest.cli <project> <card>` delegates the check
+to an agent (Claude Code / Cursor), which writes `.run.md` from the template.
+`koi/projects/report_ingest/` then ingests the report (verdict from §5.1,
+insights from the §5.2 JSON block, card → done) and automatically rebuilds the
+knowledge base. Manual review using the matrix below remains the recommended
+quality check; ingest a reviewed report with
+`python -m koi.projects.report_ingest.cli <project> <card> --ingest-only`.
+See `docs/human/knowledge-base.md` for details and environment variables.
 
-## Шаги
+## Steps
 
-1. Пред-регистрация. Заполнить `agents/skills/koi-execute-card/hypothesis-spec.md`. Claim → описание
-   cause-узла; правило решения держать под рукой — по нему выставляется вердикт.
-2. Завести узел и карточку. В `project.md`: cause (гипотеза) → cause_evidence (как
-   доказываем) → method (как проверяем) + карточка канбана в колонке backlog.
-3. Прогон. Карточку перевести backlog → running. Метрики сохранить в
-   воспроизводимый артефакт, указанный в отчёте.
-4. Рабочий отчёт о прогоне. Агент-исполнитель заполняет
-   `agents/skills/koi-report-review/experiment-report.md` → `reports/<узел>/<карточка>.run.md`:
-   что запущено, результаты, проверка правила решения и блок «Заявка в базу знаний»
-   (предлагаемый вердикт + инсайты в формате research.json + рекомендация по форме).
-   Это вход для ревью — здесь живут пути и сырые числа. Для автоинтеграции §5.2
-   обязан содержать ровно один fenced-блок ```json с массивом ≤3 инсайтов
-   (поля research.json), а §5.1 — строку `` `<id-узла>` → … **вердикт** ``.
-5. Ревью заявки. По матрице ниже решить, В КАКОМ ВИДЕ интегрировать: принять как есть /
-   понизить до tentative+open / разбить / отклонить / оставить методический инсайт.
-6. Публичный отчёт. Из `.run.md` сделать `reports/<узел>/<карточка>.md` по
-   `agents/skills/koi-report-review/report-skeleton.md` (без HOW-TODO, публичные имена,
-   правила из `report-rules.md`); прописать `card_id → путь` в `reports/index.json`.
-7. Инсайты и вердикт. Принятые инсайты — в `research.json` (≤3 на метод:
-   question/answer/narrative/certainty/importance/card_id); `verdict:` на cause-узле.
-8. Автоинтеграция. Хук в `save_project` пересобирает БЗ проекта сам: обновляет
-   `knowledge/hypotheses.md`, оглавление `KNOWLEDGE.md` и дописывает в
-   `KNOWLEDGE_LOG.md`, что именно записалось (смена вердикта, новые/обновлённые
-   инсайты, новые документы).
+1. Pre-register. Complete `agents/skills/koi-execute-card/hypothesis-spec.md`.
+   The claim becomes the cause-node description; keep the decision rule at hand
+   because it determines the verdict.
+2. Create a node and card. In `project.md`: cause (hypothesis) → cause_evidence
+   (how it is evidenced) → method (how it is tested), plus a kanban card in backlog.
+3. Run. Move the card from backlog → running. Save metrics in a reproducible
+   artifact referenced by the report.
+4. Write the working run report. The executing agent fills
+   `agents/skills/koi-report-review/experiment-report.md` →
+   `reports/<node>/<card>.run.md`: what ran, results, evaluation of the decision
+   rule, and a “Knowledge base submission” block with proposed verdict, insights
+   in research.json format, and a recommendation about form. This is the review
+   input and contains paths and raw numbers. For automatic integration, §5.2 must
+   contain exactly one fenced ```json block with an array of no more than three
+   insights (research.json fields), and §5.1 must contain
+   `` `<node-id>` → … **verdict** ``.
+5. Review the submission. Use the matrix below to decide HOW to integrate it:
+   accept as written, downgrade to tentative+open, split, reject, or retain a
+   methodological insight.
+6. Create the public report. Convert `.run.md` to `reports/<node>/<card>.md` using
+   `agents/skills/koi-report-review/report-skeleton.md` (remove HOW-TODO, use
+   public names, follow `report-rules.md`) and add `card_id → path` to
+   `reports/index.json`.
+7. Record insights and verdict. Put accepted insights in `research.json` (no more
+   than three per method: question/answer/narrative/certainty/importance/card_id)
+   and set `verdict:` on the cause node.
+8. Integrate automatically. The `save_project` hook rebuilds the project knowledge
+   base: it updates `knowledge/hypotheses.md` and the `KNOWLEDGE.md` table of
+   contents, and appends the exact changes to `KNOWLEDGE_LOG.md` (verdict changes,
+   new or updated insights, and new documents).
 
-## Документы знаний проекта (`projects/<id>/knowledge/`)
+## Project knowledge documents (`projects/<id>/knowledge/`)
 
-Уроки, не привязанные к одной гипотезе (установка, запуск, скрипты, грабли,
-открытые вопросы), оформляются отдельными `.md` в `knowledge/` проекта.
-Конвенция: первая строка `# Заголовок`, первый абзац после него — сводка в 1–2
-предложения (именно она попадает в оглавление `KNOWLEDGE.md`). Имя файла —
-`NN-имя.md` (NN задаёт порядок в оглавлении). Новый файл подхватывается
-автоматически при следующем сохранении проекта и фиксируется в журнале.
-Рекомендуемый комплект: `00-overview`, `10-setup`, `20-running`, `30-scripts`,
+Lessons not tied to one hypothesis (setup, launch, scripts, pitfalls, open
+questions) are separate `.md` files in the project's `knowledge/` directory.
+Convention: the first line is `# Title`; the first paragraph after it is a
+one-to-two-sentence summary used in the `KNOWLEDGE.md` table of contents. Name
+files `NN-name.md`, where NN defines their order. A new file is discovered on the
+next project save and recorded in the log. Recommended set: `00-overview`,
+`10-setup`, `20-running`, `30-scripts`,
 `40-gotchas`, `50-open-questions`.
 
-## Матрица решения: в каком виде интегрировать
+## Decision matrix: how to integrate
 
-Ревьюер берёт блок «Заявка в базу знаний» из `.run.md` и выбирает форму. Заявка
-агента — предложение, не приговор; форму определяет соответствие правилу решения и
-угрозам из §4 отчёта.
+The reviewer takes the “Knowledge base submission” block from `.run.md` and
+chooses its form. The agent's submission is a proposal, not a final judgment;
+alignment with the decision rule and threats in report §4 determines the form.
 
-| Ситуация (по §3 и §4 рабочего отчёта) | Форма интеграции |
+| Situation (from §§3–4 of the working report) | Integration form |
 |---------------------------------------|------------------|
-| Порог правила пройден с запасом, вывод устойчив к разбросу | Принять как есть: инсайт `certainty=definite`, вердикт `supported`/`refuted` |
-| Порог на грани, или эффект соизмерим с разбросом по сидам | Понизить: `certainty=tentative`, вердикт `open`, оговорку — в narrative; повод на ещё прогон |
-| Прогон дал несколько разных выводов | Разбить на ≤3 инсайта на метод; каждому свой вопрос и card_id |
-| Методическая ошибка (холодный кэш исказил, упал прогон, не та метрика) | Отклонить: инсайт не писать, причину зафиксировать в `.run.md`, перезапуск |
-| Исходное предсказание не подтвердилось, но узнали про саму метрику (напр. success_rate упёрся в потолок) | Методический инсайт: вердикт `refuted` по предсказанию + инсайт «чем мерить правильно» |
+| The rule threshold is passed with margin and the finding is robust to variation | Accept as written: `certainty=definite`, verdict `supported`/`refuted` |
+| The result is borderline or the effect is comparable to seed variance | Downgrade: `certainty=tentative`, verdict `open`, caveat in narrative, and run again |
+| The run produced several distinct findings | Split into no more than three insights per method, each with its own question and card_id |
+| Methodological error (cold cache distortion, failed run, wrong metric) | Reject: write no insight, record the reason in `.run.md`, and rerun |
+| The prediction was refuted, but the run taught something about the metric itself (for example, success_rate hit a ceiling) | Methodological insight: `refuted` verdict for the prediction plus an insight about the right measurement |
 
-Принятая форма исполняется шагами 6–8: публичный отчёт → research.json + вердикт →
-пересборка реестра.
+Implement the selected form through steps 6–8: public report → research.json +
+verdict → registry rebuild.
 
-## Чеклист ревью (definition of done для инсайта)
+## Review checklist (definition of done for an insight)
 
-- [ ] Правило решения из спеки применено явно — вердикт следует из чисел, не из ощущения.
-- [ ] Отчёт по skeleton: §1 зачем (измеримая цель), §2 основная метрика, §3 сетап, §4 результаты.
-- [ ] Инсайт в research.json: ≤3 на метод, certainty честный (definite только если порог пройден с запасом), card_id указывает на карточку-источник.
-- [ ] Учтён разброс: вывод устойчив к разбросу по сидам (см. H3) — иначе certainty=tentative.
-- [ ] Холодный старт/кэш не искажают сравнение (scene_creation_s на первом прогоне бэкенда отделён от throughput тренировки).
-- [ ] Публичные имена в отчёте, без локальных путей в §1/§2 (правила `koi-report-review`).
+- [ ] The specification's decision rule is applied explicitly; the verdict follows from numbers, not an impression.
+- [ ] The report follows the skeleton: §1 why (measurable goal), §2 primary metric, §3 setup, §4 results.
+- [ ] The research.json insight is honest: no more than three per method, `definite` only when the threshold is passed with margin, and card_id points to the source card.
+- [ ] Variance is considered: the finding is robust across seeds (see H3), otherwise `certainty=tentative`.
+- [ ] Cold start/cache does not distort the comparison (`scene_creation_s` on the backend's first run is separated from training throughput).
+- [ ] The report uses public names and has no local paths in §§1–2, per `koi-report-review`.
 
-## Вердикт
+## Verdict
 
-- supported — правило решения выполнено, вывод устойчив.
-- refuted — предсказание не подтвердилось по тому же правилу.
-- open — данных не хватает (например, эффект внутри разброса по сидам) → нужен ещё прогон.
+- supported — the decision rule is satisfied and the finding is robust.
+- refuted — the prediction failed under the same rule.
+- open — evidence is insufficient, for example because the effect lies within seed variance; another run is needed.
 
-Вердикт меняется только пересмотром данных; KNOWLEDGE.md после изменения вердикта или
-инсайтов пересобрать заново.
+Change a verdict only after re-evaluating the data. Rebuild KNOWLEDGE.md after a
+verdict or insight changes.

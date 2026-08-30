@@ -42,28 +42,28 @@ def _format_session_context(summary: dict, pull_result: dict) -> str:
     if action == "pulled":
         lines.append(f"**Pull:** {pull_result.get('message', 'ok')}")
     elif action == "blocked":
-        lines.append(f"**Pull заблокирован:** {pull_result.get('message', '')}")
+        lines.append(f"**Pull blocked:** {pull_result.get('message', '')}")
     elif action == "failed":
-        lines.append(f"**Pull ошибка:** {pull_result.get('message', '')}")
+        lines.append(f"**Pull error:** {pull_result.get('message', '')}")
     elif summary.get("behind", 0):
-        lines.append(f"**Remote впереди на {summary['behind']} коммитов** — нужен pull.")
+        lines.append(f"**Remote is {summary['behind']} commits ahead** — pull required.")
     else:
-        lines.append("**Pull:** актуально.")
+        lines.append("**Pull:** up to date.")
 
     pending = summary.get("pending_push") or list_pending_push()
     dirty = summary.get("dirty_project_paths") or []
     if pending or dirty:
         lines.append("")
         lines.append(
-            f"**Push:** очередь {len(pending)}, незакоммиченных файлов в projects/: {len(dirty)}."
+            f"**Push:** queue {len(pending)}, uncommitted files in projects/: {len(dirty)}."
         )
         lines.append(
-            "Скилл **koi-project-sync**: commit + push для projects/, затем complete-push --all."
+            "Use **koi-project-sync**: commit and push projects/, then complete-push --all."
         )
         for item in pending[:8]:
             lines.append(f"- `{item['project_id']}` {item['reason']}: {item['detail']}")
         if len(pending) > 8:
-            lines.append(f"- … ещё {len(pending) - 8}")
+            lines.append(f"- … {len(pending) - 8} more")
 
     return "\n".join(lines)
 
@@ -85,7 +85,7 @@ def main() -> None:
                 {
                     "additional_context": (
                         "## KOI project sync\n\n"
-                        f"Не удалось проверить git: {exc}. Скилл **koi-project-sync** вручную."
+                        f"Could not check git: {exc}. Run **koi-project-sync** manually."
                     )
                 },
                 ensure_ascii=False,
@@ -119,11 +119,11 @@ def main() -> None:
         dirty = summary.get("dirty_project_paths") or []
         if pending or dirty:
             followups.append(
-                "Очередь project-sync: commit + push projects/, затем complete-push --all."
+                "Project-sync queue: commit and push projects/, then complete-push --all."
             )
 
         if should_periodic_pull():
-            followups.append("Прошло ≥30 мин — выполни pull (koi-project-sync).")
+            followups.append("At least 30 minutes have passed; run pull (koi-project-sync).")
 
         if not followups:
             print("{}")

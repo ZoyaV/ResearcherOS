@@ -1,136 +1,75 @@
-# Исследовательское дерево
+# Research tree
 
-<p class="lead">Постановка исследования на карте мыслей: от наблюдаемой проблемы к причинам, способам проверки и методам. Узлы хранятся в <code>project.md</code>; локальный ResearcherOS рисует дерево на холсте и записывает правки обратно в тот же файл.</p>
+<p class="lead">A research specification on a mind map, from an observed problem to causes, tests, interventions, and methods. Nodes live in <code>project.md</code>; local ResearcherOS renders and edits the same file.</p>
 
-<div class="media-slot" data-media="research-tree-hero" data-accept="png,jpg,webp,mp4,webm">
-  Медиа: <code>media/research-tree-hero.png</code> (или <code>.jpg</code> / <code>.webp</code> / <code>.mp4</code> / <code>.webm</code>).
-</div>
+<div class="media-slot" data-media="research-tree-hero" data-accept="png,jpg,webp,mp4,webm"><p>Media: research tree</p></div>
 
-## Как работает
+## How it works
 
-Дерево отвечает на цепочку: что ломается → почему так думаем → чем это проверить или чем чинить → каким протоколом это сделать. Каждый узел — один шаг этой цепочки; рёбра задают, какие типы детей допустимы у родителя.
+The tree answers: what is wrong → why we think so → how to test or remedy it → which protocol to use.
 
-Допустимые рёбра (родитель → дети):
+| Parent | Allowed children |
+|---|---|
+| root | problem |
+| problem | cause |
+| cause | cause evidence, remediation hypothesis |
+| evidence or remediation | method |
+| method | none; runs live only on its kanban |
 
-| Родитель | Дети |
-|----------|------|
-| (корень) | проблема |
-| проблема | причина |
-| причина | доказательство причины, гипотеза устранения |
-| доказательство / гипотеза устранения | метод |
-| метод | — (прогоны только в канбане метода) |
+File types are `problem`, `cause`, `cause_evidence`, `remediation`, and `method`. The short map label “Hypothesis” means a remediation hypothesis, not a cause verdict. Legacy `experiment` leaves are parsed but hidden and cannot be added.
 
-В файле типы называются <code>problem</code>, <code>cause</code>, <code>cause_evidence</code>, <code>remediation</code>, <code>method</code>. На карте мыслей чипы типа узла всегда короткие: «Проблема», «Причина», «Доказательство», «Гипотеза», «Метод», «Эксперимент». В выпадающем списке типа при добавлении ребёнка, когда метаданные типов узлов загружены, для доказательства и гипотезы устранения показываются более длинные подписи API: «Доказательство причины», «Гипотеза устранения». Подпись «Гипотеза» на карте относится к типу <code>remediation</code> (гипотеза устранения), а не к вердикту причины.
+A cause has `open`, `supported`, or `refuted` status. Only causes display ✔/✗ verdict badges. A method owns a kanban; clicking it opens the board and a progress bar appears beneath the map node. Claims must remain falsifiable: one successful run is provisional support, not permanent proof.
 
-Тип <code>experiment</code> устарел: парсер его ещё читает, на карте лист не показывают, через UI добавить нельзя. Прогоны живут на доске метода.
+## How people use the interface
 
-У причины есть вердикт: открыта, подтверждена или опровергнута (<code>open</code> / <code>supported</code> / <code>refuted</code>). Значки на карте только у причины: ✔ «Гипотеза подтверждена» / ✗ «Гипотеза опровергнута»; при <code>open</code> значка нет.
+Select a project, open and edit nodes, then save changes back to `project.md`. Report ingestion may update a cause verdict only when the report explicitly declares it.
 
-Метод владеет канбаном. Клик по методу открывает доску, а не карточку узла как у проблемы. Под узлом метода на карте — полоска статуса доски.
+| Action | Non-method | Method |
+|---|---|---|
+| Click | node modal | kanban |
+| Double-click | node modal | focus camera, not kanban |
+| Context menu | node modal | kanban |
 
-Рамка постановки — проверка гипотез: формулировка должна допускать опровержение. Успешный прогон не «доказывает навсегда»; неожиданный результат разбирают (гипотеза, допущения, измерение, сам эксперимент).
+Evidence and remediation nodes can add a method; map + buttons appear wherever children are allowed. The root problem cannot be deleted. Other deletions require typing the first words of the title exactly. Canvas controls zoom, show the whole laboratory or current project, and pan. Hub is read-only. The ordinary node modal does not set cause verdicts.
 
-## Как человек работает в интерфейсе
+## Agent workflows
 
-Пользователь выбирает проект в списке слева (лаборатория / проекты). ResearcherOS загружает дерево на холст карты мыслей. Дальше типичный ход: открыть узел, изменить текст, сохранить — статус «Сохранение…», затем «Сохранено в project.md». После сохранения следующий шаг — открыть канбан метода (карточки и прогоны на доске). Разбор отчёта (<code>report_ingest</code>) обновляет вердикт причины, если отчёт явно его заявляет.
+- `koi-project-onboard` creates problem → cause → evidence/remediation → method, writes `project.md` and `onboard-brief.md`, then installs the project.
+- `koi-prose-style` keeps titles short, natural, and free of AI clichés; onboarding requires PASS before writing.
+- `koi-grill-experiment` specifies a card under one selected method rather than rebuilding the tree.
+- `koi-done-research` writes a completed card's question, answer, and narrative to `research.json`; it does not set cause verdicts.
+- `koi-knowledge-curator` curates `knowledge/` without rewriting the tree.
 
-Жесты по узлам разведены специально:
+`report_ingest` is a separate path that can update a cause verdict from an explicit report declaration.
 
-| Действие | Не-метод | Метод |
-|----------|----------|--------|
-| Клик | модалка узла | канбан |
-| Двойной клик | модалка узла (как клик) | камера к узлу, **не** канбан |
-| Контекстное меню | модалка узла (как клик) | канбан |
+## Technical details
 
-В модалке не-метода правят заголовок и описание (и связанные поля узла). У доказательства или гипотезы устранения есть «+ Добавить метод». Круглая «+» на карте появляется у типов узлов, у которых могут быть дети (в том числе у родителя, у которого детей ещё нет); модалки добавления: «Добавить причину», «Добавить доказательство или гипотезу», «Добавить метод». Корневую проблему удалить нельзя: кнопка скрыта, сервер отвечает «Cannot delete problem node». У остальных узлов — подтверждение с вводом первых одного-двух слов заголовка узла; при несовпадении — «Введите фразу точно, как показано выше».
-
-Масштаб холста: «+» («Приблизить»), «−» («Отдалить»), «◇» («Вся лаборатория»), «▣» («Текущий проект»). Перетаскивание холста — панорамирование. Справка по типам — оверлей «?».
-
-В Hub дерево только для чтения: «В Hub нельзя добавлять узлы — только просмотр»; в шапке — «Hub · @{owner} · только просмотр».
-
-Вердикт в модалке узла не выставляют (см. ограничения и API ниже).
-
-## Какие сценарии агента подключаются
-
-Сценарии агента необязательны: дерево можно править в интерфейсе или в Markdown. Они нужны, чтобы скелет и формулировки не разъезжались между людьми и агентами.
-
-| Сценарий агента | Роль относительно дерева |
-|-------|--------------------------|
-| <code>koi-project-onboard</code> | Собирает скелет: проблема → причина → доказательство / гипотеза устранения → метод. Пишет <code>tree/&lt;repo&gt;/koi-structure/project.md</code> и <code>onboard-brief.md</code>, затем <code>install_cli</code>. |
-| <code>koi-prose-style</code> | Заголовки и описания узлов — естественный язык, короткий title, без AI-штампов. Онбординг гоняет проверку стиля до <code>PASS</code> перед записью. |
-| <code>koi-grill-experiment</code> | Не строит дерево целиком; дожимает постановку эксперимента у выбранного метода (карточка канбана). Читает <code>project.md</code>, чтобы не спрашивать то, что уже в узлах. |
-| <code>koi-done-research</code> | После колонки «готово»: вопрос / ответ и рассказ в <code>research.json</code> через <code>research_questions</code>. Вердикт причины **не** выставляет. |
-| <code>koi-knowledge-curator</code> | Курирует <code>knowledge/</code> с опорой на дерево; по контракту само дерево не переписывает. |
-
-Разбор отчёта (<code>report_ingest</code>, <code>koi/projects/report_ingest/workflow.py</code>) обновляет вердикт причины, если отчёт явно его заявляет — это отдельный поток, не сценарий done-research.
-
-## Как устроено технически
-
-### Хранение
-
-Канон: <code>tree/&lt;repo&gt;/koi-structure/project.md</code> на ветке <code>koi/research</code> в отдельном рабочем дереве Git (worktree). Парсер и сериализатор: <code>koi/core/md_io.py</code> (<code>parse_project_md</code> / <code>serialize_project_md</code>). Загрузка: <code>koi/adapters/repository.py</code>.
-
-Заголовки Markdown задают узлы: уровень <code>#</code> = глубина, в строке заголовка — <code>тип: id</code>.
+Canonical storage is `tree/<repo>/koi-structure/project.md` on a `koi/research` worktree. Markdown heading depth defines node depth; each heading contains `type: id`.
 
 ```markdown
 # problem: n-problem
 
-Заголовок проблемы
-
-Текст описания…
+Problem title and description
 
 ## cause: n-cause-memory
 
 verdict: open
 
-Причина: …
-
 ### remediation: n-rem-episodic
-
-Устранение: …
 
 #### method: m-ab-memory
 
-Протокол A/B…
-
 <!-- koi:kanban board-… -->
 | backlog | running | done |
-…
+| --- | --- | --- |
 ```
 
-Модель домена: <code>koi/core/models.py</code> — <code>NodeType</code>, <code>ALLOWED_CHILDREN</code>, <code>Verdict</code>, <code>KANBAN_OWNER_TYPES = {method}</code>. Список допустимых детей для интерфейса: <code>koi/projects/views.py</code> → <code>allowed_children</code>. Короткие подписи типов на карте: <code>TYPE_LABELS</code> в <code>web/app.js</code>.
+Parsing and serialization live in `koi/core/md_io.py`; domain rules in `koi/core/models.py`; project loading in `koi/adapters/repository.py`. Node POST/PATCH/DELETE APIs accept title, description, and research questions, but PATCH does not accept verdict. Verdict changes require `project.md` editing or valid report ingestion.
 
-### API
+The client map is implemented in `web/index.html`, `web/app.js`, and `web/lab-canvas.js`; SVG edges and layout are calculated client-side. Findings link by `method_id` and `card_id`, and Hub exposes the same tree as a read-only snapshot.
 
-Создание, правка и удаление: <code>POST</code> / <code>PATCH</code> / <code>DELETE</code> <code>/projects/{id}/nodes</code>. Тело <code>UpdateNodeBody</code> принимает <code>title</code>, <code>description</code>, <code>research_questions</code> — поля <code>verdict</code> в PATCH нет. Вердикт меняют правкой <code>project.md</code> (<code>verdict: …</code> у причины) или условно через разбор отчёта (<code>report_ingest</code>).
+## Limits
 
-Тесты бэкенда: <code>test_md_io.py</code>, <code>test_project_views.py</code>, <code>test_project_ops.py</code>, <code>test_report_ingest.py</code>. Отдельных фронтенд-тестов mindmap нет.
+Cause verdicts are not edited in the regular modal. Double-clicking a method focuses it rather than opening kanban. Legacy experiment leaves remain hidden. Hub cannot add or remove nodes, and the root problem cannot be deleted.
 
-### Клиент
-
-Холст: <code>web/index.html</code> (<code>#mindmap</code>) + <code>web/app.js</code> (<code>renderMindmap</code>, <code>mountMapNode</code>, <code>openNodeModal</code>, <code>openKanbanModal</code>, <code>flyToMethodNode</code>, <code>nodeDeleteConfirmPhrase</code>) + камера <code>web/lab-canvas.js</code>. Справка: <code>web/node-tree-help.js</code>. HTTP-клиент: <code>web/api.js</code>. Когда в лаборатории загружено несколько проектов, холст лаборатории показывает их сразу.
-
-Раскладка узлов считается на клиенте (порядок и размеры по типу: проблема шире, метод с полоской канбана). Рёбра — SVG между узлами. Значки вердикта: <code>VERDICT_BADGES</code> в <code>web/app.js</code>. Подписи типов в UI: <code>state.meta.labels || TYPE_LABELS</code> (чипы на карте всегда из <code>TYPE_LABELS</code>).
-
-### Связь с остальным
-
-- Канбан и отчёты — у метода; устаревшие листья <code>experiment</code> в дереве не дублируют.
-- <code>research.json</code> — вопросы и выводы по <code>method_id</code> / <code>card_id</code>, не внутри заголовков дерева.
-- Hub отдаёт то же дерево как снимок только для чтения.
-
-## Ограничения
-
-- Вердикт причины нельзя выставить через типичную модалку узла или <code>PATCH</code> узла: только правка <code>project.md</code> или условный разбор отчёта (<code>report_ingest</code>).
-- Двойной клик по методу приближает камеру и **не** открывает канбан (канбан — обычный клик или контекстное меню).
-- Листья <code>experiment</code> в дереве — наследие: читаются, на карте скрыты, через UI не добавляются.
-- Hub — только просмотр; добавлять и удалять узлы нельзя.
-- Корневую проблему удалить нельзя.
-
-## Связанные страницы
-
-- <a href="kanban.html">Канбан экспериментов</a>
-- <a href="monitor.html">Монитор прогона</a>
-- <a href="index.html">Обзор архитектуры</a>
-- <a href="knowledge.html">База знаний</a>
-
-<p class="callout">Текст: <code>content/research-tree.md</code>. Медиа: <code>media/research-tree-hero.*</code>.</p>
+Related: [Experiment kanban](kanban.html) · [Run monitor](monitor.html) · [Architecture](index.html) · [Knowledge base](knowledge.html)

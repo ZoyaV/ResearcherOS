@@ -314,14 +314,14 @@ def fetch_cursor_usage(
     if not token:
         return CursorUsageSnapshot(
             status="no_auth",
-            message="Не удалось прочитать сессию Cursor. Войдите в Cursor IDE.",
+            message="Could not read the Cursor session. Sign in to Cursor IDE.",
         )
 
     session = build_workos_session_cookie(token)
     if session is None:
         return CursorUsageSnapshot(
             status="no_auth",
-            message="Сессия Cursor найдена, но токен не распознан. Перелогиньтесь в Cursor.",
+            message="Cursor session found, but its token was not recognized. Sign in again.",
         )
     session_token, user_id = session
     headers = _dashboard_headers(session_token)
@@ -417,5 +417,5 @@ def fetch_cursor_usage(
 
     return CursorUsageSnapshot(
         status="error",
-        message="Не удалось получить квоту Cursor (API не ответил).",
+        message="Could not retrieve the Cursor quota (the API did not respond).",
     )

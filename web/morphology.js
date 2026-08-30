@@ -14,44 +14,44 @@ const GAP_X = 84;
 const GAP_Y = 26;
 
 const ROLE_LABELS = {
-  problem: "проблема",
-  origin: "откуда берётся",
-  symptom: "доказательство проблемы",
-  gap: "разрыв",
-  thesis: "тезис",
-  assumption: "допущение",
-  method_step: "шаг метода",
-  mechanism: "механизм",
-  experiment: "эксперимент",
-  result: "результат",
-  comparison: "сравнение",
-  limitation: "ограничение",
-  implication: "следствие",
+  problem: "problem",
+  origin: "origin",
+  symptom: "problem evidence",
+  gap: "gap",
+  thesis: "thesis",
+  assumption: "assumption",
+  method_step: "method step",
+  mechanism: "mechanism",
+  experiment: "experiment",
+  result: "result",
+  comparison: "comparison",
+  limitation: "limitation",
+  implication: "implication",
 };
 
 const RELATION_LABELS = {
-  causes: "вызывает",
-  evidences: "доказывает",
-  motivates: "мотивирует",
-  contrasts: "противопоставлено",
-  solves: "решает",
-  measures: "измеряет",
-  generalizes: "обобщает",
-  limits: "ограничивает",
-  assumes: "опирается на",
-  enables: "делает возможным",
+  causes: "causes",
+  evidences: "supports",
+  motivates: "motivates",
+  contrasts: "contrasts with",
+  solves: "solves",
+  measures: "measures",
+  generalizes: "generalizes",
+  limits: "limits",
+  assumes: "assumes",
+  enables: "enables",
 };
 
 const GROUNDING_LABELS = {
-  quoted: "дословная цитата",
-  paraphrased: "пересказ",
-  inferred: "прочтение агента",
+  quoted: "verbatim quotation",
+  paraphrased: "paraphrase",
+  inferred: "agent interpretation",
 };
 
 const COVERAGE_LABELS = {
-  full_text: "полный текст",
-  partial_text: "часть текста",
-  abstract_only: "только абстракт",
+  full_text: "full text",
+  partial_text: "partial text",
+  abstract_only: "abstract only",
 };
 
 /** Hues for chapter accents — readable on both themes at 72%/60%. */
@@ -130,7 +130,7 @@ function runsForCurrentPaper() {
 }
 
 function roleLabel(role) {
-  return ROLE_LABELS[role] || String(role || "узел").replace(/_/g, " ");
+  return ROLE_LABELS[role] || String(role || "node").replace(/_/g, " ");
 }
 
 function relationLabel(relation) {
@@ -238,15 +238,15 @@ function renderPaperCard() {
   const titleEl = document.getElementById("morph-paper-title");
   const abstractEl = document.getElementById("morph-paper-abstract");
   if (!paper) {
-    if (titleEl) titleEl.textContent = "Статья не выбрана";
+    if (titleEl) titleEl.textContent = "No paper selected";
     return;
   }
   if (metaEl) {
     const year = paper.year ? String(paper.year) : "—";
-    metaEl.textContent = `${year} · ${paper.authors || "авторы не указаны"}`;
+    metaEl.textContent = `${year} · ${paper.authors || "authors not specified"}`;
   }
   if (titleEl) {
-    titleEl.textContent = paper.title || "(без названия)";
+    titleEl.textContent = paper.title || "(untitled)";
     titleEl.href = paper.url || "#";
   }
   if (abstractEl) abstractEl.textContent = shortText(paper.abstract, 420);
@@ -264,8 +264,8 @@ function renderRuns() {
   if (!rows.length) {
     const orphanHint =
       !showAll && allRuns.length
-        ? `<p class="morph-runs-empty">Для этой ссылки прогонов нет, но в проекте есть ${allRuns.length} — включите «все статьи».</p>`
-        : '<p class="morph-runs-empty">Пока нет прогонов.</p>';
+        ? `<p class="morph-runs-empty">There are no runs for this link, but the project has ${allRuns.length}; enable “all papers.”</p>`
+        : '<p class="morph-runs-empty">No runs yet.</p>';
     list.innerHTML = orphanHint;
     return;
   }
@@ -276,7 +276,7 @@ function renderRuns() {
       const ready = row.status === "ready";
       const when = String(row.created_at || "").replace("T", " ").replace("Z", "");
       const title = showAll ? shortText(row.paper_title, 60) : when;
-      const sub = showAll ? when : ready ? "готово" : "ждёт агента";
+      const sub = showAll ? when : ready ? "ready" : "waiting for agent";
       return `
         <div class="morph-run-item${active}">
           <button type="button" class="morph-run-row" data-run-id="${escapeHtml(row.run_id)}">
@@ -287,7 +287,7 @@ function renderRuns() {
             </span>
           </button>
           <button type="button" class="morph-run-delete" data-run-id="${escapeHtml(row.run_id)}"
-                  title="Удалить прогон" aria-label="Удалить прогон">×</button>
+                  title="Delete run" aria-label="Delete run">×</button>
         </div>`;
     })
     .join("");
@@ -302,7 +302,7 @@ function renderRuns() {
   list.querySelectorAll(".morph-run-delete").forEach((btn) => {
     btn.addEventListener("click", async () => {
       const runId = btn.dataset.runId;
-      if (!runId || !window.confirm("Удалить этот прогон морфологии?")) return;
+      if (!runId || !window.confirm("Delete this morphology run?")) return;
       try {
         await KoiApi.deleteMorphologyRun(projectId, runId);
       } catch (err) {
@@ -428,13 +428,13 @@ function renderArticle() {
   toggle?.classList.toggle("hidden", !available || activeTab !== "graph");
   toggle?.classList.toggle("is-active", available && articleSplitOpen);
   if (toggle) {
-    toggle.textContent = articleSplitOpen ? "текст ✓" : "текст";
+    toggle.textContent = articleSplitOpen ? "text ✓" : "text";
   }
 
   const meta = available
-    ? `${articleData.source_name || "источник"} · ${articleData.marked_count || 0}/${
+    ? `${articleData.source_name || "source"} · ${articleData.marked_count || 0}/${
         articleData.mark_total || 0
-      } цитат размечено`
+      } quotations marked`
     : "";
   if (metaSplit) metaSplit.textContent = meta;
   if (metaFull) metaFull.textContent = meta;
@@ -500,14 +500,14 @@ function setArticleSplit(open) {
 
 async function stageRun() {
   if (!projectId) {
-    setStatus("Не выбран проект.", "error");
+    setStatus("No project selected.", "error");
     return;
   }
   if (!paper?.title && !paper?.url) {
-    setStatus("Нет данных статьи — вернитесь в RelatedWork и нажмите морф ещё раз.", "error");
+    setStatus("No paper data; return to Related Work and open morphology again.", "error");
     return;
   }
-  setStatus("Готовлю промпт…");
+  setStatus("Preparing prompt…");
   let staged;
   try {
     staged = await KoiApi.stagePaperMorphology(projectId, paper);
@@ -522,19 +522,19 @@ async function stageRun() {
   startPolling(staged.run_id);
 }
 
-async function copyPrompt(text, okMessage = "Промпт в буфере обмена.") {
+async function copyPrompt(text, okMessage = "Prompt copied to clipboard.") {
   const hint = document.getElementById("morph-prompt-hint");
   if (!text) return;
   try {
     await navigator.clipboard.writeText(text);
     if (hint) {
       hint.textContent =
-        "Скопировано — вставьте в чат Cursor. Страница подхватит результат сама.";
+        "Copied — paste into Cursor chat. The page will load the result automatically.";
     }
     setStatus(okMessage, "ok");
   } catch {
-    if (hint) hint.textContent = "Не удалось скопировать автоматически — скопируйте текст ниже.";
-    setStatus("Скопируйте промпт вручную.", "warn");
+    if (hint) hint.textContent = "Could not copy automatically; copy the text below.";
+    setStatus("Copy the prompt manually.", "warn");
   }
 }
 
@@ -559,7 +559,7 @@ function currentSubgraph() {
 }
 
 function composeSubgraphExplainPrompt(subgraph) {
-  const title = paper?.title || graphData?.paper_title || "статья";
+  const title = paper?.title || graphData?.paper_title || "paper";
   const url = paper?.url || paperUrl || "";
   const focus = nodeIndex.get(subgraph.focusId);
   const focusLine = focus
@@ -589,41 +589,41 @@ function composeSubgraphExplainPrompt(subgraph) {
     })
     .join("\n");
 
-  return `Поясни связку в морфологии статьи максимально коротко.
+  return `Explain this connection in the paper morphology as briefly as possible.
 
-Статья: ${title}
+Paper: ${title}
 ${url ? `${url}\n` : ""}
-Фокус: ${focusLine}
-Подграф: ${subgraph.nodes.length} узлов, ${subgraph.edges.length} переходов
-(★ фокус, ↑ предки, ↓ потомки)
+Focus: ${focusLine}
+Subgraph: ${subgraph.nodes.length} nodes, ${subgraph.edges.length} transitions
+(★ focus, ↑ ancestors, ↓ descendants)
 
-## Узлы
-${nodeLines || "(пусто)"}
+## Nodes
+${nodeLines || "(empty)"}
 
-## Переходы
-${edgeLines || "(нет рёбер внутри подграфа)"}
+## Transitions
+${edgeLines || "(no edges within the subgraph)"}
 
-## Задача
-Дай сжатое пояснение связки **по содержанию статьи**, а не по меткам графа.
+## Task
+Give a concise explanation of the connection **based on the paper's content**, not the graph labels.
 
-Форма ответа — 3–6 коротких предложений **или** одна цепочка «A → B → C» с глаголами
-переходов. Пиши в ритме:
-«Авторы утверждают, что (A); показывают это через (B); предлагают решение через (C).»
+Use 3–6 short sentences **or** one “A → B → C” chain with transition verbs.
+Follow this rhythm:
+“The authors claim (A), demonstrate it through (B), and propose a solution through (C).”
 
-Запрещено: пересказ всей статьи; утверждения вне узлов выше; списки цитат;
-мета-слова вроде «данный подграф», «в рамках морфологии».
-Если в графе есть цикл — одна фраза об этом в конце.`.trim();
+Do not summarize the whole paper, introduce claims outside the nodes above, list quotations,
+or use meta-language such as “this subgraph” or “within the morphology.”
+If the graph contains a cycle, mention it in one sentence at the end.`.trim();
 }
 
 async function copySubgraphExplainPrompt() {
   const subgraph = currentSubgraph();
   if (!subgraph) {
-    setStatus("Сначала выберите узел — подсветится подграф.", "warn");
+    setStatus("Select a node first to highlight its subgraph.", "warn");
     return;
   }
   await copyPrompt(
     composeSubgraphExplainPrompt(subgraph),
-    `Промпт по связке (${subgraph.nodes.length} узлов) в буфере.`
+    `Connection prompt (${subgraph.nodes.length} nodes) copied to clipboard.`
   );
 }
 
@@ -636,7 +636,7 @@ function startPolling(runId) {
       if (run?.status === "ready") {
         currentRun = run;
         stopPolling();
-        setStatus("Морфология готова.", "ok");
+        setStatus("Morphology ready.", "ok");
         renderRun();
         void loadArticle(runId);
         void loadRuns();
@@ -674,7 +674,7 @@ function renderRun() {
     const promptEl = document.getElementById("morph-prompt");
     if (promptEl) promptEl.textContent = currentRun.prompt || currentRun.cursor_message || "";
   }
-  if (runBtn) runBtn.textContent = graph ? "Пересобрать" : "Собрать морфологию";
+  if (runBtn) runBtn.textContent = graph ? "Rebuild" : "Build morphology";
 
   renderRuns();
   renderShape();
@@ -684,8 +684,8 @@ function renderRun() {
   if (graph) {
     renderGraph(graph);
     setStatus(
-      `${(graph.nodes || []).length} узлов · ${(graph.edges || []).length} переходов · ${
-        COVERAGE_LABELS[graph.source_coverage] || graph.source_coverage || "источник не указан"
+      `${(graph.nodes || []).length} nodes · ${(graph.edges || []).length} transitions · ${
+        COVERAGE_LABELS[graph.source_coverage] || graph.source_coverage || "source not specified"
       }`
     );
   }
@@ -696,12 +696,12 @@ function layoutGraph(nodes, edges) {
   const valid = edges.filter((edge) => byId.has(edge.from) && byId.has(edge.to));
   const nodeOrder = new Map(nodes.map((node, index) => [node.id, index]));
   const chapterNames = [
-    ...new Set(nodes.map((node) => nodeSection(node).chapter || "Без раздела")),
+    ...new Set(nodes.map((node) => nodeSection(node).chapter || "No section")),
   ].sort(compareChapters);
   const columns = new Map(chapterNames.map((chapter, index) => [index, []]));
   const chapterColumns = new Map(chapterNames.map((chapter, index) => [chapter, index]));
   for (const node of nodes) {
-    const chapter = nodeSection(node).chapter || "Без раздела";
+    const chapter = nodeSection(node).chapter || "No section";
     columns.get(chapterColumns.get(chapter)).push(node.id);
   }
   for (const column of columns.values()) {
@@ -909,7 +909,7 @@ function renderGraph(graph) {
           }
         </span>
         <span class="morph-node-text">${escapeHtml(node.statement)}</span>
-        <span class="morph-node-where">${escapeHtml(shortText(section.title || "без якоря", 34))}</span>
+        <span class="morph-node-where">${escapeHtml(shortText(section.title || "no anchor", 34))}</span>
       </div>`;
     nodeLayer.appendChild(holder);
     nodeEls.set(node.id, { holder, div: holder.firstElementChild });
@@ -1164,14 +1164,14 @@ function renderLegend(nodes) {
 
   legend.innerHTML = `
     <div class="morph-legend-row">
-      <span class="morph-legend-caption">Разделы</span>
-      ${chapterChips || '<span class="morph-legend-item">без якорей</span>'}
+      <span class="morph-legend-caption">Sections</span>
+      ${chapterChips || '<span class="morph-legend-item">no anchors</span>'}
     </div>
     <div class="morph-legend-row">
       ${groundingChips}
-      <button type="button" class="morph-legend-btn morph-legend-btn-accent hidden" id="morph-explain-subgraph" title="Скопировать промпт: пояснить выделенную связку">пояснить связку</button>
-      <button type="button" class="morph-legend-btn hidden" id="morph-clear-focus">сбросить фокус</button>
-      <button type="button" class="morph-legend-btn" id="morph-reset-layout">раскладка ↺</button>
+      <button type="button" class="morph-legend-btn morph-legend-btn-accent hidden" id="morph-explain-subgraph" title="Copy prompt: explain selected connection">explain connection</button>
+      <button type="button" class="morph-legend-btn hidden" id="morph-clear-focus">clear focus</button>
+      <button type="button" class="morph-legend-btn" id="morph-reset-layout">layout ↺</button>
     </div>`;
 
   legend.querySelectorAll(".morph-chapter-chip").forEach((btn) => {
@@ -1236,7 +1236,7 @@ function selectNode(nodeId, { scrollArticle = true } = {}) {
         <figure class="morph-quote">
           <blockquote>${escapeHtml(item.quote)}</blockquote>
           <figcaption>${escapeHtml(
-            [item.section, item.locator].filter(Boolean).join(" · ") || "без якоря"
+            [item.section, item.locator].filter(Boolean).join(" · ") || "no anchor"
           )}</figcaption>
         </figure>`
     )
@@ -1276,10 +1276,10 @@ function selectNode(nodeId, { scrollArticle = true } = {}) {
         : ""
     }
     <p class="morph-inspector-statement">${escapeHtml(node.statement)}</p>
-    ${evidence ? `<h4 class="morph-inspector-title">Цитаты</h4>${evidence}` : ""}
+    ${evidence ? `<h4 class="morph-inspector-title">Quotations</h4>${evidence}` : ""}
     ${
       incoming.length
-        ? `<h4 class="morph-inspector-title">Входящие переходы</h4><ul class="morph-transitions">${transitions(
+        ? `<h4 class="morph-inspector-title">Incoming transitions</h4><ul class="morph-transitions">${transitions(
             incoming,
             "in"
           )}</ul>`
@@ -1287,14 +1287,14 @@ function selectNode(nodeId, { scrollArticle = true } = {}) {
     }
     ${
       outgoing.length
-        ? `<h4 class="morph-inspector-title">Исходящие переходы</h4><ul class="morph-transitions">${transitions(
+        ? `<h4 class="morph-inspector-title">Outgoing transitions</h4><ul class="morph-transitions">${transitions(
             outgoing,
             "out"
           )}</ul>`
         : ""
     }
     <button type="button" class="btn btn-small morph-explain-btn" id="morph-explain-inspector">
-      Пояснить связку — скопировать промпт
+      Explain connection — copy prompt
     </button>`;
   body.classList.remove("hidden");
   document.getElementById("morph-inspector-empty")?.classList.add("hidden");
@@ -1310,7 +1310,7 @@ function renderShape() {
   if (!root) return;
   const graph = currentRun?.morphology;
   if (!graph) {
-    root.innerHTML = '<p class="morph-runs-empty">Форма появится после разбора.</p>';
+    root.innerHTML = '<p class="morph-runs-empty">The shape will appear after analysis.</p>';
     return;
   }
 
@@ -1350,37 +1350,37 @@ function renderShape() {
 
   root.innerHTML = `
     <section class="morph-shape-section">
-      <h3>Шаблоны аргументации</h3>
+      <h3>Argument patterns</h3>
       <p class="morph-shape-hint">
-        Шаблон подбирается после разбора. Пустой слот остаётся пустым — он не заполняется
-        придуманным узлом.
+        The pattern is selected after analysis. An empty slot remains empty and is not
+        filled with an invented node.
       </p>
       ${
         fitRows
           ? `<table class="morph-table">
-               <thead><tr><th>Шаблон</th><th>Совпадение</th><th>Пустые слоты</th><th>Замечание</th></tr></thead>
+               <thead><tr><th>Pattern</th><th>Match</th><th>Empty slots</th><th>Note</th></tr></thead>
                <tbody>${fitRows}</tbody>
              </table>`
-          : '<p class="morph-runs-empty">Агент не сопоставил шаблоны.</p>'
+          : '<p class="morph-runs-empty">The agent did not match any patterns.</p>'
       }
     </section>
     <section class="morph-shape-section">
-      <h3>Стиль</h3>
+      <h3>Style</h3>
       <dl class="morph-style">
-        <dt>Голос</dt><dd>${escapeHtml(style.voice || "—")}</dd>
-        <dt>Хеджирование</dt><dd>${escapeHtml(style.hedging || "—")}</dd>
-        <dt>Связки</dt><dd>${cues || "—"}</dd>
-        <dt>Заметки</dt><dd>${escapeHtml(style.notes || "—")}</dd>
+        <dt>Voice</dt><dd>${escapeHtml(style.voice || "—")}</dd>
+        <dt>Hedging</dt><dd>${escapeHtml(style.hedging || "—")}</dd>
+        <dt>Connectives</dt><dd>${cues || "—"}</dd>
+        <dt>Notes</dt><dd>${escapeHtml(style.notes || "—")}</dd>
       </dl>
     </section>
     ${
       gaps
-        ? `<section class="morph-shape-section"><h3>Пробелы источника</h3><ul class="morph-list">${gaps}</ul></section>`
+        ? `<section class="morph-shape-section"><h3>Source gaps</h3><ul class="morph-list">${gaps}</ul></section>`
         : ""
     }
     ${
       extensions
-        ? `<section class="morph-shape-section"><h3>Новые роли и связи</h3><ul class="morph-list">${extensions}</ul></section>`
+        ? `<section class="morph-shape-section"><h3>New roles and relationships</h3><ul class="morph-list">${extensions}</ul></section>`
         : ""
     }`;
 }
@@ -1390,7 +1390,7 @@ function renderReport() {
   if (!root) return;
   const markdown = currentRun?.report_markdown;
   if (!markdown) {
-    root.innerHTML = '<p class="morph-runs-empty">Отчёт появится после разбора.</p>';
+    root.innerHTML = '<p class="morph-runs-empty">The report will appear after analysis.</p>';
     return;
   }
   root.innerHTML = renderMarkdown(markdown);
@@ -1441,7 +1441,7 @@ function initInspectorResize() {
     if (!expand) return;
     const wide = width >= 480;
     expand.setAttribute("aria-pressed", wide ? "true" : "false");
-    expand.textContent = wide ? "Уже" : "Шире";
+    expand.textContent = wide ? "Narrower" : "Wider";
   };
   const setWidth = (value, persist = false) => {
     const { min, max } = limits();
@@ -1552,7 +1552,7 @@ async function init() {
   paper = await resolvePaper();
   renderPaperCard();
   if (!paper) {
-    setStatus("Статья не найдена — откройте её из списка литературы.", "error");
+    setStatus("Paper not found; open it from the literature list.", "error");
   }
 
   document.getElementById("morph-run")?.addEventListener("click", () => void stageRun());

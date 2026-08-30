@@ -1,9 +1,9 @@
 """Process one agent-chat queue item: research.json auto-answer, then LLM agent.
 
-Порядок: сначала бесплатный авто-ответ из research.json; если база не
-покрывает вопрос — локальный агент через koi.adapters.agent_backends (Claude Code
-CLI и/или Cursor SDK, см. KOI_AGENT_BACKEND). Если ни один бэкенд не
-доступен — в чат уходит предупреждение с инструкцией по настройке ключа.
+Order: first try the free automatic answer from research.json. If the database
+does not cover the question, use a local agent through koi.adapters.agent_backends
+(Claude Code CLI and/or Cursor SDK; see KOI_AGENT_BACKEND). If no backend is
+available, send setup instructions to the chat.
 """
 
 from __future__ import annotations
@@ -23,14 +23,14 @@ _ws = get_workspace()
 def _sdk_prompt(item_id: str) -> str:
     ctx = build_context(item_id)
     return (
-        "Ты отвечаешь на вопрос исследователя в ResearchOS (скилл koi-agent-chat).\n"
-        "Правила содержания:\n"
-        "1. Сначала research_database в JSON (narrative, answer).\n"
-        "2. Отчёт (report_path) — только если в базе не хватает деталей.\n"
-        "3. Если в базе нет ответа — честно скажи, что эксперименты пока не покрывают вопрос.\n\n"
+        "You answer a researcher's question in ResearchOS using koi-agent-chat.\n"
+        "Content rules:\n"
+        "1. Use research_database in JSON first (narrative, answer).\n"
+        "2. Open report_path only when the database lacks details.\n"
+        "3. If the database has no answer, say plainly that existing experiments do not cover the question.\n\n"
         f"{ANSWER_FORMAT_INSTRUCTIONS}\n\n"
-        "Верни ТОЛЬКО готовый текст ответа для панели UI.\n\n"
-        f"Контекст:\n{json.dumps(ctx, ensure_ascii=False, indent=2)}"
+        "Return ONLY the final answer text for the UI panel.\n\n"
+        f"Context:\n{json.dumps(ctx, ensure_ascii=False, indent=2)}"
     )
 
 
@@ -52,7 +52,7 @@ def process_item(item_id: str) -> bool:
         submit_answer(item_id, auto)
         return True
 
-    load_env_file()  # ключи из KOI/.env (настройки UI) — не перетирает уже заданные
+    load_env_file()  # Load UI settings from KOI/.env without overwriting existing values.
     if is_cursor_manual_agent_mode():
         return False
 

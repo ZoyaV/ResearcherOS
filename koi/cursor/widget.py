@@ -65,7 +65,7 @@ class CursorUsageWidget:
         self.margin = margin
         self.poll_ms = poll_ms
         self.only_when_cursor_active = only_when_cursor_active
-        self.snapshot = CursorUsageSnapshot(status="error", message="Загрузка…")
+        self.snapshot = CursorUsageSnapshot(status="error", message="Loading…")
         self._drag_offset: tuple[int, int] | None = None
         self._refreshing = False
         self._visible = False

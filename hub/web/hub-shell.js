@@ -18,10 +18,10 @@
     var btn = document.getElementById("btn-theme");
     if (!btn) return;
     var theme = currentTheme();
-    btn.title = theme === "light" ? "Тёмная тема" : "Светлая тема";
+    btn.title = theme === "light" ? "Dark theme" : "Light theme";
     btn.setAttribute(
       "aria-label",
-      theme === "light" ? "Включить тёмную тему" : "Включить светлую тему"
+      theme === "light" ? "Enable dark theme" : "Enable light theme"
     );
   }
 
@@ -43,7 +43,7 @@
   }
 
   function guestLoginHtml() {
-    return '<a class="btn btn-primary hub-login-btn" href="/auth/github">Войти</a>';
+    return '<a class="btn btn-primary hub-login-btn" href="/auth/github">Sign in</a>';
   }
 
   function bindAccountMenu(root) {
@@ -113,8 +113,8 @@
           '<span class="hub-account__chevron" aria-hidden="true">▾</span>' +
           "</button>" +
           '<div class="hub-account__menu hidden" id="hub-account-menu" role="menu">' +
-          '<a class="hub-account__item" href="/connect" role="menuitem">+ Подключить репозиторий</a>' +
-          '<button type="button" class="hub-account__item hub-account__item--danger" data-action="logout" role="menuitem">Выйти</button>' +
+          '<a class="hub-account__item" href="/connect" role="menuitem">+ Connect repository</a>' +
+          '<button type="button" class="hub-account__item hub-account__item--danger" data-action="logout" role="menuitem">Sign out</button>' +
           "</div>" +
           "</div>";
         bindAccountMenu(el);

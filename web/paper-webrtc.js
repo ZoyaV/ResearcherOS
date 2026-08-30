@@ -232,7 +232,7 @@ export function createPaperWebRtcMesh({
       if (open || closing) return;
       const snap = transportSnapshot();
       if (!snap.signalingPeerCount) {
-        setError("P2P: signaling не видит второго пира");
+        setError("P2P: signaling cannot see the second peer");
         return;
       }
       for (const id of remoteMetadata.keys()) startRelay(id, { force: true });
@@ -565,8 +565,8 @@ export function createPaperWebRtcMesh({
   function validatePeer(remote) {
     if (compatibleGit(remote)) return true;
     setError(
-      `P2P остановлен: Git base отличается (${config?.git_commit?.slice(0, 8) || "нет"} / ${
-        remote?.git_commit?.slice(0, 8) || "нет"
+      `P2P stopped: Git base differs (${config?.git_commit?.slice(0, 8) || "none"} / ${
+        remote?.git_commit?.slice(0, 8) || "none"
       })`
     );
     return false;
@@ -714,7 +714,7 @@ export function createPaperWebRtcMesh({
     const id = rememberUpdate(bytes);
     if (!id) return;
     if (epoch !== config?.crdt_epoch) {
-      setError("P2P update отклонён: CRDT history ещё не синхронизирована");
+      setError("P2P update rejected: CRDT history is not synchronized yet");
       return;
     }
     applyRemoteUpdate?.(bytes);
@@ -727,7 +727,7 @@ export function createPaperWebRtcMesh({
     const bytes = base64ToBytes(String(message.update || ""));
     const remoteEpoch = String(remote.crdt_epoch || "");
     if (!remoteEpoch) {
-      setError("P2P peer не прислал CRDT epoch");
+      setError("The P2P peer did not send a CRDT epoch");
       return;
     }
     if (remoteEpoch === config?.crdt_epoch) {
@@ -744,7 +744,7 @@ export function createPaperWebRtcMesh({
       sameDocument ||
       (!config?.local_dirty && config?.document_hash === config?.base_document_hash);
     if (!localIsClean) {
-      setError("P2P остановлен: локальный main.tex отличается от Git base");
+      setError("P2P stopped: local main.tex differs from the Git base");
       return;
     }
     adoptingEpoch = remoteEpoch;
@@ -874,7 +874,7 @@ export function createPaperWebRtcMesh({
     });
     channel.addEventListener("message", (event) => handleChannelMessage(remotePeerId, event));
     channel.addEventListener("close", emitStatus);
-    channel.addEventListener("error", () => setError("Ошибка WebRTC DataChannel"));
+    channel.addEventListener("error", () => setError("WebRTC DataChannel error"));
   }
 
   function createConnection(remotePeerId, initiator = false) {
@@ -1014,7 +1014,7 @@ export function createPaperWebRtcMesh({
       if (code === "peer_not_found") {
         return;
       }
-      setError(`Signaling: ${code || "ошибка"}`);
+      setError(`Signaling: ${code || "error"}`);
     }
   }
 
@@ -1045,7 +1045,7 @@ export function createPaperWebRtcMesh({
         const next = await refreshConfig();
         if (next) config = { ...config, ...next };
       } catch (error) {
-        setError(error?.message || "Не удалось обновить P2P token");
+        setError(error?.message || "Could not refresh the P2P token");
       }
     }
     const ws = new WebSocket(config.signaling_url);
@@ -1061,7 +1061,7 @@ export function createPaperWebRtcMesh({
       try {
         void handleSignal(JSON.parse(event.data));
       } catch (error) {
-        setError(error?.message || "Некорректный signaling message");
+        setError(error?.message || "Invalid signaling message");
       }
     });
     ws.addEventListener("close", (event) => {
@@ -1072,14 +1072,14 @@ export function createPaperWebRtcMesh({
       joinAt = 0;
       if (!closing) {
         if (event.code === 1008) {
-          setError(`Signaling отклонил join (${event.reason || `код ${event.code}`})`);
+          setError(`Signaling rejected the join (${event.reason || `code ${event.code}`})`);
         }
         if (reconnectTimer) clearTimeout(reconnectTimer);
         reconnectTimer = setTimeout(() => void openSignal(), 1500);
       }
       emitStatus();
     });
-    ws.addEventListener("error", () => setError("Signaling недоступен"));
+    ws.addEventListener("error", () => setError("Signaling is unavailable"));
   }
 
   if (typeof document !== "undefined") {

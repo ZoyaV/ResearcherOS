@@ -1,38 +1,38 @@
-# Доменная модель KOI
+# KOI domain model
 
-## Поток мышления (science agile)
+## Reasoning flow (science agile)
 
 ```
-Проблема
-    ↓ «почему так?»
-Причина (гипотеза о природе)
-    ├→ Доказательство причины  ──→  Метод(ы)  ──→  [Канбан] ──→ Эксперименты
-    └→ Гипотеза устранения     ──→  Метод(ы)  ──→  [Канбан] ──→ Эксперименты
+Problem
+    ↓ “why does this happen?”
+Cause (explanatory hypothesis)
+    ├→ Cause evidence          ──→  Method(s) ──→  [Kanban] ──→ Experiments
+    └→ Remediation hypothesis  ──→  Method(s) ──→  [Kanban] ──→ Experiments
 ```
 
-В отличие от классического Agile (эпик → story → task), здесь нет «фич» — есть **вердикт** по узлу: гипотеза открыта, поддержана данными или опровергнута.
+Unlike conventional Agile (epic → story → task), this model has no “features.” Each node receives a **verdict**: the hypothesis is open, supported by data, or refuted.
 
-## Правила дерева
+## Tree rules
 
-| Родитель | Допустимые дети |
+| Parent | Allowed children |
 |----------|-----------------|
-| — (корень проекта) | Проблема |
-| Проблема | Причина |
-| Причина | Доказательство причины, Гипотеза устранения |
-| Доказательство / Устранение | Метод |
-| Метод | — (эксперименты в канбане) |
+| — (project root) | Problem |
+| Problem | Cause |
+| Cause | Cause evidence, Remediation hypothesis |
+| Evidence / Remediation | Method |
+| Method | — (experiments live on the kanban board) |
 
-## Канбан
+## Kanban
 
-- Привязан к узлу типа `method` (способ проверки гипотезы); у одной гипотезы может быть несколько методов.
-- Создаётся автоматически при добавлении узла `method`.
-- Карточки = планируемые или идущие эксперименты (не обязательно дублируют лист «Эксперимент» в дереве; в наброске связь опциональна через `linked_node_id`).
-- Колонки по умолчанию: Backlog → Planned → Running → Done.
+- Attached to a `method` node (a way to test a hypothesis); one hypothesis may have several methods.
+- Created automatically when a `method` node is added.
+- Cards represent planned or running experiments. They do not have to duplicate an Experiment node in the tree; linkage is optional through `linked_node_id`.
+- Default columns: Backlog → Planned → Running → Done.
 
-## Статусы гипотез (`verdict`)
+## Hypothesis states (`verdict`)
 
-- `open` — в работе
-- `supported` — данные поддерживают
-- `refuted` — опровергнута
+- `open` — in progress
+- `supported` — supported by data
+- `refuted` — refuted
 
-В наброске вердикты заданы в модели, UI для смены статуса — следующий шаг.
+In the prototype, verdicts are defined in the model; a UI for changing them is the next step.

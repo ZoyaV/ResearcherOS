@@ -1,142 +1,141 @@
-# База знаний ReseachOS — как устроена и как с ней работать
+# ResearchOS knowledge base — structure and use
 
-Документация для пользователя. Кратко: у каждого проекта есть база знаний (БЗ),
-которая **собирается автоматически** из данных проекта; гипотезы можно проверять
-агентом (Claude Code или Cursor), который сам пишет отчёт по шаблону, а отчёт
-автоматически превращается в новое знание. Руками БЗ не собирают.
+User documentation. In brief, every project has a knowledge base that is
+**assembled automatically** from project data. An agent (Claude Code or Cursor)
+can test hypotheses and write a report from the template; the report is then
+converted into new knowledge automatically. The knowledge base is not assembled manually.
 
-Связанные документы: процесс и матрица ревью — `docs/research-workflow.md`;
-обзор агентной работы — `docs/agents.md`; формат проекта — `docs/human/project-format.md`.
+Related documents: process and review matrix in `docs/research-workflow.md`;
+agent-work overview in `docs/agents.md`; project format in `docs/human/project-format.md`.
 
-## 1. Что такое БЗ проекта и зачем она
+## 1. What the project knowledge base is for
 
-Цель — **переиспользовать полученный опыт, а не открывать его заново**: новый
-человек или агент за минуты получает контекст «что мы уже знаем, какие гипотезы
-проверяли и что из этого вышло», а каждый новый эксперимент пополняет этот контекст.
+The goal is to **reuse accumulated experience instead of rediscovering it**. A
+new person or agent can learn in minutes what is already known, which hypotheses
+were tested, and what happened; each new experiment expands that context.
 
-Структура в папке проекта `projects/<id>/`:
+Structure inside the project directory `projects/<id>/`:
 
 ```
 projects/<id>/
-  project.md         дерево гипотез + канбан + вердикты   ← источник правды
-  research.json      инсайты (вопрос-ответ, ≤3 на метод)  ← источник правды
-  reports/           отчёты по экспериментам (+ index.json: card_id → путь)
-  KNOWLEDGE.md       ОГЛАВЛЕНИЕ БЗ: статистика, сводки документов + ссылки,
-                     статус гипотез с итогами              [генерируется]
-  KNOWLEDGE_LOG.md   журнал пополнений: что и когда записалось [генерируется]
-  knowledge/         полные документы знаний:
-    hypotheses.md    гипотезы + вердикты + инсайты + ссылки на отчёты [генерируется]
-    NN-имя.md        курируемые документы: обзор, установка, запуск,
-                     скрипты, грабли, открытые вопросы…    [пишет человек/агент]
+  project.md         hypothesis tree + kanban + verdicts   ← source of truth
+  research.json      insights (Q&A, ≤3 per method)          ← source of truth
+  reports/           experiment reports (+ index.json: card_id → path)
+  KNOWLEDGE.md       knowledge-base CONTENTS: statistics, document summaries + links,
+                     hypothesis status and findings         [generated]
+  KNOWLEDGE_LOG.md   update log: what was recorded and when [generated]
+  knowledge/         full knowledge documents:
+    hypotheses.md    hypotheses + verdicts + insights + report links [generated]
+    NN-name.md       curated documents: overview, setup, launch,
+                     scripts, pitfalls, open questions…     [written by a human/agent]
 ```
 
-Файлы с пометкой [генерируется] руками не правятся — их пересобирает модуль ядра
-`koi/knowledge/`. Источник правды — `project.md` + `research.json` + `knowledge/*.md`.
+Do not edit files marked [generated] manually; the `koi/knowledge/` core module
+rebuilds them. The sources of truth are `project.md`, `research.json`, and `knowledge/*.md`.
 
-## 2. Что происходит автоматически
+## 2. What happens automatically
 
-1. **Любое сохранение проекта** (через API, UI или `save_project` из кода) запускает
-   хук: пересобираются `knowledge/hypotheses.md`, оглавление `KNOWLEDGE.md`, и в
-   `KNOWLEDGE_LOG.md` дописывается, что именно изменилось (смена вердикта,
-   новый/обновлённый инсайт, новый документ). Диff считается против
-   `knowledge/.state.json`; пересборка без изменений записей не плодит.
-2. **Новый `.md` в `knowledge/`** подхватывается при следующем сохранении проекта
-   (или запросе `GET /projects/{id}/knowledge`) — появляется в оглавлении и в журнале.
-3. **Отчёт агента о проверке гипотезы** (`.run.md`) автоматически разбирается и
-   превращается в вердикт + инсайты + перемещение карточки в done (раздел 4).
-4. Индекс каждого проекта обновляется автоматически через `koi/knowledge`.
+1. **Every project save**, through the API, UI, or `save_project` in code, runs a
+   hook that rebuilds `knowledge/hypotheses.md` and the `KNOWLEDGE.md` contents,
+   then appends exact changes to `KNOWLEDGE_LOG.md` (verdict changes, new or
+   updated insights, new documents). The diff is computed against
+   `knowledge/.state.json`; a rebuild with no changes creates no entries.
+2. **A new `.md` in `knowledge/`** is discovered on the next project save or
+   `GET /projects/{id}/knowledge` request, then appears in the contents and log.
+3. **An agent's hypothesis-test report** (`.run.md`) is parsed automatically and
+   converted into a verdict, insights, and a move of the card to done (section 4).
+4. Each project's index is updated automatically through `koi/knowledge`.
 
-## 3. Как смотреть БЗ
+## 3. How to view the knowledge base
 
-**Веб-интерфейс**: открыть проект → кнопка «База знаний». Вкладка «База» — дашборд:
-счётчики (подтверждено/опровергнуто/открыто, инсайтов, документов, отчётов),
-полоса прогресса по вердиктам, карточки гипотез с вердиктом, инсайтами
-(важность ●●●○○, уверенность «точно/предварительно», ссылка на отчёт), плитки
-документов знаний и последние записи журнала. Клик по документу/отчёту открывает
-его в той же модалке; вкладка «Журнал пополнений» — полный журнал.
+**Web interface**: open a project → Knowledge Base. The Knowledge tab is a
+dashboard with counters (supported/refuted/open hypotheses, insights, documents,
+reports), verdict progress, hypothesis cards with verdicts and insights
+(importance ●●●○○, definite/tentative certainty, report link), knowledge-document
+tiles, and recent log entries. Clicking a document/report opens it in the same
+modal; the Update Log tab contains the full log.
 
-**Файлы**: начать с `projects/<id>/KNOWLEDGE.md` и идти по ссылкам.
+**Files**: start with `projects/<id>/KNOWLEDGE.md` and follow its links.
 
-**API** (наш инстанс — :8011, через туннель :8010):
-- `GET /projects/{id}/knowledge` — оглавление (markdown; пересобирает БЗ при запросе);
-- `GET /projects/{id}/knowledge/summary` — структурированный JSON (его рисует дашборд);
-- `GET /projects/{id}/knowledge/log` — журнал; `…/knowledge/file?path=…` — любой .md проекта;
-- `GET /agent/backends` — какие агентские бэкенды доступны и в каком порядке.
+**API** (our instance uses :8011, or :8010 through the tunnel):
+- `GET /projects/{id}/knowledge` — Markdown contents; rebuilds the knowledge base on request;
+- `GET /projects/{id}/knowledge/summary` — structured JSON rendered by the dashboard;
+- `GET /projects/{id}/knowledge/log` — log; `…/knowledge/file?path=…` — any project .md;
+- `GET /agent/backends` — available agent backends and their order.
 
-## 4. Автоматическая проверка гипотезы агентом → новое знание
+## 4. Automatic hypothesis testing by an agent → new knowledge
 
-Полный цикл одной командой (из корня репо, в `.venv`):
+Run the complete cycle with one command from the repository root inside `.venv`:
 
 ```bash
 python -m koi.projects.report_ingest.cli <project_id> <card_id>
 ```
 
-Что происходит:
-1. Скрипт находит карточку, собирает контекст (цепочка узлов problem→…→method,
-   описание карточки, уже известные инсайты) и формирует задание агенту с жёсткими
-   требованиями к отчёту (шаблон `agents/skills/koi-report-review/experiment-report.md`, все §0–§5).
-2. Агент (Claude Code CLI или Cursor SDK — см. раздел 5) проводит проверку и пишет
-   рабочий отчёт `reports/<узел>/<карточка>.run.md`. Кроме файла отчёта агент
-   ничего менять не должен.
-3. Отчёт автоматически «вливается» (`koi/projects/report_ingest/`): из §5.1 берётся вердикт
-   гипотезы, из §5.2 — json-блок с инсайтами (≤3, формат research.json); проект
-   обновляется (вердикт узла, research.json, карточка → done, запись в
-   `reports/index.json`), и хук `save_project` пересобирает БЗ + журнал.
+What happens:
+1. The script finds the card, collects context (problem→…→method node chain,
+   card description, existing insights), and prepares an agent task with strict
+   report requirements (all §§0–5 of
+   `agents/skills/koi-report-review/experiment-report.md`).
+2. The agent (Claude Code CLI or Cursor SDK; see section 5) performs the test and
+   writes `reports/<node>/<card>.run.md`. It must change nothing except the report file.
+3. `koi/projects/report_ingest/` automatically ingests the report: §5.1 supplies
+   the hypothesis verdict and §5.2 supplies a JSON block of no more than three
+   research.json insights. It updates the node verdict, research.json, card → done,
+   and `reports/index.json`; the `save_project` hook rebuilds the knowledge base and log.
 
-Полезные флаги: `--backend claude|cursor` (принудительный выбор), `--no-ingest`
-(только отчёт, без вливания), `--dry-run` (показать, что изменилось бы),
-`--ingest-only [путь]` (влить уже готовый отчёт без агента — этим же путём
-интегрируются отчёты, написанные человеком), `--timeout N`.
+Useful flags: `--backend claude|cursor` (force a backend), `--no-ingest` (report
+only), `--dry-run` (show prospective changes), `--ingest-only [path]` (ingest an
+existing report without an agent, including human-written reports), and `--timeout N`.
 
-**Требования к отчёту для автоинтеграции** (агенту они передаются автоматически;
-человеку, пишущему `.run.md` руками, важно соблюсти):
-- §0 «Привязка» — таблица с точными id: гипотеза (cause), метод, карточка;
-- §5.1 — строка вида `` `<id-узла>` → … **supported|refuted|open** `` (приоритетнее §0);
-- §5.2 — ровно один fenced-блок ```json с массивом ≤3 инсайтов, поля:
+**Report requirements for automatic integration** (passed to the agent
+automatically and required for a hand-written `.run.md`):
+- §0 “References” — table with exact IDs for the cause hypothesis, method, and card;
+- §5.1 — `` `<node-id>` → … **supported|refuted|open** `` (takes precedence over §0);
+- §5.2 — exactly one fenced ```json block with an array of no more than three insights, fields:
   `method_id, card_id, question, answer, narrative, certainty (definite|tentative),
-  importance (1–5)`; `id` можно не указывать — сгенерируется `rq-<card_id>-<n>`.
+  importance (1–5)`; `id` is optional and defaults to `rq-<card_id>-<n>`.
 
-Вливание идемпотентно: повторный ingest того же отчёта ничего не меняет; инсайты
-той же карточки заменяются, чужих карточек — сохраняются.
+Ingestion is idempotent: ingesting the same report again changes nothing. Insights
+from that card are replaced, while insights from other cards remain.
 
-## 5. Агентские бэкенды: Claude Code и Cursor
+## 5. Agent backends: Claude Code and Cursor
 
-Слой `koi/adapters/agent_backends.py` используется и проверкой гипотез, и agent-чатом
-(очередь вопросов из UI). Бэкенды пробуются по порядку; недоступные пропускаются.
+Both hypothesis testing and agent chat (the UI question queue) use
+`koi/adapters/agent_backends.py`. Backends are tried in order and unavailable ones are skipped.
 
-| Переменная | Значение по умолчанию | Смысл |
+| Variable | Default | Meaning |
 |---|---|---|
-| `KOI_AGENT_BACKEND` | `claude,cursor` | порядок бэкендов; `off` — отключить агентов |
-| `KOI_CLAUDE_BIN` | `claude` | путь к Claude Code CLI |
-| `KOI_CLAUDE_MODEL` | (дефолт CLI) | модель для `claude -p` |
-| `KOI_CLAUDE_ARGS` | — | дополнительные аргументы CLI |
-| `KOI_CLAUDE_ALLOWED_TOOLS` | `Read,Glob,Grep,Bash,Write,Edit` | инструменты при разрешённых правках |
-| `CURSOR_API_KEY` | — | ключ Cursor (без него cursor-бэкенд недоступен) |
-| `KOI_AGENT_CHAT_MODEL` | `composer-2.5` | модель Cursor SDK |
+| `KOI_AGENT_BACKEND` | `claude,cursor` | backend order; `off` disables agents |
+| `KOI_CLAUDE_BIN` | `claude` | path to Claude Code CLI |
+| `KOI_CLAUDE_MODEL` | CLI default | model for `claude -p` |
+| `KOI_CLAUDE_ARGS` | — | additional CLI arguments |
+| `KOI_CLAUDE_ALLOWED_TOOLS` | `Read,Glob,Grep,Bash,Write,Edit` | tools available when edits are allowed |
+| `CURSOR_API_KEY` | — | Cursor key; without it the Cursor backend is unavailable |
+| `KOI_AGENT_CHAT_MODEL` | `composer-2.5` | Cursor SDK model |
 
-**Чтобы включить Claude Code**: установить CLI (`npm install -g @anthropic-ai/claude-code`)
-и авторизоваться (`claude login` или переменная `ANTHROPIC_API_KEY`).
-**Чтобы включить Cursor**: `pip install cursor-sdk` в `.venv` и задать `CURSOR_API_KEY`.
-Проверка готовности: `GET /agent/backends` или
+**To enable Claude Code**, install the CLI (`npm install -g @anthropic-ai/claude-code`)
+and authenticate with `claude login` or `ANTHROPIC_API_KEY`.
+**To enable Cursor**, run `pip install cursor-sdk` in `.venv` and set `CURSOR_API_KEY`.
+Check readiness with `GET /agent/backends` or
 `PYTHONPATH=. python -c "from koi.adapters.agent_backends import backend_status; print(backend_status())"`.
 
-Claude Code вызывается headless: `claude -p --output-format text`, промпт через stdin;
-при проверке гипотез — с `--permission-mode acceptEdits` и списком allowed-tools,
-чтобы агент мог написать файл отчёта.
+Claude Code runs headlessly as `claude -p --output-format text`, with the prompt
+on stdin. Hypothesis tests add `--permission-mode acceptEdits` and allowed tools
+so the agent can write the report file.
 
-## 6. Как добавить знание руками
+## 6. How to add knowledge manually
 
-- **Документ знаний**: положить `NN-имя.md` в `projects/<id>/knowledge/`
-  (конвенция: первая строка `# Заголовок`, первый абзац — сводка в 1–2 предложения,
-  она попадёт в оглавление). Появится в БЗ автоматически.
-- **Вердикт/инсайт напрямую**: правка `project.md` (`verdict:` под узлом) или
-  `research.json` + любое сохранение проекта — БЗ и журнал обновятся хуком.
-- **Готовый отчёт**: написать `.run.md` по шаблону и `--ingest-only` (раздел 4) —
-  предпочтительный путь, т.к. вердикт и инсайты пройдут через единый валидатор.
+- **Knowledge document**: place `NN-name.md` in `projects/<id>/knowledge/`.
+  Convention: first line `# Title`, first paragraph a one-to-two-sentence summary
+  for the contents. It appears in the knowledge base automatically.
+- **Direct verdict/insight**: edit `project.md` (`verdict:` below a node) or
+  `research.json`, then save the project; the hook updates the knowledge base and log.
+- **Completed report**: write `.run.md` from the template and use `--ingest-only`
+  (section 4). This is preferred because verdict and insights pass through one validator.
 
-## 7. Самопроверка пайплайна
+## 7. Pipeline self-check
 
-Поведение knowledge и report ingest проверяет основной набор pytest:
+The main pytest suite checks knowledge and report-ingest behavior:
 
 ```bash
 PYTHONPATH=. .venv/bin/pytest -q tests/test_knowledge.py tests/test_report_ingest.py

@@ -124,7 +124,7 @@ async def _sync_project(project: HubProject, access_token: str) -> dict[str, Any
             "project": snapshot,
             "dag_layouts": load_dag_layouts_from_root(tmp),
             "running_activity": running_activity_for_project(
-                snapshot, author=project.owner_login or "коллега"
+                snapshot, author=project.owner_login or "a colleague"
             ),
         }
         store.save_snapshot(project.slug, payload)
@@ -590,7 +590,7 @@ def delete_project(request: Request, slug: str) -> dict[str, bool]:
         if not siblings:
             raise HTTPException(
                 400,
-                "Нельзя удалить единственную регистрацию — отключите проект вместо удаления",
+                "The only registration cannot be deleted; disable the project instead",
             )
     store.delete_project(slug)
     return {"ok": True}

@@ -171,7 +171,7 @@ Clusters are an *internal* scaffold for who goes with whom. In Related Work they
 2. **Generalize hard** inside each affinity group: one clause for what `[1, 2, 3]` share as a *solution*, not a tour of each paper.
 3. **Thread clusters with contrast**, not isolation. Typical cadence:
 
-   > В работах [1, 2, 3] предлагают … (общее решение кластера). В отличие от этого в работах [4, 5] делают … . Отдельную линию дают [6, 7], где …
+   > Papers [1, 2, 3] propose … (the group's shared solution). In contrast, papers [4, 5] use … . A separate line of work appears in [6, 7], where …
 
 4. Answer the research question with this narrative: shared mechanisms → how other groups differ → residual outliers in one closing sentence if needed.
 5. Prefer dense survey prose over paper-by-paper paraphrase. Name a method only when it is the shared basis of the group.
@@ -191,12 +191,12 @@ Papers C, D model crosses...
 Good (prose + contrast):
 
 ```text
-В работах [1, 2, 3] CTR оценивают через глубокие модели по сырым признакам пользователя и объявления.
-В отличие от этого [4, 5] явно моделируют попарные пересечения признаков и почти не полагаются на представление последовательности.
-Отдельную ветку дают [6], где клик предсказывают из графа взаимодействий, а не из табличного вектора признаков.
+Papers [1, 2, 3] estimate CTR with deep models over raw user and advertisement features.
+In contrast, [4, 5] explicitly model pairwise feature interactions and rely little on sequence representations.
+A separate approach appears in [6], where clicks are predicted from an interaction graph rather than a tabular feature vector.
 ```
 
-Language: match the research question’s language (Russian question → Russian Related Work). Keep tone concrete; avoid empty survey filler (“важный вклад”, “открывает горизонты”).
+Language: write Related Work in English. Keep the tone concrete and avoid empty survey filler such as “important contribution” or “opens new horizons.”
 
 ## Phase E — RW Critic → revise
 
@@ -275,9 +275,9 @@ year · authors · url
 
 **TLDR.** <1 short sentence — solution_summary>
 
-**Ответ на вопрос.** <how this paper answers the research question>
+**Answer to the question.** <how this paper answers the research question>
 
-**Цитаты.**
+**Quotes.**
 
 > verbatim quote from the paper
 >

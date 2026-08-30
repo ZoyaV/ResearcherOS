@@ -13,8 +13,8 @@
     } catch (e) {}
     var btn = document.getElementById("btn-theme");
     if (btn) {
-      btn.setAttribute("aria-label", t === "dark" ? "Светлая тема" : "Тёмная тема");
-      btn.title = t === "dark" ? "Светлая тема" : "Тёмная тема";
+      btn.setAttribute("aria-label", t === "dark" ? "Light theme" : "Dark theme");
+      btn.title = t === "dark" ? "Light theme" : "Dark theme";
     }
     initMermaid(true);
   }
@@ -190,7 +190,7 @@
       })
       .catch(function () {
         grid.innerHTML =
-          '<p class="chapter__lead">Не удалось загрузить каталог. Откройте <a href="skills/index.html">skills/</a>.</p>';
+          '<p class="chapter__lead">Could not load the catalog. Open <a href="skills/index.html">skills/</a>.</p>';
       });
   }
 

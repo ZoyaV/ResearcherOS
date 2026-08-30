@@ -38,12 +38,12 @@ CHAT_MODULE = "koi.agent_chat.cli"
 
 def format_context(items: list) -> str:
     lines = [
-        "## ResearchOS: вопросы из UI (agent-chat)",
-        f"В очереди {len(items)} вопрос(а/ов) из панели «Спросить агента».",
-        "Примени скилл **koi-agent-chat**: `context` → ответ (сначала research_database) → "
+        "## ResearchOS: questions from the UI (agent-chat)",
+        f"The queue contains {len(items)} question(s) from the Ask the agent panel.",
+        "Use **koi-agent-chat**: `context` → answer (research_database first) → "
         f"`{VENV_PY if VENV_PY.is_file() else 'python3'} -m {CHAT_MODULE} answer <id>`.",
         "",
-        "Очередь:",
+        "Queue:",
     ]
     for item in items:
         scope = []
@@ -53,7 +53,7 @@ def format_context(items: list) -> str:
             scope.append(f"node={item['node_id']}")
         scope_s = f" ({', '.join(scope)})" if scope else ""
         q = item["question"]
-        short = f"«{q[:120]}{'…' if len(q) > 120 else ''}»"
+        short = f"\"{q[:120]}{'…' if len(q) > 120 else ''}\""
         lines.append(f"- id={item['id']} project={item['project_id']}{scope_s}: {short}")
     return "\n".join(lines)
 
@@ -98,11 +98,11 @@ def main() -> None:
         first = items[0]
         py = str(VENV_PY) if VENV_PY.is_file() else "python3"
         msg = (
-            f"В очереди agent-chat {len(items)} вопрос(а/ов). "
-            f"Скилл **koi-agent-chat**, id={first['id']}: "
-            f"`{py} -m {CHAT_MODULE} context {first['id']}` → ответ → "
-            f"`answer {first['id']}` (обязательно в UI). "
-            "Сначала research.json, отчёт — только при нехватке деталей."
+            f"The agent-chat queue contains {len(items)} question(s). "
+            f"Use **koi-agent-chat**, id={first['id']}: "
+            f"`{py} -m {CHAT_MODULE} context {first['id']}` → answer → "
+            f"`answer {first['id']}` (required for the UI). "
+            "Use research.json first; open a report only when details are missing."
         )
         print(json.dumps({"followup_message": msg}, ensure_ascii=False))
         return

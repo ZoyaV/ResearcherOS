@@ -15,13 +15,13 @@ const COLORS = {
 
 /** @type {Array<{ id: string, type: string, label: string, pos: THREE.Vector3, parent?: string, verdict?: string, reveal: number }>} */
 const TREE = [
-  { id: "problem", type: "problem", label: "Проблема", pos: new THREE.Vector3(0, 0, 0), reveal: 0.08 },
-  { id: "cause1", type: "cause", label: "Причина", pos: new THREE.Vector3(-2.6, 0.9, -0.4), parent: "problem", reveal: 0.18 },
-  { id: "ev1", type: "cause_evidence", label: "Доказательство", pos: new THREE.Vector3(-4.1, 1.5, -1.1), parent: "cause1", reveal: 0.26 },
-  { id: "method1", type: "method", label: "Метод", pos: new THREE.Vector3(-5.4, 2.1, -1.7), parent: "ev1", verdict: "supported", reveal: 0.34 },
-  { id: "cause2", type: "cause", label: "Причина", pos: new THREE.Vector3(2.6, 0.9, 0.4), parent: "problem", reveal: 0.22 },
-  { id: "ev2", type: "remediation", label: "Устранение", pos: new THREE.Vector3(4.1, 1.5, 1.1), parent: "cause2", reveal: 0.3 },
-  { id: "method2", type: "method", label: "Метод", pos: new THREE.Vector3(5.4, 2.1, 1.7), parent: "ev2", verdict: "open", reveal: 0.38 },
+  { id: "problem", type: "problem", label: "Problem", pos: new THREE.Vector3(0, 0, 0), reveal: 0.08 },
+  { id: "cause1", type: "cause", label: "Cause", pos: new THREE.Vector3(-2.6, 0.9, -0.4), parent: "problem", reveal: 0.18 },
+  { id: "ev1", type: "cause_evidence", label: "Evidence", pos: new THREE.Vector3(-4.1, 1.5, -1.1), parent: "cause1", reveal: 0.26 },
+  { id: "method1", type: "method", label: "Method", pos: new THREE.Vector3(-5.4, 2.1, -1.7), parent: "ev1", verdict: "supported", reveal: 0.34 },
+  { id: "cause2", type: "cause", label: "Cause", pos: new THREE.Vector3(2.6, 0.9, 0.4), parent: "problem", reveal: 0.22 },
+  { id: "ev2", type: "remediation", label: "Remediation", pos: new THREE.Vector3(4.1, 1.5, 1.1), parent: "cause2", reveal: 0.3 },
+  { id: "method2", type: "method", label: "Method", pos: new THREE.Vector3(5.4, 2.1, 1.7), parent: "ev2", verdict: "open", reveal: 0.38 },
 ];
 
 const CAMERA_KEYS = [

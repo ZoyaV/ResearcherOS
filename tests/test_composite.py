@@ -196,14 +196,14 @@ def test_merge_collapses_same_title_different_ids() -> None:
                 project_id="repo-a",
                 parent_id=None,
                 node_type=NodeType.PROBLEM,
-                title="Проблема обучения LLM",
+                title="Training LLMs",
             ),
             Node(
                 id="c-a",
                 project_id="repo-a",
                 parent_id="p-a",
                 node_type=NodeType.CAUSE,
-                title="Плохой уровень исследования сред",
+                title="Poor environment exploration",
             ),
             Node(
                 id="r-a",
@@ -223,14 +223,14 @@ def test_merge_collapses_same_title_different_ids() -> None:
                 project_id="repo-b",
                 parent_id=None,
                 node_type=NodeType.PROBLEM,
-                title="Проблема обучения LLM",  # same title, different id
+                title="Training LLMs",  # same title, different id
             ),
             Node(
                 id="c-b",
                 project_id="repo-b",
                 parent_id="p-b",
                 node_type=NodeType.CAUSE,
-                title="  плохой уровень исследования сред  ",  # whitespace/case variant
+                title="  poor environment exploration  ",  # whitespace/case variant
             ),
             Node(
                 id="r-b",

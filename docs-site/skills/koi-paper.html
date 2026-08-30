@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Статья → PDF · ResearcherOS</title>
-  <meta name="description" content="Из очереди статей собрать черновик по проекту и положить PDF в репозиторий." />
+  <title>Paper to PDF · ResearcherOS</title>
+  <meta name="description" content="Build a project paper draft from the queue and place its PDF in the repository." />
   <script>
     (function () {
       var t = localStorage.getItem("koi-theme");
@@ -20,16 +20,15 @@
 <body class="page-detail">
   <header class="site-header site-header--detail">
     <div class="site-header__inner">
-      <a class="brand" href="../index.html" aria-label="ResearcherOS — на главную">
+      <a class="brand" href="../index.html" aria-label="ResearcherOS — home">
         <img class="brand__logo" src="../assets/logo.png?v=6" alt="ResearcherOS" height="27" />
       </a>
-      <nav class="nav" aria-label="Основное">
+      <nav class="nav" aria-label="Main navigation">
         <a href="../index.html#about">About</a>
         <a href="../index.html#start">How to start</a>
         <a href="../index.html#skills" aria-current="page">Skills</a>
-        <a href="../index.html#lessons">Lessons</a>
         <a href="https://github.com/ZoyaV/ResearcherOS">GitHub</a>
-        <button type="button" id="btn-theme" class="btn-theme" title="Тёмная тема" aria-label="Тёмная тема">
+        <button type="button" id="btn-theme" class="btn-theme" title="Dark theme" aria-label="Dark theme">
           <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"/><path fill="currentColor" d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" stroke-width="2"/></svg>
           <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 14.5A8.5 8.5 0 0 1 9.5 3 7 7 0 1 0 21 14.5z"/></svg>
         </button>
@@ -38,50 +37,50 @@
   </header>
   <main class="article">
     <a class="back-link" href="../index.html#skills">← Skills</a>
-    <h1 class="article__title">Статья → PDF</h1>
+    <h1 class="article__title">Paper to PDF</h1>
     <p class="skill-id">koi-paper</p>
     <div class="article__meta">
-      <span class="chip">«Сгенерировать статью»</span>
+      <span class="chip">Generate paper</span>
     </div>
-    <p class="article__lead">Из очереди статей собрать черновик по проекту и положить PDF в репозиторий.</p>
+    <p class="article__lead">Build a project paper draft from the queue and place its PDF in the repository.</p>
 
-    <h2>Что делает</h2>
-    <p>Берёт задачу из очереди статей, сразу помечает её принятой, собирает контекст по дереву и отчётам проекта, пишет черновик статьи и собирает PDF в репозитории. Затем закрывает задачу, чтобы статус в интерфейсе обновился.</p>
+    <h2>What it does</h2>
+    <p>Accepts a paper task, collects context from the project tree and reports, writes a draft, builds a PDF in the repository, and closes the task so the interface updates.</p>
 
-    <h2>Зачем</h2>
-    <p>Чтобы из уже накопленного графа исследования можно было получить черновик статьи без ручной сборки всех кусков по папкам.</p>
+    <h2>Why use it</h2>
+    <p>Turn an accumulated research graph into a paper draft without manually collecting material from many directories.</p>
 
-    <h2>Когда вызывать</h2>
+    <h2>When to use it</h2>
     <ul class="skill-scenarios">
-      <li>В интерфейсе нажали «Сгенерировать статью»</li>
-      <li>В очереди статей есть необработанная задача</li>
-      <li>Постоянный чат Paper Inbox получил сигнал о новой статье</li>
+      <li>Generate paper was clicked</li>
+      <li>The paper queue contains a task</li>
+      <li>A Paper Inbox received a new-paper signal</li>
     </ul>
 
-    <h2>Как вызвать</h2>
-    <p>Попросите проверить очередь статей и обработать задачу до PDF и закрытия. Держите отдельный чат Paper Inbox, если пользуетесь сигналами из интерфейса.</p>
+    <h2>How to invoke it</h2>
+    <p>Ask the assistant to check the paper queue and process a task through PDF creation and closure.</p>
     <div class="example">
-      <p>Пример фразы AI-помощнику в редакторе:</p>
-      <pre><code>Проверь очередь статей и обработай задачу:
-принять → собрать контекст → черновик → PDF → закрыть.</code></pre>
+      <p>Example request for the AI assistant in your editor:</p>
+      <pre><code>Check the paper queue and process its task:
+accept → collect context → draft → PDF → close.</code></pre>
     </div>
 
-    <h2>Схема работы</h2>
-    <p class="diagram-caption">Схема — конвейер от очереди до файла PDF. Принятие в начале нужно, чтобы интерфейс показал «агент работает»; закрытие в конце — чтобы задача не висела в ожидании.</p>
+    <h2>Workflow diagram</h2>
+    <p class="diagram-caption">Acceptance lets the interface show work in progress; closure after the PDF is built prevents the task from remaining pending.</p>
     <div class="graph">
       <pre class="mermaid">
 flowchart LR
-  A[Очередь статей] --> B[Принять задачу]
-  B --> C[Собрать контекст проекта]
-  C --> D[Черновик статьи]
-  D --> E[PDF в проекте]
-  E --> F[Закрыть задачу]
+  A[Paper queue] --> B[Accept task]
+  B --> C[Collect project context]
+  C --> D[Draft paper]
+  D --> E[Build PDF in project]
+  E --> F[Close task]
       </pre>
     </div>
 
     <div class="article__actions">
-      <a class="btn btn-ghost" href="https://github.com/ZoyaV/ResearcherOS/tree/main/agents/skills/koi-paper">Исходник на GitHub</a>
-      <a class="btn btn-primary" href="../index.html#skills">К списку Skills</a>
+      <a class="btn btn-ghost" href="https://github.com/ZoyaV/ResearcherOS/tree/main/agents/skills/koi-paper">Source on GitHub</a>
+      <a class="btn btn-primary" href="../index.html#skills">Back to Skills</a>
     </div>
   </main>
   <footer class="site-footer">

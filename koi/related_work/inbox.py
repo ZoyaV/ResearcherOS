@@ -56,16 +56,16 @@ def processing_instructions(*, focus_related_work_id: str | None = None) -> str:
     rw = "-m koi.related_work.cli"
     if focus_related_work_id:
         return (
-            "Related Work (literature.html): скилл **koi-related-work** — "
-            f"новая задача `{focus_related_work_id}`. "
+            "Related Work (literature.html): use **koi-related-work** — "
+            f"new task `{focus_related_work_id}`. "
             f"`{py} {rw} claim {focus_related_work_id}` → context → answer -f draft.md."
         )
     pending = _pending_related_work()
     if not pending:
-        return "Очередь Related Work пуста."
+        return "The Related Work queue is empty."
     ids = ", ".join(item["id"] for item in pending[:3])
     return (
-        "Related Work: скилл **koi-related-work** — "
+        "Related Work: use **koi-related-work** — "
         f"pending ids: {ids}. "
         f"`{py} {rw} claim <id>` → context → answer -f draft.md."
     )
@@ -119,8 +119,8 @@ def _loop_task_prompt() -> str:
     py = _python_bin()
     pending_cmd = f"{py} {INBOX_SCRIPT} pending"
     return (
-        "ResearchOS Literature Inbox: проверь Related Work pending "
-        f"(`{pending_cmd}`) и обработай по скиллу koi-related-work "
+        "ResearchOS Literature Inbox: check pending Related Work items "
+        f"(`{pending_cmd}`) and process them with koi-related-work "
         "(claim → context → answer -f draft.md)."
     )
 
@@ -143,47 +143,47 @@ def bootstrap_prompt() -> str:
     watch = INBOX_SCRIPT
     log_rel = ".run/logs/related-work-watch.log"
     loop_shell = agent_loop_shell_command()
-    return f"""Ты **ResearchOS Literature Inbox** — фоновый агент для Related Work (literature.html).
+    return f"""You are **ResearchOS Literature Inbox**, the background Related Work agent for literature.html.
 
-**Настройка один раз.** Кнопка Related Work кладёт задачи в JSON-очередь; системный watcher пишет `{WAKE_PREFIX}` в лог (~1–3 с).
+**One-time setup.** The Related Work button queues JSON tasks; the system watcher writes `{WAKE_PREFIX}` to the log in about 1–3 seconds.
 
-## Сделай сейчас (всё из этого сообщения)
+## Do everything below now
 
-1. Назови этот чат **ResearchOS Literature Inbox**.
+1. Name this chat **ResearchOS Literature Inbox**.
 
-2. Подними сервер и **watcher литературы**:
+2. Start the server and **literature watcher**:
    ```
    cd {ENGINE_ROOT}
    ./scripts/koi-serve.sh start
    {py} {watch} status
    ```
-   В status должно быть `"literature_inbox_watcher_running": true`. Если `false` — повтори `koi-serve.sh start`.
+   Status must contain `"literature_inbox_watcher_running": true`. If false, rerun `koi-serve.sh start`.
 
-3. **Автоподхват (критично):** запусти **два фоновых shell** через Shell tool с `block_until_ms: 0` и **`notify_on_output`** — без notify агент не просыпается на новые задачи.
+3. **Automatic pickup (critical):** start **two background shells** with `block_until_ms: 0` and **`notify_on_output`**; without notifications, the agent will not wake for new tasks.
 
-   Сначала проверь терминалы и останови старые дубликаты (`tail …related-work-watch.log`, `AGENT_LOOP_TICK_RELATED_WORK`).
+   First inspect terminals and stop stale duplicates (`tail …related-work-watch.log`, `AGENT_LOOP_TICK_RELATED_WORK`).
 
-   **A) Мониторинг лога watcher** (основной wake, ~1–3 с):
+   **A) Watcher log monitoring** (primary wake, about 1–3 seconds):
    - command: `cd {ENGINE_ROOT} && tail -n 0 -f {log_rel}`
    - `notify_on_output`: pattern `^{WAKE_PREFIX}`, reason `Related Work wake`
 
-   **B) Fallback — опрос очереди каждые {LOOP_POLL_INTERVAL_S} с**:
+   **B) Fallback: poll the queue every {LOOP_POLL_INTERVAL_S} seconds**:
    - command: `{loop_shell}`
    - `notify_on_output`: pattern `^AGENT_LOOP_TICK_RELATED_WORK`, reason `Related Work queue poll`
 
-   Оба процесса оставь работать. Не используй голый `tail`/`while` без `notify_on_output`.
+   Leave both processes running. Do not use bare `tail`/`while` without `notify_on_output`.
 
-4. Сразу обработай накопленное: `{py} {watch} pending` → по скиллу **koi-related-work**: `claim` → `context` → `answer -f draft.md`.
+4. Process accumulated work now: `{py} {watch} pending` → **koi-related-work**: `claim` → `context` → `answer -f draft.md`.
 
-5. На каждый wake из п.3 — снова `pending` и обработай все новые id.
+5. On every wake from step 3, run `pending` again and process all new ids.
 
-6. Не останавливай мониторинг, пока я явно не попрошу."""
+6. Do not stop monitoring until explicitly requested."""
 
 
 def format_pending_report() -> str:
     related = _pending_related_work()
     if not related:
-        return "Очередь Related Work пуста (pending: 0)."
+        return "The Related Work queue is empty (pending: 0)."
     lines = [f"Pending related-work: {len(related)}", ""]
     for item in related:
         project = item.get("project_id") or "?"
@@ -211,14 +211,14 @@ def inbox_task_message(*, related_work_id: str | None = None, setup: bool = Fals
     if related_work_id:
         return (
             f"ResearchOS Literature Inbox — Related Work `{related_work_id}`.\n\n"
-            f"Проверь очередь:\n`{py} {inbox} pending`\n\n"
-            f"Обработай по скиллу **koi-related-work**:\n"
+            f"Check the queue:\n`{py} {inbox} pending`\n\n"
+            f"Process it with **koi-related-work**:\n"
             f"1. `{py} {rw} claim {related_work_id}`\n"
             f"2. `{py} {rw} context {related_work_id}`\n"
             f"3. `{py} {rw} answer {related_work_id} -f draft.md`"
         )
     return (
-        f"Проверь pending Related Work:\n`{py} {inbox} pending`\n\n"
+        f"Check pending Related Work items:\n`{py} {inbox} pending`\n\n"
         f"{processing_instructions()}"
     )
 

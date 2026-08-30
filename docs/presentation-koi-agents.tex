@@ -2,183 +2,173 @@
 \usetheme{Madrid}
 \usecolortheme{whale}
 \usepackage[utf8]{inputenc}
-\usepackage[russian]{babel}
+\usepackage[english]{babel}
 \usepackage{booktabs}
 \usepackage{listings}
 \lstset{basicstyle=\ttfamily\small, breaklines=true}
 
-\title{ResearchOS (KOI):\\агент как штатный исследователь}
-\subtitle{Опыт разработки платформы с Claude / Cursor / Codex}
+\title{ResearchOS (KOI):\\the agent as a staff researcher}
+\subtitle{Experience building a platform with Claude, Cursor, and Codex}
 \author{...}
 \institute{...}
 \date{\today}
 
 \begin{document}
 
-% --- Титул ---
+% --- Title ---
 \begin{frame}
   \titlepage
 \end{frame}
 
-% --- Архитектура ---
-\begin{frame}{Идея за 30 секунд}
+% --- Architecture ---
+\begin{frame}{The idea in 30 seconds}
   \begin{center}
     \small
-    ПРОБЛЕМА $\rightarrow$ гипотезы $\rightarrow$ методы $\rightarrow$ канбан\\
-    $\rightarrow$ отчёт $\rightarrow$ вердикт + инсайты $\rightarrow$ база знаний
+    PROBLEM $\rightarrow$ hypotheses $\rightarrow$ methods $\rightarrow$ kanban\\
+    $\rightarrow$ report $\rightarrow$ verdict + insights $\rightarrow$ knowledge base
   \end{center}
   \vspace{0.5em}
-  \begin{block}{Ключевой принцип}
-    Знание рождается только из эксперимента с \textbf{заранее заданным правилом решения}.
-    Вердикт --- подстановка чисел, не «впечатление» модели.
+  \begin{block}{Core principle}
+    Knowledge comes only from an experiment with a \textbf{predefined decision rule}.
+    A verdict substitutes measured values into the rule; it is not the model's impression.
   \end{block}
   \begin{itemize}
-    \item Хранение: Markdown-файлы, без БД
-    \item UI: локальный редактор \texttt{project.md} / отчётов / канбана
-    \item Агент IDE --- исполнитель по умолчанию
+    \item Storage: Markdown files, no database
+    \item UI: local editor for \texttt{project.md}, reports, and kanban
+    \item The IDE agent is the default executor
   \end{itemize}
 \end{frame}
 
-% --- Инсайт 1 ---
-\begin{frame}{Инсайт 1: портирование скиллов}
-  \begin{block}{Можно портировать скиллы между Claude / Cursor / Codex}
-    \texttt{SKILL.md} --- универсальный формат плейбука;\\
-    \texttt{AGENTS.md} --- единая точка входа для любого агентного IDE.
+\begin{frame}{Insight 1: portable skills}
+  \begin{block}{Skills can move between Claude, Cursor, and Codex}
+    \texttt{SKILL.md} is a universal playbook format;\\
+    \texttt{AGENTS.md} is a shared entry point for any agentic IDE.
   \end{block}
   \begin{itemize}
-    \item Общие плейбуки живут в \texttt{agents/skills/} и не привязаны к Cursor
-    \item Агент адаптирует пути и команды под свою среду
-    \item Один репозиторий --- одинаковые workflow для всей команды
+    \item Shared playbooks live in \texttt{agents/skills/} and are not tied to Cursor
+    \item The agent adapts paths and commands to its environment
+    \item One repository provides the same workflows to the entire team
   \end{itemize}
 \end{frame}
 
-% --- Инсайт 2 ---
-\begin{frame}{Инсайт 2: децентрализованная синхронизация}
-  \begin{block}{Git + агент вместо общего хоста}
-    У каждого --- свой локальный инстанс (localhost:8080),\\
-    данные проектов синхронизируются через git по инициативе агента.
+\begin{frame}{Insight 2: decentralized synchronization}
+  \begin{block}{Git plus an agent instead of a shared host}
+    Everyone has a local instance at localhost:8080;\\
+    agents initiate synchronization of project data through Git.
   \end{block}
   \begin{itemize}
-    \item Синхронизируется только \texttt{projects/<id>/}
-    \item Скилл \texttt{koi-project-sync}: pull при старте, push значимых изменений
-    \item Хуки \texttt{sessionStart} / \texttt{stop} --- без отдельного CI
+    \item Only \texttt{projects/<id>/} is synchronized
+    \item \texttt{koi-project-sync}: pull at startup and push meaningful changes
+    \item \texttt{sessionStart} and \texttt{stop} hooks require no separate CI
   \end{itemize}
 \end{frame}
 
-% --- Инсайт 3 ---
-\begin{frame}{Инсайт 3: веб-платформа без API агента}
-  \begin{block}{Hooks + inbox + файловая очередь}
-    UI $\rightarrow$ \texttt{agent-chat-queue.json} $\rightarrow$ watcher $\rightarrow$ агент $\rightarrow$ ответ в UI
+\begin{frame}{Insight 3: a web platform without an agent API}
+  \begin{block}{Hooks, Inbox, and a file queue}
+    UI $\rightarrow$ \texttt{agent-chat-queue.json} $\rightarrow$ watcher $\rightarrow$ agent $\rightarrow$ UI answer
   \end{block}
   \begin{tabular}{lccc}
     \toprule
-    Режим & Задержка & API & Один чат \\
+    Mode & Latency & API & One chat \\
     \midrule
-    Inbox-чат & $\sim$1--3\,с & нет & да \\
-    Hooks & до минут & нет & нет \\
-    Фоновый API & $\sim$5\,с & да & нет \\
+    Inbox chat & $\sim$1--3\,s & no & yes \\
+    Hooks & up to minutes & no & no \\
+    Background API & $\sim$5\,s & yes & no \\
     \bottomrule
   \end{tabular}
   \vspace{0.5em}
-  \small Inbox: JSON-очередь $\rightarrow$ \texttt{koi\_agent\_chat\_inbox.py pending} $\rightarrow$ скиллы \texttt{koi-agent-chat} / \texttt{koi-related-work}
+  \small Inbox: JSON queue $\rightarrow$ \texttt{koi\_agent\_chat\_inbox.py pending} $\rightarrow$ \texttt{koi-agent-chat} or \texttt{koi-related-work}
 \end{frame}
 
-% --- Инсайт 4 ---
-\begin{frame}{Инсайт 4: разделение интеллекта и транспорта}
+\begin{frame}{Insight 4: separate intelligence from transport}
   \begin{columns}[T]
     \column{0.48\textwidth}
-    \textbf{Агент делает:}
+    \textbf{The agent performs:}
     \begin{itemize}
-      \item эксперимент
-      \item анализ и синтез
-      \item курирование знаний
-      \item ответы в чате UI
+      \item experiments
+      \item analysis and synthesis
+      \item knowledge curation
+      \item answers in the UI chat
     \end{itemize}
     \column{0.48\textwidth}
-    \textbf{Код делает:}
+    \textbf{The code performs:}
     \begin{itemize}
-      \item валидация формата отчёта
-      \item idempotent ingest
-      \item пересборка \texttt{KNOWLEDGE.md}
-      \item очереди и хуки
+      \item report-format validation
+      \item idempotent ingestion
+      \item rebuilding \texttt{KNOWLEDGE.md}
+      \item queues and hooks
     \end{itemize}
   \end{columns}
   \vspace{0.5em}
-  \begin{alertblock}{Форматные ворота}
-    Невалидный \texttt{.run.md} отбраковывается целиком --- состояние не меняется.
+  \begin{alertblock}{Format gate}
+    An invalid \texttt{.run.md} is rejected in full; state remains unchanged.
   \end{alertblock}
 \end{frame}
 
-% --- Инсайт 5 ---
-\begin{frame}{Инсайт 5: двухслойная база знаний}
-  \begin{block}{Автоген (правила)}
+\begin{frame}{Insight 5: a two-layer knowledge base}
+  \begin{block}{Generated layer (rules)}
     \texttt{KNOWLEDGE.md}, \texttt{hypotheses.md}, \texttt{KNOWLEDGE\_LOG.md}\\
-    Точно, плоско, пересобирается при каждом save
+    Exact, flat, and rebuilt on every save
   \end{block}
-  \begin{block}{Курируемый слой (агент)}
+  \begin{block}{Curated layer (agent)}
     \texttt{projects/<id>/knowledge/*.md}\\
-    Кросс-анализ: связки, противоречия, пределы применимости, открытые вопросы
+    Cross-analysis: connections, contradictions, applicability limits, and open questions
   \end{block}
-  \small Агент в чате сначала читает \texttt{research.json}, отчёты --- только если не хватает деталей.
+  \small Chat reads \texttt{research.json} first and opens reports only for missing detail.
 \end{frame}
 
-% --- Инсайт 6 ---
-\begin{frame}{Инсайт 6: файловые очереди как оркестратор}
+\begin{frame}{Insight 6: file queues as an orchestrator}
   \begin{itemize}
-    \item \texttt{agent-chat-queue.json} --- вопросы из UI
-    \item done-research queue --- карточки, ждущие вывода
-    \item sync-push queue --- что коммитить в git
+    \item \texttt{agent-chat-queue.json}: questions from the UI
+    \item done-research queue: cards awaiting a finding
+    \item sync-push queue: changes to commit to Git
   \end{itemize}
   \vspace{0.5em}
-  При старте сессии агент:
+  At session start, the agent:
   \begin{enumerate}
-    \item pull (синхронизация)
-    \item проверка всех очередей
-    \item (опционально) старт dev-сервера
+    \item pulls synchronized state
+    \item checks every queue
+    \item optionally starts the development server
   \end{enumerate}
   \vspace{0.5em}
-  \textbf{Нет центрального планировщика} --- только файлы + хуки + дисциплина агента.
+  \textbf{No central scheduler}: only files, hooks, and agent discipline.
 \end{frame}
 
-% --- Инсайт 7 ---
-\begin{frame}{Инсайт 7: агент как QA UI}
+\begin{frame}{Insight 7: the agent as UI QA}
   \begin{itemize}
-    \item Скилл \texttt{koi-ui-design-review}: линт, design tokens, a11y
-    \item Скилл \texttt{koi-visual-qa}: скриншоты, регресс mindmap/канбана/модалок
-    \item Агент проверяет UI, который сам же и пишет
+    \item \texttt{koi-ui-design-review}: lint, design tokens, and accessibility
+    \item \texttt{koi-visual-qa}: screenshots and mind-map/kanban/modal regression
+    \item The agent tests the same UI it writes
   \end{itemize}
 \end{frame}
 
-% --- Инсайт 8 ---
-\begin{frame}{Инсайт 8: graceful degradation}
-  \begin{block}{Клон без облачного бэкенда --- нормальный случай}
-    \texttt{koi\_check\_hypothesis.py} недоступен $\Rightarrow$ агент сам:
+\begin{frame}{Insight 8: graceful degradation}
+  \begin{block}{A clone without a cloud backend is normal}
+    If \texttt{koi\_check\_hypothesis.py} is unavailable, the agent itself:
   \end{block}
   \begin{enumerate}
-    \item проводит эксперимент локально
-    \item заполняет шаблон \texttt{experiment-report.md}
-    \item \texttt{--ingest-only} (сначала \texttt{--dry-run})
+    \item runs the experiment locally
+    \item fills in \texttt{experiment-report.md}
+    \item runs \texttt{--ingest-only}, starting with \texttt{--dry-run}
   \end{enumerate}
-  Репозиторий спроектирован так, чтобы \textbf{агент IDE заменял серверный воркер}.
+  The repository is designed so the \textbf{IDE agent can replace the server worker}.
 \end{frame}
 
-% --- Выводы ---
-\begin{frame}{Выводы}
+\begin{frame}{Conclusions}
   \begin{enumerate}
-    \item \textbf{MD + git + очереди} --- минимальный стек интеграции агентов
-    \item \textbf{Скиллы} --- переносимые плейбуки, не привязка к одному IDE
-    \item \textbf{Форматные ворота} --- LLM не пишет в БЗ напрямую
-    \item \textbf{Агент = исследователь + синхронизатор + QA}, код = транспорт
-    \item \textbf{Локальный хост + git} --- командная работа без общего сервера
+    \item \textbf{Markdown + Git + queues} form a minimal agent-integration stack
+    \item \textbf{Skills} are portable playbooks, not an IDE lock-in
+    \item \textbf{Format gates} keep the LLM from writing directly to the knowledge base
+    \item \textbf{Agent = researcher + synchronizer + QA}; code = transport
+    \item \textbf{Local host + Git} enables teamwork without a shared server
   \end{enumerate}
 \end{frame}
 
-% --- Демо (опционально) ---
-\begin{frame}{Демо (если есть время)}
+\begin{frame}{Demo, if time permits}
   \begin{itemize}
-    \item Карта гипотез + канбан на localhost:8080
-    \item Панель «Спросить агента» $\rightarrow$ Inbox-чат
-    \item База знаний: вердикты, инсайты, журнал пополнений
+    \item Hypothesis map and kanban at localhost:8080
+    \item Ask agent panel $\rightarrow$ Inbox chat
+    \item Knowledge base: verdicts, insights, and update log
   \end{itemize}
 \end{frame}
 

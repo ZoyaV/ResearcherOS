@@ -48,20 +48,20 @@ const HubApi = {
 
 const HUB_TABS = {
   all: {
-    title: "Все проекты",
-    desc: "Публичный каталог — деревья гипотез и канбан без кода.",
+    title: "All projects",
+    desc: "Public catalog: hypothesis trees and kanban boards without source code.",
     api: "/api/catalog/public",
     requiresAuth: false,
   },
   subscriptions: {
-    title: "Подписки",
-    desc: "Проекты авторов, на которых вы подписаны, и сохранённые по ссылке (в т.ч. unlisted с token).",
+    title: "Subscriptions",
+    desc: "Projects by authors you follow and projects saved by link, including unlisted links with a token.",
     api: "/api/catalog/network",
     requiresAuth: true,
   },
   mine: {
-    title: "Мои проекты",
-    desc: "Ваши репозитории в Hub: sync с GitHub, видимость, вкл/выкл в каталоге.",
+    title: "My projects",
+    desc: "Your Hub repositories: GitHub sync, visibility, and catalog publishing controls.",
     api: "/api/projects/mine",
     requiresAuth: true,
     manage: true,
@@ -69,9 +69,9 @@ const HUB_TABS = {
 };
 
 const VISIBILITY_LABELS = {
-  public: "Публичный",
-  network: "Сеть",
-  unlisted: "По ссылке",
+  public: "Public",
+  network: "Network",
+  unlisted: "Unlisted",
 };
 
 const HUB_ICONS = {
@@ -151,13 +151,13 @@ function formatRelativeRu(iso) {
   const ts = Date.parse(iso);
   if (Number.isNaN(ts)) return String(iso);
   const sec = Math.max(0, Math.round((Date.now() - ts) / 1000));
-  if (sec < 60) return "только что";
+  if (sec < 60) return "just now";
   const min = Math.round(sec / 60);
-  if (min < 60) return min + " мин назад";
+  if (min < 60) return min + " min ago";
   const hr = Math.round(min / 60);
-  if (hr < 24) return hr + " ч назад";
+  if (hr < 24) return hr + " hr ago";
   const day = Math.round(hr / 24);
-  if (day < 7) return day + " дн назад";
+  if (day < 7) return day + " days ago";
   const d = new Date(ts);
   return d.toLocaleDateString("ru-RU", {
     day: "numeric",
@@ -204,7 +204,7 @@ function metaChip(icon, text, title) {
 function projectMetaChips(p, { showOwner = true } = {}) {
   const chips = [];
   if (showOwner && p.owner_login) {
-    chips.push(metaChip(HUB_ICONS.user, "@" + p.owner_login, "Автор"));
+    chips.push(metaChip(HUB_ICONS.user, "@" + p.owner_login, "Author"));
   }
   if (p.repo_full_name) {
     const short =
@@ -216,12 +216,12 @@ function projectMetaChips(p, { showOwner = true } = {}) {
     chips.push(metaChip(HUB_ICONS.repo, short, p.repo_full_name));
   }
   if (p.branch && p.branch !== "koi/research") {
-    chips.push(metaChip(HUB_ICONS.branch, p.branch, "Ветка " + p.branch));
+    chips.push(metaChip(HUB_ICONS.branch, p.branch, "Branch " + p.branch));
   } else if (p.branch) {
     chips.push(
-      '<span class="hub-meta-chip hub-meta-chip--icon" title="Ветка ' +
+      '<span class="hub-meta-chip hub-meta-chip--icon" title="Branch ' +
         escapeHtml(p.branch) +
-        '" aria-label="Ветка ' +
+        '" aria-label="Branch ' +
         escapeHtml(p.branch) +
         '">' +
         HUB_ICONS.branch +
@@ -267,9 +267,9 @@ function likeButtonHtml(p) {
     ' aria-pressed="' +
     (liked ? "true" : "false") +
     '" title="' +
-    (liked ? "Убрать лайк" : "Лайк") +
+    (liked ? "Remove like" : "Like") +
     '" aria-label="' +
-    (liked ? "Убрать лайк" : "Поставить лайк") +
+    (liked ? "Remove like" : "Like") +
     '">' +
     '<span class="hub-project-card__like-mark" aria-hidden="true">' +
     (liked ? HUB_ICONS.heart : HUB_ICONS.heartOutline) +
@@ -315,7 +315,7 @@ function renderBrowseCard(p, { tab = "all" } = {}) {
   const showFollow =
     tab === "all" && !p.is_self && p.is_following !== true;
   const savedBadge = p.saved_by_link
-    ? '<span class="hub-badge hub-badge--icon hub-badge--link" title="Добавлен по ссылке" aria-label="Добавлен по ссылке">' +
+    ? '<span class="hub-badge hub-badge--icon hub-badge--link" title="Added by link" aria-label="Added by link">' +
       HUB_ICONS.link +
       "</span>"
     : "";
@@ -324,13 +324,13 @@ function renderBrowseCard(p, { tab = "all" } = {}) {
   let endActions = "";
   if (showFollow) {
     const ownerId = p.owner_github_id != null ? String(p.owner_github_id) : "";
-    const ownerLogin = p.owner_login || "автора";
+    const ownerLogin = p.owner_login || "author";
     endActions =
       '<button type="button" class="hub-project-card__icon-btn hub-project-card__follow" data-action="follow" data-owner-id="' +
       escapeHtml(ownerId) +
-      '" title="Подписаться на @' +
+      '" title="Follow @' +
       escapeHtml(ownerLogin) +
-      '" aria-label="Подписаться на @' +
+      '" aria-label="Follow @' +
       escapeHtml(ownerLogin) +
       '">' +
       HUB_ICONS.userPlus +
@@ -359,13 +359,13 @@ function renderMineCard(p) {
     visibilityBadge(p.visibility) +
     (on
       ? ""
-      : '<span class="hub-badge hub-badge--off" title="Скрыт в каталоге">Скрыт</span>');
+      : '<span class="hub-badge hub-badge--off" title="Hidden from catalog">Hidden</span>');
 
   const endActions =
     (shareUrl
       ? '<button type="button" class="hub-project-card__icon-btn hub-copy-link" data-action="copy-link" data-share-url="' +
         escapeHtml(shareUrl) +
-        '" title="Скопировать ссылку" aria-label="Скопировать ссылку">' +
+        '" title="Copy link" aria-label="Copy link">' +
         HUB_ICONS.link +
         "</button>"
       : "") +
@@ -374,19 +374,19 @@ function renderMineCard(p) {
     '" data-action="enabled" data-enabled="' +
     (on ? "true" : "false") +
     '" title="' +
-    (on ? "Скрыть из каталога" : "Показать в каталоге") +
+    (on ? "Hide from catalog" : "Show in catalog") +
     '" aria-label="' +
-    (on ? "Скрыть из каталога" : "Показать в каталоге") +
+    (on ? "Hide from catalog" : "Show in catalog") +
     '" aria-pressed="' +
     (on ? "true" : "false") +
     '">' +
     (on ? HUB_ICONS.eye : HUB_ICONS.eyeOff) +
     "</button>" +
-    '<button type="button" class="hub-project-card__icon-btn hub-sync-btn" data-action="sync" title="Синхронизировать" aria-label="Синхронизировать">' +
+    '<button type="button" class="hub-project-card__icon-btn hub-sync-btn" data-action="sync" title="Synchronize" aria-label="Synchronize">' +
     HUB_ICONS.sync +
     "</button>" +
     (dup
-      ? '<button type="button" class="hub-project-card__icon-btn hub-delete-btn" data-action="delete" title="Удалить дубликат" aria-label="Удалить дубликат">' +
+      ? '<button type="button" class="hub-project-card__icon-btn hub-delete-btn" data-action="delete" title="Delete duplicate" aria-label="Delete duplicate">' +
         HUB_ICONS.trash +
         "</button>"
       : "");
@@ -405,7 +405,7 @@ function renderMineCard(p) {
     projectMetaChips(p, { showOwner: false }) +
     "</div></a>" +
     (dup
-      ? '<p class="hub-project-card__dup">Дубликат · основной: <a href="/p/' +
+      ? '<p class="hub-project-card__dup">Duplicate · primary: <a href="/p/' +
         escapeHtml(p.canonical_slug || "") +
         '">' +
         escapeHtml(p.canonical_slug || "") +
@@ -420,7 +420,7 @@ function renderAddProjectCard() {
   return (
     '<a class="hub-project-card hub-project-card--add" href="/connect">' +
     '<span class="hub-project-card__add-icon" aria-hidden="true">+</span>' +
-    '<span class="hub-project-card__add-label">Подключить проект</span>' +
+    '<span class="hub-project-card__add-label">Connect project</span>' +
     "</a>"
   );
 }
@@ -442,25 +442,25 @@ function renderEmptyState(tab) {
   if (tab === "all") {
     return (
       '<div class="hub-empty-state">' +
-      "<p>Пока нет публичных проектов.</p>" +
-      '<p class="hub-empty-state__hint">Подключите свой репозиторий и выберите visibility «Публичный».</p>' +
-      '<a class="btn btn-primary" href="/connect">Подключить проект</a>' +
+      "<p>There are no public projects yet.</p>" +
+      '<p class="hub-empty-state__hint">Connect your repository and choose Public visibility.</p>' +
+      '<a class="btn btn-primary" href="/connect">Connect project</a>' +
       "</div>"
     );
   }
   if (tab === "subscriptions") {
     return (
       '<div class="hub-empty-state">' +
-      "<p>Лента подписок пуста.</p>" +
-      '<p class="hub-empty-state__hint">Подпишитесь на авторов или добавьте проект по секретной ссылке.</p>' +
-      '<button type="button" class="btn btn-primary" data-action="open-link-modal">Добавить по ссылке</button>' +
+      "<p>Your subscription feed is empty.</p>" +
+      '<p class="hub-empty-state__hint">Follow authors or add a project using a secret link.</p>' +
+      '<button type="button" class="btn btn-primary" data-action="open-link-modal">Add by link</button>' +
       "</div>"
     );
   }
   return (
     '<div class="hub-empty-state">' +
-    "<p>Вы ещё не подключили проекты.</p>" +
-    '<p class="hub-empty-state__hint">Нажмите <strong>+</strong> слева, чтобы подключить репозиторий.</p>' +
+    "<p>You have not connected any projects yet.</p>" +
+    '<p class="hub-empty-state__hint">Click <strong>+</strong> on the left to connect a repository.</p>' +
     "</div>"
   );
 }
@@ -469,11 +469,11 @@ function renderAuthRequired(tab) {
   const cfg = HUB_TABS[tab];
   return (
     '<div class="hub-empty-state">' +
-    "<p>Нужен вход через GitHub</p>" +
+    "<p>GitHub sign-in required</p>" +
     '<p class="hub-empty-state__hint">' +
     escapeHtml(cfg.desc) +
     "</p>" +
-    '<a class="btn btn-primary" href="/auth/github">Войти через GitHub</a>' +
+    '<a class="btn btn-primary" href="/auth/github">Sign in with GitHub</a>' +
     "</div>"
   );
 }
@@ -488,7 +488,7 @@ async function renderAuthToolbar() {
     const me = await HubApi.get("/api/me");
     if (!me.authenticated) {
       el.innerHTML =
-        '<a class="btn btn-primary hub-login-btn" href="/auth/github">Войти</a>';
+        '<a class="btn btn-primary hub-login-btn" href="/auth/github">Sign in</a>';
       return me;
     }
     const u = me.user;
@@ -500,8 +500,8 @@ async function renderAuthToolbar() {
       '<span class="hub-account__chevron" aria-hidden="true">▾</span>' +
       "</button>" +
       '<div class="hub-account__menu hidden" id="hub-account-menu" role="menu">' +
-      '<a class="hub-account__item" href="/connect" role="menuitem">+ Подключить репозиторий</a>' +
-      '<button type="button" class="hub-account__item hub-account__item--danger" data-action="logout" role="menuitem">Выйти</button>' +
+      '<a class="hub-account__item" href="/connect" role="menuitem">+ Connect repository</a>' +
+      '<button type="button" class="hub-account__item hub-account__item--danger" data-action="logout" role="menuitem">Sign out</button>' +
       "</div>" +
       "</div>";
     bindAccountMenu(el);
@@ -561,7 +561,7 @@ function syncHubPanelCta(authState, href) {
   cta.innerHTML =
     '<a href="' +
     escapeHtml(href) +
-    '" class="btn btn-primary hub-enter-btn">Войти в мир исследований</a>';
+    '" class="btn btn-primary hub-enter-btn">Enter the world of research</a>';
 }
 
 async function resolveEnterWorldHref(projects, authState) {
@@ -599,7 +599,7 @@ function setActiveTabUi(tab) {
 function renderSubscriptionsBar() {
   return (
     '<div class="hub-subscriptions-bar">' +
-    '<button type="button" class="btn btn-primary" data-action="open-link-modal">+ Добавить по ссылке</button>' +
+    '<button type="button" class="btn btn-primary" data-action="open-link-modal">+ Add by link</button>' +
     "</div>"
   );
 }
@@ -645,7 +645,7 @@ function initLinkModal(onSuccess) {
     e.preventDefault();
     const url = input.value.trim();
     if (!url) return;
-    if (status) status.textContent = "Проверка ссылки…";
+    if (status) status.textContent = "Checking link…";
     try {
       const result = await HubApi.post("/api/subscriptions/by-link", { url });
       closeModal();
@@ -681,7 +681,7 @@ function initIndexPage() {
     setActiveTabUi(activeTab);
     setTabInUrl(activeTab);
     setStatus("");
-    root.innerHTML = '<p class="hub-empty">Загрузка…</p>';
+    root.innerHTML = '<p class="hub-empty">Loading…</p>';
 
     if (cfg.requiresAuth && (!authState || !authState.authenticated)) {
       root.innerHTML = renderAuthRequired(activeTab);
@@ -711,7 +711,7 @@ function initIndexPage() {
       await refreshEnterWorldCta(projects);
     } catch (err) {
       const msg = /sign in|auth|401|403|session/i.test(String(err.message))
-        ? "Войдите через GitHub, чтобы открыть этот раздел."
+        ? "Sign in with GitHub to open this section."
         : err.message;
       root.innerHTML = '<p class="hub-empty">' + escapeHtml(msg) + "</p>";
       await refreshEnterWorldCta([]);
@@ -737,7 +737,7 @@ function initIndexPage() {
       setStatus("");
       try {
         await HubApi.post("/api/follow", { github_id: ownerId });
-        setStatus("Подписка оформлена — network-проекты автора появятся во вкладке «Подписки».");
+        setStatus("You are now following this author; their network projects will appear under Subscriptions.");
         await loadCatalog();
       } catch (err) {
         setStatus(err.message);
@@ -773,10 +773,10 @@ function initIndexPage() {
         const count = Number(result.count) || 0;
         btn.classList.toggle("is-liked", liked);
         btn.setAttribute("aria-pressed", liked ? "true" : "false");
-        btn.title = liked ? "Убрать лайк" : "Лайк";
+        btn.title = liked ? "Remove like" : "Like";
         btn.setAttribute(
           "aria-label",
-          liked ? "Убрать лайк" : "Поставить лайк"
+          liked ? "Remove like" : "Like"
         );
         const mark = btn.querySelector(".hub-project-card__like-mark");
         const countEl = btn.querySelector(".hub-project-card__like-count");
@@ -812,8 +812,8 @@ function initIndexPage() {
           await loadCatalog();
           setStatus(
             nextEnabled
-              ? "Проект снова виден в каталоге (если visibility public или network)."
-              : "Проект скрыт из каталога."
+              ? "The project is visible in the catalog again if its visibility is public or network."
+              : "The project is hidden from the catalog."
           );
         } catch (err) {
           setStatus(err.message);
@@ -828,9 +828,9 @@ function initIndexPage() {
         if (!url) return;
         try {
           await navigator.clipboard.writeText(url);
-          setStatus("Ссылка скопирована.");
+          setStatus("Link copied.");
         } catch (_err) {
-          window.prompt("Скопируйте ссылку:", url);
+          window.prompt("Copy this link:", url);
         }
         return;
       }
@@ -838,12 +838,12 @@ function initIndexPage() {
       if (delBtn) {
         const card = delBtn.closest(".hub-project-card--mine");
         const slug = card && card.getAttribute("data-slug");
-        if (!slug || !window.confirm("Удалить дубликат «" + slug + "»?")) return;
+        if (!slug || !window.confirm("Delete duplicate “" + slug + "”?")) return;
         delBtn.disabled = true;
-        setStatus("Удаление…");
+        setStatus("Deleting…");
         try {
           await HubApi.delete("/api/projects/" + encodeURIComponent(slug));
-          setStatus("Дубликат удалён.");
+          setStatus("Duplicate deleted.");
           await loadCatalog();
         } catch (err) {
           setStatus(err.message);
@@ -857,10 +857,10 @@ function initIndexPage() {
       const slug = card && card.getAttribute("data-slug");
       if (!slug) return;
       btn.disabled = true;
-      setStatus("Синхронизация с GitHub…");
+      setStatus("Synchronizing with GitHub…");
       try {
         await HubApi.post("/api/projects/" + encodeURIComponent(slug) + "/sync");
-        setStatus("Синхронизация завершена.");
+        setStatus("Synchronization complete.");
         await loadCatalog();
       } catch (err) {
         setStatus(err.message);
@@ -890,8 +890,8 @@ function initIndexPage() {
       }
       setStatus(
         result.already_saved
-          ? "Проект уже был в подписках: " + (result.title || result.slug)
-          : "Добавлено в подписки: " + (result.title || result.slug)
+          ? "Project already in subscriptions: " + (result.title || result.slug)
+          : "Added to subscriptions: " + (result.title || result.slug)
       );
       await loadCatalog();
     });
@@ -908,18 +908,18 @@ async function initConnectPage() {
       return;
     }
   } catch (err) {
-    showBootError("Не удалось проверить сессию: " + err.message);
+    showBootError("Could not verify the session: " + err.message);
     return;
   }
 
   const select = document.getElementById("repo");
   if (!select) return;
-  select.innerHTML = '<option value="">Загрузка…</option>';
+  select.innerHTML = '<option value="">Loading…</option>';
   try {
     const data = await HubApi.get("/api/repos");
     const repos = data.repos || [];
     if (!repos.length) {
-      select.innerHTML = '<option value="">Репозитории не найдены</option>';
+      select.innerHTML = '<option value="">No repositories found</option>';
       return;
     }
     select.innerHTML = repos
@@ -948,7 +948,7 @@ async function initConnectPage() {
     const status = document.getElementById("status");
     const submitBtn = form.querySelector('button[type="submit"]');
     if (submitBtn) submitBtn.disabled = true;
-    status.textContent = "Синхронизация с GitHub… (до минуты)";
+    status.textContent = "Synchronizing with GitHub… (up to one minute)";
     try {
       const result = await HubApi.post("/api/projects", {
         repo_full_name: document.getElementById("repo").value,
@@ -958,12 +958,12 @@ async function initConnectPage() {
       });
       const viewUrl = result.view_url || "/p/" + encodeURIComponent(result.slug);
       let html =
-        'Готово: <a href="' +
+        'Done: <a href="' +
         escapeHtml(viewUrl) +
         '">' +
         escapeHtml(result.title || result.slug) +
         "</a> · " +
-        '<a href="/?tab=mine">Мои проекты</a>';
+        '<a href="/?tab=mine">My projects</a>';
       if (result.secret_token) {
         html +=
           '<br><span class="meta">Unlisted: /p/' +
@@ -973,7 +973,7 @@ async function initConnectPage() {
           "</span>";
       }
       if (result.reused_existing) {
-        html = "Уже подключено — обновлено: " + html;
+        html = "Already connected; updated: " + html;
       }
       status.innerHTML = html;
     } catch (err) {

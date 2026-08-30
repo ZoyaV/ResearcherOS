@@ -81,15 +81,15 @@ If Chromium is not installed yet:
    commit.
 2. Start ResearcherOS in both clones with distinct local ports and identical
    collaboration environment variables.
-3. Open the same paper. Both headers should change from `P2P · ожидание` to
+3. Open the same paper. Both headers should change from `P2P · waiting` to
    `P2P · 2`.
 4. Type in Alice. Bob should update without a filesystem save or Git operation.
 5. Type concurrently in both browsers. After activity stops, compare
    `main.tex`; both files should be identical and dirty in Git.
 6. Stop Bob, edit in Alice, then reopen Bob. Bob should adopt the current room
    state and converge.
-7. Put Bob on another Git commit. The UI should show `P2P остановлен: Git base
-   отличается`, and neither document should be changed.
+7. Put Bob on another Git commit. The UI should show `P2P stopped: Git base
+   differs`, and neither document should be changed.
 8. Make an unsaved local edit in Bob before initial sync. Bob must report that
    local `main.tex` differs rather than silently replacing or merging it.
 9. Test once with TURN disabled and once from networks that require the

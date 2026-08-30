@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -10,8 +10,8 @@
       document.documentElement.setAttribute("data-theme", t);
     })();
   </script>
-  <title>Постановка эксперимента · ResearcherOS</title>
-  <meta name="description" content="Как превратить исследовательское предположение в небольшую проверяемую карточку с помощью сценариев ResearcherOS." />
+  <title>Experiment specification · ResearcherOS</title>
+  <meta name="description" content="Turn a research assumption into a small, testable card with ResearcherOS workflows." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
@@ -79,16 +79,16 @@
 <body class="page-detail">
   <header class="site-header site-header--detail">
     <div class="site-header__inner">
-      <a class="brand" href="../index.html" aria-label="ResearcherOS — на главную">
+      <a class="brand" href="../index.html" aria-label="ResearcherOS — home">
         <img class="brand__logo" src="../assets/logo.png?v=6" alt="ResearcherOS" height="27" />
       </a>
-      <nav class="nav" aria-label="Основное">
+      <nav class="nav" aria-label="Main navigation">
         <a href="../index.html#about">About</a>
         <a href="../index.html#start">How to start</a>
         <a href="../index.html#skills">Skills</a>
         <a href="../index.html#lessons" aria-current="page">Lessons</a>
         <a href="https://github.com/ZoyaV/ResearcherOS">GitHub</a>
-        <button type="button" id="btn-theme" class="btn-theme" title="Тёмная тема" aria-label="Тёмная тема">
+        <button type="button" id="btn-theme" class="btn-theme" title="Dark theme" aria-label="Dark theme">
           <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"/><path fill="currentColor" d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" stroke-width="2"/></svg>
           <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 14.5A8.5 8.5 0 0 1 9.5 3 7 7 0 1 0 21 14.5z"/></svg>
         </button>
@@ -98,222 +98,215 @@
 
   <main class="article">
     <a class="back-link" href="../index.html#lessons">← Lessons</a>
-    <h1 class="article__title">Постановка эксперимента</h1>
+    <h1 class="article__title">Experiment specification</h1>
     <div class="article__meta meta-row">
-      <span class="chip">Урок</span>
-      <span class="chip">~10 мин</span>
-      <span class="chip">до запуска</span>
+      <span class="chip">Lesson</span>
+      <span class="chip">~10 min</span>
+      <span class="chip">before execution</span>
     </div>
     <p class="article__lead">
-      Хорошая постановка заранее отвечает на три вопроса: что проверяем,
-      как проверяем и по какому результату принимаем решение.
+      A good specification answers three questions in advance: what are we testing,
+      how will we test it, and which result determines the decision?
     </p>
 
     <section class="callout" aria-labelledby="quick-start">
-      <p id="quick-start"><strong>Коротко: что делать</strong></p>
+      <p id="quick-start"><strong>In short: what to do</strong></p>
       <ol class="steps">
         <li>
-          Опишите исследовательское предположение в одном-двух предложениях.
+          Describe the research assumption in one or two sentences.
         </li>
         <li>
-          Запустите
-          <a href="../skills/koi-grill-experiment.html">сценарий проектирования эксперимента</a>
-          (<code>koi-grill-experiment</code>): он задаст вопросы и соберёт
-          черновик карточки.
+          Run the
+          <a href="../skills/koi-grill-experiment.html">experiment-design workflow</a>
+          (<code>koi-grill-experiment</code>): it asks questions and builds a draft card.
         </li>
         <li>
-          Запустите
-          <a href="../skills/koi-report-review.html">сценарий проверки постановки</a>
-          (<code>koi-report-review</code>): три отдельные проверки оценят текст,
-          полноту постановки и подзадачи.
+          Run the
+          <a href="../skills/koi-report-review.html">specification-review workflow</a>
+          (<code>koi-report-review</code>): three independent checks assess the prose,
+          completeness, and subtasks.
         </li>
         <li>
-          Откройте карточку в очереди на доске задач. Исправьте неточности
-          вручную или попросите помощника внести правки.
+          Open the card in the board backlog. Correct inaccuracies manually or ask
+          the assistant to edit them.
         </li>
         <li>
-          Повторите не пройденные проверки. Только после этого берите карточку
-          в работу.
+          Repeat any failed checks. Move the card to in progress only after they pass.
         </li>
       </ol>
     </section>
 
-    <nav class="lesson-toc" aria-label="Содержание">
-      <strong>В этом уроке</strong>
+    <nav class="lesson-toc" aria-label="Contents">
+      <strong>In this lesson</strong>
       <ol>
-        <li><a href="#pipeline">Типовой цикл</a></li>
-        <li><a href="#skills">Сценарии в помощь</a></li>
-        <li><a href="#task">Эксперимент или задача</a></li>
+        <li><a href="#pipeline">Typical workflow</a></li>
+        <li><a href="#skills">Supporting workflows</a></li>
+        <li><a href="#task">Experiment or engineering task</a></li>
       </ol>
     </nav>
 
     <!-- ───────── 1 ───────── -->
-    <h2 id="pipeline">1. Типовой цикл</h2>
+    <h2 id="pipeline">1. Typical workflow</h2>
     <p>
-      Сначала дайте помощнику короткий черновик. Точную формулировку искать
-      не нужно: сценарий задаст вопросы и поможет её уточнить.
+      Start by giving the assistant a short draft. It does not need perfect wording;
+      the workflow asks questions and helps refine it.
     </p>
     <div class="example">
-      <pre><code>Для метода &lt;название&gt; в проекте &lt;название&gt;
-хочу проверить: &lt;исследовательское предположение&gt;.
+      <pre><code>For method &lt;name&gt; in project &lt;name&gt;,
+I want to test: &lt;research assumption&gt;.
 
-Собери постановку с помощью koi-grill-experiment,
-затем проверь её через koi-report-review.
-Задавай по одному вопросу. Пока ничего не запускай.</code></pre>
+Build the specification with koi-grill-experiment,
+then review it with koi-report-review.
+Ask one question at a time. Do not run anything yet.</code></pre>
     </div>
     <p>
-      После опроса прочитайте заголовок, описание и первые три раздела отчёта.
-      Если что-то неверно, исправьте сами или напишите помощнику:
-      «Исправь &lt;что именно&gt; и повтори не пройденные проверки».
+      After the interview, read the title, description, and first three report
+      sections. If something is wrong, fix it or ask the assistant: “Correct
+      &lt;specific issue&gt; and repeat the failed checks.”
     </p>
 
     <!-- ───────── 2 ───────── -->
-    <h2 id="skills">2. Сценарии в помощь</h2>
+    <h2 id="skills">2. Supporting workflows</h2>
     <table class="philo-table">
       <thead>
         <tr>
-          <th>Сценарий</th>
-          <th>Что делает</th>
+          <th>Workflow</th>
+          <th>What it does</th>
         </tr>
       </thead>
       <tbody>
         <tr>
           <td><a href="../skills/koi-grill-experiment.html"><code>koi-grill-experiment</code></a></td>
-          <td>Задаёт по одному вопросу и готовит карточку с первыми тремя разделами отчёта. Ничего не запускает.</td>
+          <td>Asks one question at a time and prepares a card plus the first three report sections. Runs nothing.</td>
         </tr>
         <tr>
           <td><a href="../skills/koi-report-review.html"><code>koi-report-review</code></a></td>
-          <td>Отдельно проверяет ясность текста, полноту постановки и качество подзадач. После правок проверки повторяются.</td>
+          <td>Separately checks prose clarity, specification completeness, and subtask quality. Checks repeat after edits.</td>
         </tr>
         <tr>
           <td><code>koi-prose-style</code></td>
-          <td>Сокращает и проясняет заголовки, описания, узлы дерева и выводы. Полезен во всём проекте, а не только здесь.</td>
+          <td>Shortens and clarifies titles, descriptions, tree nodes, and findings. Useful throughout the project.</td>
         </tr>
       </tbody>
     </table>
 
-    <h3>Как сценарий прозы улучшает текст</h3>
+    <h3>How the prose workflow improves text</h3>
     <div class="compare">
       <div class="compare__col compare__col--bad">
-        <div class="compare__label">До</div>
-        <p>«Подход знаменует прорывной сдвиг в способности агента к обобщению».</p>
+        <div class="compare__label">Before</div>
+        <p>“The approach represents a groundbreaking shift in the agent's ability to generalize.”</p>
       </div>
       <div class="compare__col compare__col--good">
-        <div class="compare__label">После</div>
-        <p>«С моделью мира агент решил 12 сред вместо 8».</p>
+        <div class="compare__label">After</div>
+        <p>“With the world model, the agent solved 12 environments instead of 8.”</p>
       </div>
     </div>
     <div class="example">
-      <pre><code>Перепиши заголовок и описание карточки
-по koi-prose-style. Сохрани факты,
-убери канцелярит и внутренний жаргон.</code></pre>
+      <pre><code>Rewrite the card title and description with
+koi-prose-style. Preserve the facts and remove
+bureaucratic language and internal jargon.</code></pre>
     </div>
 
     <!-- ───────── 3 ───────── -->
-    <h2 id="task">3. Эксперимент или задача</h2>
+    <h2 id="task">3. Experiment or engineering task</h2>
     <p>
-      Эксперимент отвечает на исследовательский вопрос. Он может требовать
-      изменения кода, но код здесь служит средством; основной результат —
-      данные, таблицы, графики и вывод.
+      An experiment answers a research question. It may require code changes, but
+      code is a means; the primary result is data, tables, charts, and a finding.
     </p>
     <p>
-      Инженерная задача меняет систему. Основной результат — код,
-      а правильность подтверждают тесты.
+      An engineering task changes the system. Its primary result is code whose
+      correctness is demonstrated by tests.
     </p>
 
     <table class="philo-table">
       <thead>
         <tr>
           <th></th>
-          <th>Эксперимент</th>
-          <th>Инженерная задача</th>
+          <th>Experiment</th>
+          <th>Engineering task</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td><strong>Цель</strong></td>
-          <td>Проверить предположение.</td>
-          <td>Реализовать поведение.</td>
+          <td><strong>Goal</strong></td>
+          <td>Test an assumption.</td>
+          <td>Implement behavior.</td>
         </tr>
         <tr>
-          <td><strong>Результат</strong></td>
-          <td>Данные и вывод.</td>
-          <td>Код и тесты.</td>
+          <td><strong>Result</strong></td>
+          <td>Data and a finding.</td>
+          <td>Code and tests.</td>
         </tr>
         <tr>
-          <td><strong>Готово</strong></td>
-          <td>Выполнен протокол и вынесен вердикт.</td>
-          <td>Тесты подтверждают требования.</td>
+          <td><strong>Done</strong></td>
+          <td>The protocol is complete and a verdict recorded.</td>
+          <td>Tests demonstrate the requirements.</td>
         </tr>
       </tbody>
     </table>
 
     <div class="callout">
       <p>
-        Проверка предположения может включать и разработку, и эксперимент.
-        Иногда нужно сначала добавить новую возможность, а затем измерить её
-        эффект. На доске такую карточку можно пометить тегом разработки
-        (<code>feature</code>), эксперимента (<code>experiment</code>) или обоими
-        тегами.
+        Testing an assumption can include both development and experimentation.
+        Sometimes you must add a capability before measuring its effect. Mark such
+        a card with <code>feature</code>, <code>experiment</code>, or both.
       </p>
       <p>
-        Если реализацию и измерение эффекта можно завершить за одну небольшую
-        итерацию, задайте отдельный критерий готовности для кода и для
-        исследовательского вывода. Если реализация сама требует отдельной
-        проверки, создайте две карточки: инженерную задачу, затем эксперимент.
+        If implementation and measurement fit in one small iteration, define
+        separate done criteria for code and the research finding. If implementation
+        requires its own validation, create two cards: engineering first, experiment second.
       </p>
     </div>
 
-    <h3>Масштаб одной карточки</h3>
+    <h3>Scope of one card</h3>
     <p>
-      Одна карточка — одна итерация. Если эксперимент нельзя завершить одним
-      вердиктом, а задачу — одним набором проверок, уменьшите объём.
+      One card is one iteration. If an experiment cannot end in one verdict, or a
+      task in one set of checks, reduce its scope.
     </p>
-    <h3>SMART для одной карточки</h3>
+    <h3>SMART for one card</h3>
     <table class="philo-table">
       <tbody>
-        <tr><td><strong>S</strong></td><td>Конкретное действие.</td></tr>
-        <tr><td><strong>M</strong></td><td>Измеримый результат.</td></tr>
-        <tr><td><strong>A</strong></td><td>Ограниченный объём.</td></tr>
-        <tr><td><strong>R</strong></td><td>Связь с узлом дерева.</td></tr>
-        <tr><td><strong>T</strong></td><td>Порядок и зависимости.</td></tr>
+        <tr><td><strong>S</strong></td><td>Specific action.</td></tr>
+        <tr><td><strong>M</strong></td><td>Measurable result.</td></tr>
+        <tr><td><strong>A</strong></td><td>Achievable, limited scope.</td></tr>
+        <tr><td><strong>R</strong></td><td>Related to a tree node.</td></tr>
+        <tr><td><strong>T</strong></td><td>Task order and dependencies.</td></tr>
       </tbody>
     </table>
     <p>
-      Это внутренняя проверка ResearcherOS, названная SMART. Здесь
-      <strong>T</strong> означает порядок и зависимости, а не стандартный
-      критерий SMART.
+      This is an internal ResearcherOS check called SMART. Here, <strong>T</strong>
+      means task order and dependencies rather than the standard SMART criterion.
     </p>
 
-    <h3>Чек-лист готовой постановки</h3>
+    <h3>Ready-specification checklist</h3>
     <ol class="steps">
-      <li>Понятно, какой результат должна дать карточка: код, исследовательский вывод или оба; для каждого результата задан свой критерий готовности.</li>
-      <li>У эксперимента есть один основной измеряемый показатель и заранее заданное правило решения.</li>
-      <li>У задачи указано требуемое поведение и тесты.</li>
-      <li>Перечислены зависимости и то, что не входит в работу.</li>
-      <li>Каждая подзадача даёт проверяемый результат.</li>
-      <li>Заголовок короткий, детали находятся в описании и отчёте.</li>
+      <li>The card's output is clear: code, a research finding, or both; each has its own done criterion.</li>
+      <li>The experiment has one primary measurable indicator and a predefined decision rule.</li>
+      <li>An engineering task states the required behavior and tests.</li>
+      <li>Dependencies and out-of-scope work are listed.</li>
+      <li>Every subtask produces a verifiable result.</li>
+      <li>The title is short; details live in the description and report.</li>
     </ol>
 
     <div class="compare">
       <div class="compare__col compare__col--bad">
-        <div class="compare__label">Слабая подзадача</div>
-        <p>«Запустить эксперименты и посмотреть результаты».</p>
+        <div class="compare__label">Weak subtask</div>
+        <p>“Run experiments and look at the results.”</p>
       </div>
       <div class="compare__col compare__col--good">
-        <div class="compare__label">Проверяемая подзадача</div>
+        <div class="compare__label">Verifiable subtask</div>
         <p>
-          «На 20 средах, не использованных при разработке, сравнить агента
-          с моделью мира и без неё: выполнить по пять запусков для каждого
-          условия, сохранить исходные показатели и заполнить итоговую таблицу».
+          “On 20 environments not used during development, compare the agent with
+          and without a world model: run each condition five times, save raw metrics,
+          and complete the summary table.”
         </p>
       </div>
     </div>
 
     <div class="article__actions">
-      <a class="btn btn-primary" href="../skills/koi-grill-experiment.html">Спроектировать эксперимент</a>
-      <a class="btn btn-ghost" href="../skills/koi-report-review.html">Проверить постановку</a>
-      <a class="btn btn-ghost" href="hypothesis-tree.html">Урок: дерево гипотез</a>
+      <a class="btn btn-primary" href="../skills/koi-grill-experiment.html">Design an experiment</a>
+      <a class="btn btn-ghost" href="../skills/koi-report-review.html">Review the specification</a>
+      <a class="btn btn-ghost" href="hypothesis-tree.html">Lesson: hypothesis tree</a>
     </div>
   </main>
 

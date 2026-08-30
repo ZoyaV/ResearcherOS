@@ -1,27 +1,29 @@
 ---
 name: koi-project-sync
 description: >-
-  Auto-sync KOI projects/ with git: commit and push significant changes (experiments
-  done, reports, research questions, kanban); pull on Cursor startup and every 30
-  minutes. Use when sync-push queue has items, after KOI workflows, on session
-  start, or when the user mentions git sync, push, or pull for projects.
+  Auto-sync KOI projects/ with git: commit and push significant changes
+  (completed experiments, reports, research questions, kanban); pull on Cursor
+  startup and every 30 minutes. Use when the sync-push queue has items, after KOI
+  workflows, on session start, or when the user mentions git sync, push, or pull.
 ---
 
-# KOI: синхронизация projects/ с git
+# KOI: synchronize projects/ with git
 
-Репозиторий — корень `KOI/` (remote `origin`). Данные проектов — только `projects/<id>/`.
+The repository root is `KOI/` with remote `origin`. Project data lives only in
+`projects/<id>/`.
 
-## Когда запускать
+## When to run
 
-| Триггер | Действие |
-|---------|----------|
-| `sessionStart` hook | **pull** (см. ниже) |
-| `stop` hook, прошло ≥30 мин | **pull** снова |
-| Очередь push не пуста или dirty `projects/` | **commit + push** |
-| После `koi-done-research`, сохранения отчёта, переноса в done | проверь `pending-push` |
-| Пользователь просит синхронизировать | оба направления |
+| Trigger | Action |
+|---------|--------|
+| `sessionStart` hook | **pull** |
+| `stop` hook after at least 30 minutes | **pull** again |
+| Non-empty push queue or dirty `projects/` | **commit + push** |
+| After `koi-done-research`, saving a report, or moving a card to done | Check `pending-push` |
+| User requests synchronization | Both directions |
 
-При старте сессии с KOI **сначала pull, потом очереди** (done-research, agent-chat, push).
+At the start of a KOI session, **pull first, then process queues**
+(done-research, agent-chat, push).
 
 ## CLI
 
@@ -32,35 +34,39 @@ KOI/.venv/bin/python -m koi.projects.sync_cli pending-push
 KOI/.venv/bin/python -m koi.projects.sync_cli complete-push --all
 ```
 
-## Pull (входящие изменения)
+## Pull incoming changes
 
-1. `pull` — скрипт делает `git fetch` и `git pull --ff-only`, если origin впереди и нет незакоммиченных файлов в `projects/`.
-2. Если pull заблокирован (локальные изменения + remote впереди) — **сначала push-workflow** для локальных правок, затем pull. При конфликте — сообщи пользователю, не делай force.
-3. На первой сессии дня: если нет фонового loop — запусти мониторинг раз в 30 минут (скилл `loop`):
+1. `pull` runs `git fetch` and `git pull --ff-only` when origin is ahead and
+   `projects/` has no uncommitted files.
+2. If local changes block an incoming pull, run the push workflow first, then
+   pull. Report conflicts to the user and never force.
+3. On the first session of the day, start a 30-minute background monitor with
+   the `loop` skill if no loop exists:
 
 ```bash
 # Loop every 30m: koi-project-sync pull
 ```
 
-## Push (исходящие изменения)
+## Push outgoing changes
 
-### Значимые изменения (коммитить)
+### Significant changes to commit
 
-- карточка перешла в **done** или сменила колонку
-- новый/обновлённый **отчёт** (`reports/`)
+- a card moved to **done** or changed columns
+- a new or updated **report** under `reports/`
 - **research.json** / research_questions
-- новая карточка, узел дерева, правки канбана или project.md
+- a new card, tree node, kanban change, or project.md edit
 
-### Не коммитить
+### Do not commit
 
 - `.run/`, `.venv/`, `__pycache__/`
-- код KOI (`koi/`, `api/`, `web/`) — только если пользователь явно правил платформу
-- секреты (`.env`)
+- KOI platform code (`koi/`, `api/`, `web/`) unless the user explicitly changed it
+- secrets such as `.env`
 
 ### Workflow
 
-1. `pending-push` — очередь `.run/sync-push-queue.json` + `git status projects/`.
-2. Если `needs_push` — сгруппируй по проектам, stage только `projects/`:
+1. Run `pending-push` to inspect `.run/sync-push-queue.json` and
+   `git status projects/`.
+2. If `needs_push`, group changes by project and stage only `projects/`:
 
 ```bash
 cd KOI
@@ -68,67 +74,69 @@ git add projects/<project_id>/
 git status
 ```
 
-3. Commit message (русский или английский, кратко):
+3. Use a concise English commit message:
 
+```text
+projects(<id>): <summary>
+
+- <detail from the queue>
 ```
-projects(<id>): <суть>
 
-- <деталь из очереди>
-```
+Examples:
 
-Примеры:
-- `projects(ai-agents-embodied): эксперимент Diversity-only → done`
-- `projects(isaaclab-dexsuite-reorient): отчёт baseline PPO`
+- `projects(ai-agents-embodied): move Diversity-only experiment to done`
+- `projects(isaaclab-dexsuite-reorient): add baseline PPO report`
 
-4. Push (только по явному триггеру скилла или очереди — пользователь настроил авто-sync):
+4. Push only on an explicit skill or queue trigger; the user configured auto-sync:
 
 ```bash
 cd KOI && git push origin HEAD
 ```
 
-5. `complete-push --all` после успешного push.
+5. Run `complete-push --all` after a successful push.
 
-### Если push отклонён (non-fast-forward)
+### Rejected push (non-fast-forward)
 
-Сначала `pull`, разреши конфликты в `projects/`, затем push. Без `--force`.
+Pull first, resolve conflicts under `projects/`, then push. Never use `--force`.
 
-## Очередь push
+## Push queue
 
-API и агент добавляют записи при значимых изменениях. Поля: `project_id`, `reason`, `detail`.
-
-Приоритет: после обработки done-research / отчёта — сразу проверь push, чтобы выводы ушли в remote.
+The API and agents add entries for significant changes. Fields are `project_id`,
+`reason`, and `detail`. After processing done-research or a report, check push
+immediately so conclusions reach the remote.
 
 ## Cursor hooks (ResearchOS workspace)
 
-Скрипты: `agents/skills/koi-project-sync/hooks/`. Подключение: скопируй
-`agents/cursor-hooks.json` → `.cursor/hooks.json`.
+Scripts live in `agents/skills/koi-project-sync/hooks/`. Copy
+`agents/cursor-hooks.json` to `.cursor/hooks.json` to enable them.
 
-| Hook | Скрипт | Поведение |
-|------|--------|-----------|
-| `sessionStart` | `koi-project-sync-session.sh` | pull + `additional_context` при очереди push или проблемах |
-| `stop` | `koi-project-sync-stop.sh` | если ≥30 мин — followup pull; если очередь push — followup commit+push |
+| Hook | Script | Behavior |
+|------|--------|----------|
+| `sessionStart` | `koi-project-sync-session.sh` | Pulls and adds context when push is pending or problems occur |
+| `stop` | `koi-project-sync-stop.sh` | Requests a pull after 30 minutes and commit+push when the queue is non-empty |
 
-## Связанные скиллы
+## Related skills
 
-- `koi-project-onboard` — после attach пишет в `tree/<repo>/koi-structure/` и
-  вызывает `install_cli` + первый `push` (§6c); дальше обычный sync здесь
-- `koi-done-research` — после вывода проверь push
-- `koi-dev-server` — API пишет в mounts, очередь push пополняется автоматически
-- `loop` — фоновый pull каждые 30 мин
+- `koi-project-onboard` writes to `tree/<repo>/koi-structure/`, invokes
+  `install_cli`, and performs the first push; ordinary synchronization continues here.
+- `koi-done-research` — check push after saving a conclusion.
+- `koi-dev-server` — the API writes to mounts and automatically fills the queue.
+- `loop` — background pull every 30 minutes.
 
-## Sibling repos (`tree/<repo>/koi-structure` + orphan branch)
+## Sibling repositories (`tree/<repo>/koi-structure` + orphan branch)
 
-Канон: working copy research-данных — `tree/<repo>/koi-structure/` (git worktree
-на `git_sync_branch`, обычно `koi/research`). Code-репо — sibling `<repo>/`.
+The canonical research-data working copy is `tree/<repo>/koi-structure/`, a git
+worktree on `git_sync_branch` (usually `koi/research`). The code repository is
+the sibling `<repo>/`.
 
-Если layout ещё не `tree/`:
+If the layout does not yet use `tree/`:
 
 ```bash
 python -m koi.projects.install_cli status
-python -m koi.projects.install_cli install <repo>   # или migrate
+python -m koi.projects.install_cli install <repo>   # or migrate
 ```
 
-Для проектов с `git_repo: true` и `git_sync_branch` каноничный sync CLI:
+For projects with `git_repo: true` and `git_sync_branch`, use:
 
 ```bash
 python -m koi.projects.sync_cli init-sync-branch --project-id <id>
@@ -137,5 +145,5 @@ python -m koi.projects.sync_cli pull --project-id <id>
 python -m koi.projects.sync_cli status
 ```
 
-Push/pull работают с mount `koi_root` (под `tree/`); не копируй дерево обратно
-в code-ветку.
+Push and pull operate on the mounted `koi_root` under `tree/`; do not copy the
+research tree back into the code branch.

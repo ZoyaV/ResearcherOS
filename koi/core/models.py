@@ -49,11 +49,11 @@ class ResearchQuestionCertainty(str, Enum):
 class MethodResearchQuestion(BaseModel):
     id: str = Field(default_factory=lambda: f"rq-{uuid4().hex[:8]}")
     question: str
-    answer: str = ""  # краткая техническая сводка (не показывается в UI)
-    narrative: str = ""  # человекочитаемый ответ для модального окна
+    answer: str = ""  # concise technical summary (not shown in the UI)
+    narrative: str = ""  # readable answer shown in the modal
     certainty: ResearchQuestionCertainty = ResearchQuestionCertainty.DEFINITE
-    importance: int = Field(default=3, ge=1, le=5)  # относительная важность вывода
-    card_id: Optional[str] = None  # kanban ExperimentCard.id — источник вывода
+    importance: int = Field(default=3, ge=1, le=5)  # relative importance
+    card_id: Optional[str] = None  # source kanban ExperimentCard.id
 
 
 class Node(BaseModel):
@@ -81,7 +81,7 @@ class ExperimentCard(BaseModel):
     description: str = ""
     tags: list[str] = Field(default_factory=list)
     depends_on: list[str] = Field(default_factory=list)  # prerequisite card ids (DAG edges)
-    linked_node_id: Optional[str] = None  # optional link to tree experiment node
+    linked_node_id: Optional[str] = None  # optional link to a tree experiment node
     created_at: Optional[str] = None  # ISO-8601 UTC, set on create
     updated_at: Optional[str] = None  # ISO-8601 UTC, bumped on every card update
 
@@ -107,7 +107,7 @@ DEFAULT_KANBAN_COLUMNS = [
     KanbanColumn(id="backlog", title="Backlog", order=0),
     KanbanColumn(id="running", title="Running", order=1),
     KanbanColumn(id="done", title="Done", order=2),
-    KanbanColumn(id="successful", title="Успешные", order=3),
+    KanbanColumn(id="successful", title="Successful", order=3),
 ]
 
 KANBAN_CONCLUSION_COLUMN_IDS = frozenset({"done", "successful"})

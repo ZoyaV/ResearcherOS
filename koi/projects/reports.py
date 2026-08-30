@@ -95,7 +95,7 @@ def write_card_report(
         card.title,
         content,
     )
-    _enqueue_sync(project_id, "report_saved", f"отчёт карточки {card.title}")
+    _enqueue_sync(project_id, "report_saved", f"report for card {card.title}")
     return result
 
 

@@ -20,7 +20,7 @@ def running_activity_for_project(
     boards = project.get("boards") or {}
     if not isinstance(boards, dict):
         return []
-    who = (author or "").strip() or "коллега"
+    who = (author or "").strip() or "a colleague"
     items: list[dict[str, Any]] = []
     for board in boards.values():
         if not isinstance(board, dict):

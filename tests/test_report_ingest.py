@@ -34,20 +34,20 @@ def _report(*, verdict_node: str = "cause-new", json_body: str | None = None) ->
     "importance": 7
   }
 ]"""
-    return f"""## 0. Привязка
+    return f"""## 0. References
 
-| Поле | Значение |
+| Field | Value |
 | --- | --- |
-| Гипотеза | `cause-old` |
-| Метод / карточка | `method-1` / `card-1` |
+| Hypothesis | `cause-old` |
+| Method / card | `method-1` / `card-1` |
 
-## 5. Заявка в базу знаний
+## 5. Knowledge base submission
 
-### 5.1 Вердикт
+### 5.1 Verdict
 
 `{verdict_node}` → result **supported**
 
-### 5.2 Инсайты
+### 5.2 Insights
 
 ```json
 {body}
@@ -115,10 +115,10 @@ def test_parse_report_uses_verdict_anchor_and_normalizes_questions() -> None:
 @pytest.mark.parametrize(
     ("text", "message"),
     (
-        ("## 0. Привязка\n", "нет секции"),
-        (_report(json_body="not-json"), "невалидный JSON"),
+        ("## 0. References\n", "missing"),
+        (_report(json_body="not-json"), "invalid JSON"),
         (
-            "## 5. Заявка в базу знаний\n\n"
+            "## 5. Knowledge base submission\n\n"
             "```json\n{\"method_id\": \"method-1\"}\n```\n",
             "method_id/card_id",
         ),

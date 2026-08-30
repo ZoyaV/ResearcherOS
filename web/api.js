@@ -37,7 +37,7 @@ function withHubShareToken(path) {
   return `${path}${join}token=${encodeURIComponent(token)}`;
 }
 
-/** GET, возвращающий сырой текст (markdown базы знаний). */
+/** GET that returns raw text (knowledge-base Markdown). */
 async function apiText(path, options = {}) {
   const res = await fetch(`${apiBase()}${withHubShareToken(path)}`, {
     cache: "no-store",

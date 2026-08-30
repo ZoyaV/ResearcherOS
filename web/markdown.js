@@ -170,7 +170,7 @@ export function enhanceReportPreview(html) {
 
 export function renderMarkdown(source, options = {}) {
   if (!source?.trim()) {
-    return '<p class="md-empty">Пустой отчёт — напишите Markdown слева</p>';
+    return '<p class="md-empty">Empty report — write Markdown on the left</p>';
   }
   const md = options.assetUrlFn
     ? linkReportAssets(source, options.assetUrlFn)

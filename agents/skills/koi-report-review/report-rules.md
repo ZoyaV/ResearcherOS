@@ -1,118 +1,150 @@
-# Правила оформления отчётов
+# Report writing rules
 
-Краткий список для людей и LLM. Структура и подсказки — в [templates/report-skeleton.md](templates/report-skeleton.md). При конфликте по оформлению (жирный, заголовки) приоритет у этого файла.
+A concise reference for people and language models. Structure and inline guidance
+are in [report-skeleton.md](report-skeleton.md). If formatting rules conflict
+(bold, headings, and similar choices), this file takes priority.
 
-Отчёт пишется так, чтобы **§1, §2, §N.2 (выводы) и prose в §N.1 (результаты)** можно было перенести в статью почти без правок. Локальные пути и slug’и — в §3 (постановка и сбор), не в §4+.
+Write reports so that **Sections 1, 2, N.2 (conclusions), and prose in N.1
+(results)** can move into a paper with minimal editing. Local paths and slugs
+belong in Section 3 (setup and collection), not Section 4+.
 
-## Схема разделов
+## Section structure
 
-| Раздел | Содержание |
-|--------|------------|
-| §1–§2 | Зачем, метрика |
-| §3 | Постановка по каждому прогону, **Подзадачи** (`- [ ]`), сбор, команды, критерий done |
-| §4, §5, … | Только проведение: результаты (таблицы) и выводы |
-| Приложение | Сырые дампы и полные пути |
+| Section | Content |
+|---------|---------|
+| Sections 1–2 | Rationale and metric |
+| Section 3 | Setup for each run, **Tasks** (`- [ ]`), collection, commands, done criterion |
+| Sections 4, 5, … | Execution only: result tables and conclusions |
+| Appendix | Raw dumps and complete paths |
 
-В §4+ не дублировать постановку и сбор из §3 — достаточно «см. §3.1».
-
----
-
-## Подзадачи (SMART, лаконично)
-
-Пункт должен быть понятен **без контекста репозитория**: сначала человеческое действие и публичные имена, технические детали — в конце в скобке `(лок.: …)`.
-
-Формула (одна–две строки): **что сделать** + **на каких данных / модели (публичное имя)** + **какой измеримый результат / куда записать** + `(лок.: скрипт, флаг, файл)`.
-
-| Буква | В задаче |
-|-------|----------|
-| **S** | Глагол предметный: «сгенерировать», «посчитать», «заполнить табл. A» — не «прогнать sweep», не «сделать эксперимент» |
-| **M** | Явный критерий готово: «json с \|distinct\| по 5 промптам», «табл. C: base vs адаптер» |
-| **A** | Объём прогона (5 промптов, 4 значения N) — не вся карточка канбана |
-| **R** | Связь с §1/§2 одной фразой, если неочевидно |
-| **T** | Порядок: «после §3.1», «до закрытия карточки» |
-
-Имена в задачах:
-
-- «базовая Qwen3-4B-Instruct», «адаптер после мини-SFT» — не `MODEL=base`, не `step50` без пояснения.
-- «выборка застрявших переходов», «отложенный тест CrafText» — не slug и не только id в основной части.
-
-Примеры:
-
-- Хорошо: `[ ] На выборке застрявших переходов (5 промптов): для базовой модели сгенерировать 5/64/128/256 ответов на промпт, посчитать число уникальных действий, сохранить json (лок.: MODEL=base, sweep_base_….json)`
-- Хорошо: `[x] В §5.2: ответить, расширяет ли рост N сет действий; сравнить адаптер и базовую модель по табл. C`
-- Плохо: `[ ] Прогнать sweep на NavCraft-stuck-5`, `[ ] MODEL=base`, `[ ] Улучшить diversity`
-
-`- [x]` — только когда критерий M выполнен.
+Do not repeat Section 3 setup and collection in Section 4+; “see Section 3.1” is
+enough.
 
 ---
 
-## Имена для статьи (датасеты, среды, выборки)
+## Tasks (SMART and concise)
 
-У каждого датасета, тестовой выборки, среды и крупного артефакта в §3 задаётся **публичное имя** — короткое, устойчивое, пригодное для текста статьи. В одном отчёте одно и то же имя для одной и той же сущности.
+Every task must be understandable **without repository context**. Start with a
+plain action and public names; put technical details at the end in
+`(local: …)`.
 
-| Где | Как называть |
-|-----|----------------|
-| §1, §2 (текст), §N.2 (выводы), строка `Протокол:` | Публичное имя + при необходимости одно уточнение |
-| §3 (постановка, сбор, подзадачи) | Публичное имя в основном тексте; `путь.json`, флаги — в «лок.:» |
-| Заголовки `##`–`####` | Смысл и масштаб, без slug файлов |
+One- or two-line formula: **action** + **data/model (public name)** +
+**measurable output or destination** + `(local: script, flag, file)`.
 
-**Если пользователь не дал имя** — предложить осмысленное (NavCraft-fails, CrafText-nav-test) и зафиксировать в §3; при сомнении — **спросить**.
+| Letter | Requirement |
+|--------|-------------|
+| **S** | Use a concrete verb: “generate,” “calculate,” “fill Table A,” not “run a sweep” or “do the experiment” |
+| **M** | State an explicit completion criterion: “JSON with \|distinct\| for five prompts,” “Table C: base vs adapter” |
+| **A** | Bound the run (five prompts, four N values), not the whole kanban card |
+| **R** | Link to Section 1/2 in one phrase when relevance is not obvious |
+| **T** | State ordering: “after Section 3.1,” “before closing the card” |
 
-Примеры:
+Names in tasks:
 
-- Хорошо (выводы): «На отложенной тестовой выборке навигационных задач CrafText mean diversity вырос с 1,50 до 1,78.»
-- Плохо: «На `dif_action_test_matched_50.json` mean вырос…»
-- В §3: `NavCraft-fails — …; локально data/….json, 3348 items.`
+- Use “base Qwen3-4B-Instruct” and “adapter after mini-SFT,” not unexplained
+  `MODEL=base` or `step50`.
+- Use “stalled-transition sample” and “held-out CrafText test,” not only a slug
+  or id in the main text.
 
-Модели: в статье — «базовая Qwen3-4B-Instruct», «адаптер после 50 шагов LoRA»; `global_step_50` — в §3 / артефактах.
+Examples:
 
----
+- Good: `[ ] On the stalled-transition sample (five prompts), generate
+  5/64/128/256 responses per prompt with the base model, count unique actions,
+  and save numeric JSON (local: MODEL=base, sweep_base_….json)`
+- Good: `[x] In Section 5.2, answer whether increasing N expands the action set;
+  compare the adapter and base model using Table C`
+- Bad: `[ ] Run sweep on NavCraft-stuck-5`, `[ ] MODEL=base`,
+  `[ ] Improve diversity`
 
-## Делать
-
-- Писать от лица команды: «мы обучаем», «зафиксировали».
-- В §1: что не так → что делаем → как поймём успех; без имён локальных файлов.
-- Цель — измеримо, не «улучшить» / «оптимизировать».
-- В §3 для **каждого** прогона (§3.1, §3.2, …): кратко, поля (данные, модель, скрипт), блок «Подзадачи» с галочками, `#### Сбор данных`, при необходимости `bash`.
-- В «Подзадачи» — SMART-шаги (запуск → артефакт → §N.1 → §N.2), не выводы и не пересказ таблиц.
-- В §4+ только `### N.1 Результаты` и `### N.2 Выводы`; ссылка на соответствующий §3.x.
-- В §2 и выводах — публичные имена выборок и сред.
-- Заголовки `##` / `###` / `####` — по смыслу, без slug’ов и `(N=5, matched-…)`.
-- Параметры протокола — в §2, в строке `Протокол:` под таблицей, не в названии таблицы.
-- §3.x «Сбор данных» — объёмы и подготовка train; §N.1 — таблицы чекпоинтов; §N.2 — инсайты.
-- Первая таблица в §N.1 — финальный протокол §2; диагностика — отдельно, с пометкой «не финальный тест».
-- В выводах: «Из таблицы A/B/C» + «Общий вывод»; сначала суждение, потом числа.
-- Синхронизировать «Статус» в шапке с канбаном.
+Use `- [x]` only after satisfying the M criterion.
 
 ---
 
-## Не делать
+## Paper-facing names (datasets, environments, and samples)
 
-- Не использовать `**жирный**` для акцента.
-- Не дублировать в §4+ постановку и сбор из §3 (списки данных, bash, «collect не было»).
-- Не упоминать в §1, §2 (prose), выводах и `Протокол:` локальные имена файлов.
-- Не ставить `.json`, `.sh`, run id в заголовки `##`–`####`.
-- Не писать выводы под таблицами в §N.1 — только в §N.2.
-- Не класть цели в §N.1 или результаты в §1.
-- Не объявлять done по диагностике, если §3 требует финальный тест §2.
-- Не копировать сырые логи в §N.1 вместо агрегата.
-- Не писать в «Подзадачи» жаргон без расшифровки в основной части («sweep», `MODEL=base`, slug датасета как единственное имя); не использовать размытые глаголы («доработать», «улучшить») без объекта и критерия готово.
+In Section 3, assign every dataset, test sample, environment, and major artifact
+a short, stable **public name** suitable for paper prose. Use one name per entity
+throughout a report.
+
+| Location | Naming rule |
+|----------|-------------|
+| Sections 1 and 2 prose, Section N.2 conclusions, `Protocol:` line | Public name plus one clarification when needed |
+| Section 3 setup, collection, and tasks | Public name in the main text; `path.json` and flags under `local:` |
+| Headings `##`–`####` | Meaning and scale, never file slugs |
+
+If the user supplied no name, propose a meaningful one such as NavCraft-fails or
+CrafText-nav-test and record it in Section 3. Ask when uncertain.
+
+Examples:
+
+- Good conclusion: “On the held-out CrafText navigation test, mean diversity
+  increased from 1.50 to 1.78.”
+- Bad: “On `dif_action_test_matched_50.json`, the mean increased…”
+- Section 3: `NavCraft-fails — …; local data/….json, 3,348 items.`
+
+In paper prose use “base Qwen3-4B-Instruct” or “adapter after 50 LoRA steps.”
+Keep `global_step_50` in Section 3 or the artifact list.
 
 ---
 
-## Чеклист перед сохранением
+## Do
 
-- [ ] В тексте нет `**`.
-- [ ] Публичные имена в §3; в §1, §2 (prose), выводах — без slug файлов.
-- [ ] В каждом §3.x есть «Подзадачи» (SMART, по одной строке); §4+ — только результаты и выводы.
-- [ ] §N.1 без выводов; интерпретация — в §N.2.
+- Write in the team's voice: “we train,” “we recorded.”
+- In Section 1, state the problem, action, and success criterion without local filenames.
+- Make the goal measurable; avoid bare “improve” or “optimize.”
+- For **every** run in Section 3.x, include Summary, data/model/script fields, a
+  Tasks checklist, `#### Data collection`, and bash when needed.
+- Tasks are SMART steps (run → artifact → Section N.1 → Section N.2), not
+  conclusions or copies of tables.
+- Section 4+ contains only `### N.1 Results` and `### N.2 Conclusions`, with a
+  link to the corresponding Section 3.x.
+- Use public sample and environment names in Section 2 and conclusions.
+- Write meaningful `##` / `###` / `####` headings without slugs or
+  `(N=5, matched-…)`.
+- Put protocol parameters in Section 2 and the `Protocol:` line under a table,
+  not in the table title.
+- Section 3.x Data collection covers training volume and preparation;
+  Section N.1 contains checkpoint tables; Section N.2 contains insights.
+- Make the first table in Section N.1 the final Section 2 protocol. Put
+  diagnostics separately and label them “not the final test.”
+- In conclusions, write “Table A/B/C shows …” plus an overall conclusion;
+  state the judgment first and numbers second.
+- Keep the report header Status synchronized with kanban.
 
 ---
 
-## Эталон
+## Do not
 
-Структура §3 (постановка, SMART-подзадачи, сбор) / §4+ (результаты, выводы):
+- Do not use `**bold**` for emphasis.
+- Do not repeat Section 3 setup and collection in Section 4+ (data lists, bash,
+  or “no collection”).
+- Do not mention local filenames in Section 1, Section 2 prose, conclusions, or
+  `Protocol:` lines.
+- Do not place `.json`, `.sh`, or run ids in `##`–`####` headings.
+- Do not write conclusions below tables in Section N.1; use Section N.2.
+- Do not put goals in Section N.1 or results in Section 1.
+- Do not declare done based on diagnostics when Section 3 requires the Section 2 final test.
+- Do not paste raw logs into Section N.1 instead of aggregates.
+- Do not use unexplained jargon in Tasks (`sweep`, `MODEL=base`, a dataset slug
+  as its only name) or vague verbs such as “refine” and “improve” without an
+  object and completion criterion.
 
-- `.../Проверить_расширение_области_действий_при_увеличннии_области_семплирования.md`
-- `.../Запустить_обучение_SFT_на_наборе.md`
-- `.../Дообучение_чекпоинта_SFT_обучением_с_подкреплением.md`
+---
+
+## Checklist before saving
+
+- [ ] The report body contains no `**`.
+- [ ] Public names are defined in Section 3; Sections 1, 2 prose, and conclusions contain no file slugs.
+- [ ] Every Section 3.x has concise SMART Tasks; Section 4+ contains only results and conclusions.
+- [ ] Section N.1 has no conclusions; interpretation is in Section N.2.
+
+---
+
+## Reference examples
+
+The canonical structure is Section 3 (setup, SMART tasks, collection) followed by
+Section 4+ (results and conclusions). Example report names:
+
+- `.../Test_action_space_expansion_as_sampling_increases.md`
+- `.../Run_SFT_training_on_the_dataset.md`
+- `.../Fine_tune_the_SFT_checkpoint_with_reinforcement_learning.md`

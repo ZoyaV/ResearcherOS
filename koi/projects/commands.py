@@ -141,7 +141,7 @@ def suggest_board_dependencies(
     updated = apply_dag_suggestions(board, suggestions)
     if updated:
         repository.update_board(project, board)
-        _enqueue_sync(project_id, "kanban_updated", "применены предложения DAG")
+        _enqueue_sync(project_id, "kanban_updated", "applied DAG suggestions")
     return DagSuggestionResult(
         project=project,
         suggestions=suggestions,
@@ -244,7 +244,7 @@ def replace_project(project_id: str, snapshot: dict) -> Project:
     ]
 
     repository.save_project(project)
-    _enqueue_sync(project_id, "project_saved", "полное сохранение проекта из UI")
+    _enqueue_sync(project_id, "project_saved", "full project save from UI")
     return project
 
 
@@ -258,7 +258,7 @@ def create_node(project_id: str, command: CreateNodeCommand) -> Project:
         command.description,
     )
     repository.save_project(project)
-    _enqueue_sync(project_id, "tree_updated", f"новый узел: {command.title}")
+    _enqueue_sync(project_id, "tree_updated", f"new node: {command.title}")
     return project
 
 
@@ -291,9 +291,9 @@ def update_node(project_id: str, node_id: str, command: UpdateNodeCommand) -> Pr
 
     repository.save_project(project)
     if command.research_questions is not None:
-        _enqueue_sync(project_id, "research_updated", f"research_questions узла {node_id}")
+        _enqueue_sync(project_id, "research_updated", f"research_questions for node {node_id}")
     elif command.title is not None or command.description is not None:
-        _enqueue_sync(project_id, "tree_updated", f"обновлён узел {node_id}")
+        _enqueue_sync(project_id, "tree_updated", f"updated node {node_id}")
     return project
 
 
@@ -326,7 +326,7 @@ def delete_node(project_id: str, node_id: str) -> Project:
     repository.save_project(project)
     for card_id in report_card_ids:
         card_reports.delete_report(project_id, card_id)
-    _enqueue_sync(project_id, "tree_updated", f"удалён узел {node_id}")
+    _enqueue_sync(project_id, "tree_updated", f"removed node {node_id}")
     return project
 
 
@@ -354,7 +354,7 @@ def create_card(project_id: str, board_id: str, command: CreateCardCommand) -> P
     board.cards.append(card)
     repository.save_project(project)
     card_reports.ensure_card_report(project, board_id, card.id, card.title)
-    _enqueue_sync(project_id, "kanban_updated", f"новая карточка: {card.title}")
+    _enqueue_sync(project_id, "kanban_updated", f"new card: {card.title}")
     return project
 
 
@@ -410,12 +410,12 @@ def update_card(
             _enqueue_sync(
                 project_id,
                 "kanban_updated",
-                f"карточка {card.title}: {old_column} → {command.column_id}",
+                f"card {card.title}: {old_column} → {command.column_id}",
             )
     elif dependencies_changed:
-        _enqueue_sync(project_id, "kanban_updated", f"связи DAG карточки {card.title}")
+        _enqueue_sync(project_id, "kanban_updated", f"DAG links for card {card.title}")
     elif command.title is not None or command.description is not None or command.tags is not None:
-        _enqueue_sync(project_id, "kanban_updated", f"правка карточки {card.title}")
+        _enqueue_sync(project_id, "kanban_updated", f"edited card {card.title}")
 
     if command.title is not None and command.title != old_title:
         card_reports.rename_report_for_card(project, board_id, card_id, card.title)

@@ -1,34 +1,35 @@
-# Роль 1: Исследователь
+# Role 1: Researcher
 
-Единственная роль, которая **запускает job**, **меняет** файлы эксперимента
-(в рамках одобрения человека) и **перезапускает** после рекомендации Дебаггера.
-Канбан, §3 и отчёт — по **koi-execute-card**.
+The only role that **launches jobs**, edits experiment files within human
+approval, and restarts jobs after Debugger advice. Follow **koi-execute-card**
+for kanban, Section 3, and reports.
 
-## Старт
+## Start
 
-1. Прочитать state и отчёт.
-2. Если в workspace есть project-specific скилл запуска (например `verl-experiment-run`) —
-   следовать ему для sync/job/sysmon/loops.
-3. Иначе запустить эксперимент так, как описано в §3 карточки (локально или remote).
-4. Включить watch по cadence скилла: 1 мин × 20, затем каждые 20 мин.
-5. Обновлять `live_note` и при вехах — `[x]` в §3.
+1. Read the state file and report.
+2. If the workspace has a project-specific launch skill such as
+   `verl-experiment-run`, follow it for synchronization, jobs, sysmon, and loops.
+3. Otherwise run the experiment described in the card's Section 3, locally or remotely.
+4. Watch every minute × 20, then every 20 minutes.
+5. Update `live_note` and mark completed Section 3 tasks `[x]` at milestones.
 
-## На каждом watch
+## Every watch
 
-1. Job жив? Есть прогресс в логе / метриках?
-2. Прочитать `state.debugger.pending_recommendation`.
-3. При ошибке или зависании — вызвать Дебаггера (не ждать плановые 10 мин).
-4. После рекомендации: применить безопасный фикс / рестарт **или** спросить человека.
-5. Сбросить `pending_recommendation`, обновить `researcher_watch` в state.
+1. Is the job alive and progressing in logs or metrics?
+2. Read `state.debugger.pending_recommendation`.
+3. On error or hang, call Debugger immediately instead of waiting ten minutes.
+4. Apply a safe fix/restart after advice, or ask the user.
+5. Clear `pending_recommendation` and update `researcher_watch` in state.
 
-## Финиш
+## Finish
 
-1. Собрать артефакты, заполнить §4/§5 отчёта (**koi-report-review** на результаты).
-2. Все подзадачи `[x]` → `running` → `done`.
-3. **koi-done-research**, при необходимости **koi-project-sync**.
+1. Collect artifacts and complete report Sections 4/5; run **koi-report-review**
+   on results.
+2. When all tasks are `[x]`, move `running` → `done`.
+3. Run **koi-done-research** and, when needed, **koi-project-sync**.
 
-## Запрещено
+## Prohibited
 
-- Игнорировать канбан / галочки «на конец»
-- Менять чужой фреймворк без явного «можно менять код»
-- Закрывать done при живом незавершённом job без фиксации отказа в отчёте
+- Deferring kanban and checkbox updates until the end
+- Changing an external framework without explicit permission to edit its code
+- Closing a live unfinished job as done without recording the abandonment in the report

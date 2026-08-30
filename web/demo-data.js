@@ -1,15 +1,15 @@
 /** Built-in demo project used by the standalone web preview. */
 const DEMO = {
   id: "demo-aggregation",
-  title: "Нестабильная экспрессия рекомбинантного белка",
+  title: "Unstable recombinant protein expression",
   nodes: [
-    { id: "n-problem", parent_id: null, node_type: "problem", title: "Низкий выход целевого белка в культуре HEK293", has_kanban: false },
-    { id: "n-cause-misfold", parent_id: "n-problem", node_type: "cause", title: "Причина: агрегация из-за неправильного фолдинга", has_kanban: false },
-    { id: "n-cause-toxic", parent_id: "n-problem", node_type: "cause", title: "Причина: токсичность для клеток", has_kanban: false },
-    { id: "n-ev-viability", parent_id: "n-cause-toxic", node_type: "cause_evidence", title: "Доказательство: viability assay 72 ч", has_kanban: true, board_id: "board-ev-viability" },
-    { id: "n-ev-fold", parent_id: "n-cause-misfold", node_type: "cause_evidence", title: "Доказательство: ThT-флуоресценция и TEM инклюзий", has_kanban: true, board_id: "board-ev-fold" },
-    { id: "n-rem-chaperone", parent_id: "n-cause-misfold", node_type: "remediation", title: "Устранение: ко-экспрессия шаперонов HSP70/40", has_kanban: true, board_id: "board-rem-chaperone" },
-    { id: "n-exp-tht", parent_id: "n-ev-fold", node_type: "experiment", title: "ThT assay на лизатах 24/48/72 ч", has_kanban: false },
+    { id: "n-problem", parent_id: null, node_type: "problem", title: "Low target-protein yield in HEK293 culture", has_kanban: false },
+    { id: "n-cause-misfold", parent_id: "n-problem", node_type: "cause", title: "Cause: aggregation due to misfolding", has_kanban: false },
+    { id: "n-cause-toxic", parent_id: "n-problem", node_type: "cause", title: "Cause: cellular toxicity", has_kanban: false },
+    { id: "n-ev-viability", parent_id: "n-cause-toxic", node_type: "cause_evidence", title: "Evidence: 72-hour viability assay", has_kanban: true, board_id: "board-ev-viability" },
+    { id: "n-ev-fold", parent_id: "n-cause-misfold", node_type: "cause_evidence", title: "Evidence: ThT fluorescence and inclusion TEM", has_kanban: true, board_id: "board-ev-fold" },
+    { id: "n-rem-chaperone", parent_id: "n-cause-misfold", node_type: "remediation", title: "Remediation: HSP70/40 chaperone co-expression", has_kanban: true, board_id: "board-rem-chaperone" },
+    { id: "n-exp-tht", parent_id: "n-ev-fold", node_type: "experiment", title: "ThT assay on 24/48/72-hour lysates", has_kanban: false },
   ],
   boards: {
     "board-ev-fold": {
@@ -18,11 +18,11 @@ const DEMO = {
         { id: "backlog", title: "Backlog" },
         { id: "running", title: "Running" },
         { id: "done", title: "Done" },
-        { id: "successful", title: "Успешные" },
+        { id: "successful", title: "Successful" },
       ],
       cards: [
-        { id: "c1", column_id: "backlog", title: "ThT time-course", description: "Сравнить с контрольным GFP." },
-        { id: "c2", column_id: "backlog", title: "TEM инклюзий", description: "n=3 биологических повторности." },
+        { id: "c1", column_id: "backlog", title: "ThT time course", description: "Compare with the GFP control." },
+        { id: "c2", column_id: "backlog", title: "Inclusion TEM", description: "n=3 biological replicates." },
       ],
     },
     "board-ev-viability": {
@@ -31,10 +31,10 @@ const DEMO = {
         { id: "backlog", title: "Backlog" },
         { id: "running", title: "Running" },
         { id: "done", title: "Done" },
-        { id: "successful", title: "Успешные" },
+        { id: "successful", title: "Successful" },
       ],
       cards: [
-        { id: "c4", column_id: "backlog", title: "MTT / Trypan blue", description: "Сравнить с пустым вектором." },
+        { id: "c4", column_id: "backlog", title: "MTT / Trypan blue", description: "Compare with the empty vector." },
       ],
     },
     "board-rem-chaperone": {
@@ -43,19 +43,19 @@ const DEMO = {
         { id: "backlog", title: "Backlog" },
         { id: "running", title: "Running" },
         { id: "done", title: "Done" },
-        { id: "successful", title: "Успешные" },
+        { id: "successful", title: "Successful" },
       ],
       cards: [
-        { id: "c3", column_id: "running", title: "Ко-трансфекция HSP70", description: "Дозировка 1:1 и 1:2." },
+        { id: "c3", column_id: "running", title: "HSP70 co-transfection", description: "1:1 and 1:2 dosage." },
       ],
     },
   },
 };
 
 const TYPE_LABELS = {
-  problem: "Проблема",
-  cause: "Причина",
-  cause_evidence: "Доказательство",
-  remediation: "Устранение",
-  experiment: "Эксперимент",
+  problem: "Problem",
+  cause: "Cause",
+  cause_evidence: "Evidence",
+  remediation: "Remediation",
+  experiment: "Experiment",
 };

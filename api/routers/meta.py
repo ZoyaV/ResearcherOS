@@ -18,12 +18,12 @@ def node_types_meta() -> dict:
     return {
         "types": [t.value for t in NodeType],
         "labels": {
-            NodeType.PROBLEM.value: "Проблема",
-            NodeType.CAUSE.value: "Причина",
-            NodeType.CAUSE_EVIDENCE.value: "Доказательство причины",
-            NodeType.REMEDIATION.value: "Гипотеза устранения",
-            NodeType.METHOD.value: "Метод",
-            NodeType.EXPERIMENT.value: "Эксперимент",
+            NodeType.PROBLEM.value: "Problem",
+            NodeType.CAUSE.value: "Cause",
+            NodeType.CAUSE_EVIDENCE.value: "Cause evidence",
+            NodeType.REMEDIATION.value: "Remediation hypothesis",
+            NodeType.METHOD.value: "Method",
+            NodeType.EXPERIMENT.value: "Experiment",
         },
         "kanban_owners": ["method"],
         "allowed_children": {
