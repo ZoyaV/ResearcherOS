@@ -178,7 +178,7 @@
       })
       .catch(function (err) {
         mount.innerHTML =
-          '<p class="error">Не удалось открыть страницу. Запустите локальный сервер из <code>docs/features</code> (см. README) — браузер блокирует <code>fetch</code> с <code>file://</code>.</p><p class="error">' +
+          '<p class="error">Не удалось открыть страницу. Запустите локальный сервер из <code>docs-site</code> (см. README) — браузер блокирует <code>fetch</code> с <code>file://</code>.</p><p class="error">' +
           String(err.message || err) +
           "</p>";
       });

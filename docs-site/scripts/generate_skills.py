@@ -34,10 +34,12 @@ HEADER = f"""  <header class="site-header site-header--detail">
       <a class="brand" href="../index.html" aria-label="ResearcherOS — на главную">
         <img class="brand__logo" src="../assets/logo.png?v=6" alt="ResearcherOS" height="27" />
       </a>
-      <nav class="nav" aria-label="Основное">
+      <nav class="nav" aria-label="Main navigation">
         <a href="../index.html#about">About</a>
+        <a href="../index.html#versions">Versions</a>
         <a href="../index.html#start">How to start</a>
         <a href="../index.html#skills" aria-current="page">Skills</a>
+        <a href="../index.html#lessons">Lessons</a>
         <a href="https://github.com/ZoyaV/ResearcherOS">GitHub</a>
 {THEME_BTN}
       </nav>
