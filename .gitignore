@@ -1,2 +1,3 @@
 # Evo workspace is runtime state; benchmark code and research tree are tracked.
 .evo/
+runs/evo-artifacts/

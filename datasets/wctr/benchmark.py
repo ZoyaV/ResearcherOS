@@ -13,6 +13,34 @@ from pathlib import Path
 ROOT = Path(__file__).parent
 
 
+def write_graph(result: dict[str, object], train: list[dict[str, str]], evaluate: list[dict[str, str]]) -> None:
+    """Write a dependency-free SVG so ResearchOS can show the live metric."""
+    totals = sum(int(row["impressions"]) for row in train)
+    train_observed = sum(int(row["clicks"]) for row in train) / totals
+    width, height = 640, 300
+    bars = [("train observed", train_observed), ("test observed", float(result["observed_wctr"])), ("test predicted", float(result["predicted_wctr"]))]
+    scale = 1900
+    rects = []
+    labels = []
+    for idx, (label, value) in enumerate(bars):
+        x = 70 + idx * 185
+        bar_h = max(2, round(value * scale))
+        y = 235 - bar_h
+        rects.append(f'<rect x="{x}" y="{y}" width="110" height="{bar_h}" rx="6" fill="#4f46e5"/>')
+        labels.append(f'<text x="{x + 55}" y="260" text-anchor="middle" font-size="13" fill="#334155">{label}</text>')
+        labels.append(f'<text x="{x + 55}" y="{y - 8}" text-anchor="middle" font-size="14" fill="#0f172a">{value:.3f}</text>')
+    svg = ''.join([
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">',
+        '<rect width="100%" height="100%" fill="#f8fafc"/>',
+        '<text x="32" y="34" font-size="20" font-family="sans-serif" fill="#0f172a">wCTR held-out smoke</text>',
+        '<line x1="45" y1="235" x2="600" y2="235" stroke="#94a3b8"/>',
+        ''.join(rects), ''.join(labels), '</svg>'
+    ])
+    artifact_dir = Path(os.environ.get("EVO_ARTIFACTS_DIR") or "runs/evo-artifacts")
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    (artifact_dir / "wctr.svg").write_text(svg, encoding="utf-8")
+
+
 def rows(name: str) -> list[dict[str, str]]:
     with (ROOT / name).open(newline="", encoding="utf-8") as fh:
         return list(csv.DictReader(fh))
@@ -55,6 +83,7 @@ def main() -> None:
         "score": -loss,
         "tasks": [{"id": f"{args.split}-wctr", "score": -loss}],
     }
+    write_graph(result, train, evaluate)
     result_path = os.environ.get("EVO_RESULT_PATH")
     if result_path:
         Path(result_path).write_text(json.dumps(result, sort_keys=True) + "\n", encoding="utf-8")
