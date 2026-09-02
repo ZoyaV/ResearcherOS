@@ -149,4 +149,4 @@ literature_keywords:
 <!-- koi:kanban board-wctr-evo -->
 | backlog | running | done | successful |
 | --- | --- | --- | --- |
-| Запустить held-out wCTR smoke-run <!-- id:wctr-evo-smoke desc:evo_run: .evo/run_0000\nlive_log: .evo/dashboard.log\nbenchmark: datasets/wctr/benchmark.py --split test\ngate: datasets/wctr/gate.py\ntrain/test разделены по impression_id; синтетика до добавления bicycle.csv --> |  |  |  |
+|  | Запустить held-out wCTR smoke-run <!-- id:wctr-evo-smoke desc:evo_run: .evo/run_0000\nlive_log: .evo/dashboard.log\nbenchmark: datasets/wctr/benchmark.py --split test\ngate: datasets/wctr/gate.py\ntrain/test разделены по impression_id; синтетика до добавления bicycle.csv\nCHECK_PASSED exp_0001; GATE_CHECK_PASSED exp_0001; полноценный optimize-run ещё не запускался --> |  |  |
