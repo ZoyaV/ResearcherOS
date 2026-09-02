@@ -346,12 +346,26 @@ def live_snapshot(
                     if matches:
                         evo_block["live_report"] = _path_for_api(project_id, matches[0])
                 evo_block["artifacts"] = _evo_images(project_id, evo_root, nodes)
-                latest = sorted(nodes, key=lambda node: str(node.get("updated_at") or ""))[-1] if nodes else {}
-                evo_block["idea"] = latest.get("hypothesis") if latest else "Ожидание первой candidate-ветки."
                 checks = _evo_checks(evo_root, nodes)
                 passed = sum(1 for check in checks if check.get("status") == "passed")
-                score = next((check.get("score") for check in reversed(checks) if check.get("score") is not None), None)
-                evo_block["solution"] = f"Кандидат {latest.get('id')}; score {score if score is not None else '—'}; проверок passed: {passed}" if latest else "Решение ещё не предложено."
+                scored_checks = [check for check in checks if isinstance(check.get("score"), (int, float))]
+                score = max((check.get("score") for check in scored_checks), default=None)
+                score_by_exp: dict[str, float] = {}
+                for check in scored_checks:
+                    exp_id = str(check.get("experiment_id") or "")
+                    score_by_exp[exp_id] = max(score_by_exp.get(exp_id, float("-inf")), float(check["score"]))
+                latest = sorted(nodes, key=lambda node: str(node.get("updated_at") or ""))[-1] if nodes else {}
+                best_node = max(
+                    nodes,
+                    key=lambda node: (
+                        score_by_exp.get(str(node.get("id") or ""), float("-inf")),
+                        node.get("status") != "pending",
+                    ),
+                    default=latest,
+                )
+                evo_block["idea"] = latest.get("hypothesis") if latest else "Ожидание первой candidate-ветки."
+                best_id = best_node.get("id") if best_node else "—"
+                evo_block["solution"] = f"Лучший кандидат {best_id}; score {score if score is not None else '—'}; проверок passed: {passed}" if best_node else "Решение ещё не предложено."
                 evo_block["checks"] = checks[-24:]
         except (ValueError, OSError, json.JSONDecodeError) as exc:
             evo_block["error"] = str(exc)
