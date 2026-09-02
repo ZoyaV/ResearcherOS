@@ -66,11 +66,17 @@ def _node_summary(nodes: list[dict[str, Any]], checks: list[dict[str, Any]]) -> 
     """Return user-facing idea and solution without changing Evo's graph."""
     if not nodes:
         return "Ожидание первой candidate-ветки.", "Решение ещё не предложено."
-    latest = sorted(nodes, key=lambda node: str(node.get("updated_at") or ""))[-1]
     passed = [item for item in checks if item.get("status") == "passed"]
-    score = next((item.get("score") for item in reversed(checks) if item.get("score") is not None), None)
+    score = max((item.get("score") for item in checks if isinstance(item.get("score"), (int, float))), default=None)
+    latest = sorted(nodes, key=lambda node: str(node.get("updated_at") or ""))[-1]
+    score_by_exp = {}
+    for item in checks:
+        if isinstance(item.get("score"), (int, float)):
+            exp_id = str(item.get("experiment_id") or "")
+            score_by_exp[exp_id] = max(score_by_exp.get(exp_id, float("-inf")), float(item["score"]))
+    best = max(nodes, key=lambda node: (score_by_exp.get(str(node.get("id") or ""), float("-inf")), node.get("status") != "pending"), default=latest)
     idea = str(latest.get("hypothesis") or "Evo исследует candidate-ветку.")
-    solution = f"Кандидат `{latest.get('id')}`; статус `{latest.get('status', 'unknown')}`"
+    solution = f"Лучший кандидат `{best.get('id')}`; статус `{best.get('status', 'unknown')}`"
     if score is not None:
         solution += f"; score `{score}`"
     if passed:
