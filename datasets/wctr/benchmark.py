@@ -36,9 +36,11 @@ def write_graph(result: dict[str, object], train: list[dict[str, str]], evaluate
         '<line x1="45" y1="235" x2="600" y2="235" stroke="#94a3b8"/>',
         ''.join(rects), ''.join(labels), '</svg>'
     ])
-    artifact_dir = Path(os.environ.get("EVO_ARTIFACTS_DIR") or "runs/evo-artifacts")
+    worktree = Path(os.environ.get("EVO_WORKTREE") or ".")
+    artifact_dir = Path(os.environ.get("EVO_ARTIFACTS_DIR") or (worktree / "runs/evo-artifacts"))
     artifact_dir.mkdir(parents=True, exist_ok=True)
-    (artifact_dir / "wctr.svg").write_text(svg, encoding="utf-8")
+    exp_id = os.environ.get("EVO_EXPERIMENT_ID") or "direct"
+    (artifact_dir / f"wctr-{exp_id}.svg").write_text(svg, encoding="utf-8")
 
 
 def rows(name: str) -> list[dict[str, str]]:
