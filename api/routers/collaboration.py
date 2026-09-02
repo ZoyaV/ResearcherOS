@@ -101,6 +101,25 @@ def flush_collab_session(project_id: str, slug: str) -> dict[str, Any]:
     return session.flush()
 
 
+@router.post("/projects/{project_id}/papers/{slug}/collab/reload-from-disk")
+def reload_collab_from_disk(project_id: str, slug: str) -> dict[str, Any]:
+    """Force all peers to reset to the on-disk main.tex (new CRDT epoch)."""
+    session = _session(project_id, slug, create=True)
+    try:
+        event = session.force_reload_from_disk()
+    except FileNotFoundError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    return {
+        "ok": True,
+        "revision": event.get("revision"),
+        "hash": event.get("hash"),
+        "crdt_epoch": event.get("crdt_epoch"),
+        "tex_mtime": event.get("tex_mtime"),
+    }
+
+
 @router.get("/projects/{project_id}/papers/{slug}/collab/network")
 def get_collab_network(
     project_id: str,
@@ -339,7 +358,16 @@ async def collab_ws(
                     exclude=joined.peer_id,
                 )
             elif kind == "flush":
-                await websocket.send_json(session.flush())
+                expected_hash = str(message.get("expected_hash") or "") or None
+                force_text = message.get("text")
+                result = session.flush(
+                    expected_hash=expected_hash,
+                    text=str(force_text) if force_text is not None else None,
+                )
+                request_id = str(message.get("request_id") or "")
+                if request_id:
+                    result = {**result, "request_id": request_id}
+                await websocket.send_json(result)
             elif kind == "ping":
                 await websocket.send_json({"type": "pong"})
     except WebSocketDisconnect:

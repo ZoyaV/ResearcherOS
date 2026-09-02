@@ -351,6 +351,44 @@ class CollabSession:
             )
             return dict(self.editor_commands[-1])
 
+    def force_reload_from_disk(self) -> dict[str, Any]:
+        """Replace the live CRDT with main.tex from disk and reset all peers.
+
+        Used when a browser client has diverged/corrupted local Yjs state while
+        the authoritative file on disk is still intact.
+        """
+        if not self.tex_path.is_file():
+            raise FileNotFoundError(f"missing tex: {self.tex_path}")
+        disk = self.tex_path.read_text(encoding="utf-8")
+        with self._lock:
+            if self.proposal is not None:
+                raise ValueError("cannot reload from disk while a proposal is pending")
+            self.document = CollabDocument(disk, document_id=self.document_id)
+            self.crdt_epoch = f"epoch-{secrets.token_hex(8)}"
+            self.bridge = FilesystemBridge(self.document, self.tex_path)
+            try:
+                stat = self.tex_path.stat()
+                self.bridge.last_mtime = stat.st_mtime
+                self.bridge.last_mtime_ns = stat.st_mtime_ns
+            except OSError:
+                pass
+            self.op_log.clear()
+            self.conflict = None
+            self.last_activity = time.time()
+            self._queue_editor_command(disk, force=True, save=True)
+            event = {
+                "type": "reset_sync",
+                "update": base64.b64encode(self.document.get_update()).decode("ascii"),
+                "revision": self.document.revision,
+                "hash": self.document.content_hash(),
+                "room_id": self.room_id,
+                "crdt_epoch": self.crdt_epoch,
+                "origin": "reload_from_disk",
+                "tex_mtime": self.bridge.last_mtime,
+            }
+        self._broadcast(event)
+        return event
+
     def _queue_editor_command(
         self,
         text: str,
@@ -847,16 +885,54 @@ class CollabSession:
         self._broadcast(next_event)
         return response
 
-    def flush(self) -> dict[str, Any]:
+    def flush(
+        self,
+        *,
+        expected_hash: str | None = None,
+        text: str | None = None,
+    ) -> dict[str, Any]:
         with self._lock:
+            update_event: dict[str, Any] | None = None
+            if text is not None:
+                # Force the editor buffer onto the room before materializing.
+                # Used when CRDT acks and client hash drift (P2P / race / reseeds).
+                if text != self.document.to_string():
+                    if self.proposal is not None:
+                        return {
+                            "type": "flush_rejected",
+                            "revision": self.document.revision,
+                            "hash": self.document.content_hash(),
+                            "expected_hash": expected_hash or "",
+                            "reason": "cannot force-save while a proposal is pending",
+                        }
+                    state_before = self.document.get_state()
+                    self.document.replace_with(text)
+                    update_event = self._update_event(
+                        self.document.get_update(state_before),
+                        origin="force_save",
+                    )
+                expected_hash = None
+            current_hash = self.document.content_hash()
+            if expected_hash and expected_hash != current_hash:
+                return {
+                    "type": "flush_rejected",
+                    "revision": self.document.revision,
+                    "hash": current_hash,
+                    "expected_hash": expected_hash,
+                    "reason": "collaborative document changed before it could be saved",
+                }
             result = self.bridge.materialize()
-            return {
+            response = {
                 "type": "materialized",
                 "revision": result.revision,
                 "hash": result.content_hash,
                 "wrote": result.wrote,
                 "tex_mtime": self.bridge.last_mtime,
             }
+        if update_event is not None:
+            self._broadcast(update_event)
+            self._queue_editor_command(text or "", force=True, save=True)
+        return response
 
     def close(self) -> None:
         self.closed = True

@@ -49,6 +49,10 @@ function withLanAddress(candidateJson, lanIp) {
   return { ...candidateJson, candidate: line.replace(/\S+\.local/g, lanIp) };
 }
 
+export function canAdoptRemoteSnapshot(localText, state = {}) {
+  return !localText || (!state.local_dirty && !state.publish_snapshot);
+}
+
 export function createPaperWebRtcMesh({
   peerId,
   userName,
@@ -91,7 +95,6 @@ export function createPaperWebRtcMesh({
   const lastTexSent = new Map();
   const forcedResync = new Set();
   const needSnapshot = new Set();
-  let typedAt = 0;
   const texChunks = new Map();
   const syncChunks = new Map();
   const updateChunks = new Map();
@@ -291,7 +294,6 @@ export function createPaperWebRtcMesh({
       text: getText?.() || "",
       dirty: Boolean(config?.publish_snapshot || config?.local_dirty),
       seq: localTexSeq,
-      edited_at: typedAt,
     };
   }
 
@@ -345,7 +347,7 @@ export function createPaperWebRtcMesh({
     sendRelay(remotePeerId, frame);
   }
 
-  function adoptRemoteText(text, fromPeer, seq, meta = {}) {
+  function adoptRemoteText(text, fromPeer, seq) {
     if (typeof text !== "string" || !text) return;
     const local = getText?.() || "";
     if (local === text) {
@@ -355,13 +357,14 @@ export function createPaperWebRtcMesh({
       return;
     }
     const force = forcedResync.delete(fromPeer) || needSnapshot.delete(fromPeer);
-    const remoteAt = Number(meta.edited_at) || 0;
-    if (typedAt && local && !force && remoteAt <= typedAt) return;
-    const remoteDirty = Boolean(meta.dirty || meta.tex_dirty);
-    if (!force && local && !remoteDirty && config?.local_dirty) return;
+    if (!canAdoptRemoteSnapshot(local, config)) {
+      if (force) {
+        setError("P2P snapshot отклонён: локальные правки сохранены без изменений");
+      }
+      return;
+    }
     if (!force && local && text.length < Math.min(32, local.length)) return;
     applyRemoteText?.(text);
-    if (remoteAt > typedAt) typedAt = remoteAt;
     noteRemoteSeq(fromPeer, seq);
   }
 
@@ -435,7 +438,6 @@ export function createPaperWebRtcMesh({
           n,
           seq: payload.seq,
           dirty: payload.dirty,
-          edited_at: payload.edited_at,
           text: text.slice(i * size, i * size + size),
         };
         if (JSON.stringify(relayEnvelope(remotePeerId, piece)).length > RELAY_LIMIT) {
@@ -480,11 +482,9 @@ export function createPaperWebRtcMesh({
       n,
       seq: message.seq,
       dirty: false,
-      edited_at: 0,
     };
     rec.parts[i] = String(message.text || "");
     rec.dirty = rec.dirty || Boolean(message.dirty || message.tex_dirty);
-    rec.edited_at = Math.max(rec.edited_at, Number(message.edited_at) || 0);
     texChunks.set(key, rec);
     if (rec.parts.some((part) => part == null)) return;
     texChunks.delete(key);
@@ -1130,7 +1130,6 @@ export function createPaperWebRtcMesh({
     lastTexSent.clear();
     forcedResync.clear();
     needSnapshot.clear();
-    typedAt = 0;
     texChunks.clear();
     syncChunks.clear();
     updateChunks.clear();
@@ -1210,9 +1209,13 @@ export function createPaperWebRtcMesh({
       scheduleTexBackup();
     },
     noteLocalTyped: () => {
-      typedAt = Date.now();
       config = { ...config, local_dirty: true };
       scheduleTexBackup();
+    },
+    noteSaved: () => {
+      config = { ...config, local_dirty: false };
+      if (texBackupTimer) clearTimeout(texBackupTimer);
+      texBackupTimer = null;
     },
     markPublishSnapshot: () => {
       config = { ...config, local_dirty: true, publish_snapshot: true };

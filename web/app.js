@@ -12,7 +12,7 @@ import {
   mergeComputeCost,
 } from "./compute-cost.js";
 import { KoiApi } from "./api.js?v=20260826t";
-import { createPaperCollabClient, localUserName } from "./paper-collab.js?v=20260827f";
+import { createPaperCollabClient, localUserName } from "./paper-collab.js?v=20260829d";
 import { destroyKanbanDagView, fitKanbanDagView, refreshKanbanDagView } from "./kanban-dag.js?v=20260715a";
 import { clearKanbanMilestones, clearMilestoneBoardFilter, refreshKanbanMilestones } from "./milestones.js?v=20260807e";
 import {
@@ -8793,6 +8793,7 @@ const paperCollab = createPaperCollabClient({
     paperState.collabProposal = proposal || null;
     paperState.collabProposalResolving = false;
     renderPaperCollabProposal();
+    updatePaperSaveUi();
     if (!proposal && resolution === "accepted") {
       showPaperToast("Предложение принято");
     } else if (!proposal && resolution === "rejected") {
@@ -8805,10 +8806,8 @@ const paperCollab = createPaperCollabClient({
     updatePaperCollabUi();
   },
   onMaterialized: (event) => {
-    paperState.texDirty = false;
     paperState.paperVersionsDirty = true;
     if (event?.tex_mtime != null) paperState.lastRemoteTexMtime = event.tex_mtime;
-    paperState.texSavedAt = Date.now();
     updatePaperSaveUi();
     const entry = activePaperEntry();
     if (entry) void loadPaperVersions(entry.project_id, entry.slug);
@@ -9194,8 +9193,6 @@ function paperProgressMetricHtml(label, current, target) {
   </span>`;
 }
 
-const PAPER_RELAY_FRAME_LIMIT = 32 * 1024;
-
 function paperTexByteLength() {
   const text = paperState.texText ?? paperEls().texInput?.value ?? "";
   return new TextEncoder().encode(String(text)).length;
@@ -9210,19 +9207,12 @@ function formatPaperKb(bytes) {
 
 function paperRelayLimitMetricHtml() {
   const bytes = paperTexByteLength();
-  const limit = PAPER_RELAY_FRAME_LIMIT;
   const currentKb = formatPaperKb(bytes);
-  const limitKb = formatPaperKb(limit);
-  const over = bytes > limit;
-  const stateClass = paperProgressChipClass(bytes, limit);
-  const fill = paperProgressFillPercent(bytes, limit);
-  const title = over
-    ? `main.tex ${currentKb} КБ — больше кадра шлюза (${limitKb} КБ). Полный снимок может не дойти до второго компьютера.`
-    : `main.tex ${currentKb} КБ из ${limitKb} КБ кадра шлюза. Мелкие правки проходят и сверх лимита.`;
+  const stateClass = bytes > 0 ? "is-active" : "is-empty";
+  const title = `main.tex ${currentKb} КБ. Большие P2P-сообщения автоматически разбиваются на части; сохранение подтверждается по hash.`;
   return `<span class="paper-progress-metric ${stateClass}" title="${escapeHtml(title)}">
     <span class="paper-progress-metric__label">Синк</span>
-    <span class="paper-progress-metric__value">${escapeHtml(currentKb)}/${escapeHtml(limitKb)} КБ</span>
-    <span class="paper-progress-metric__bar" aria-hidden="true"><span class="paper-progress-metric__fill" style="width:${fill}%"></span></span>
+    <span class="paper-progress-metric__value">${escapeHtml(currentKb)} КБ</span>
   </span>`;
 }
 
@@ -10341,9 +10331,26 @@ function syncPaperTexEditorHeight() {
   const mirror = els.texMirror;
   if (!ta) return;
   const scrollMin = Math.max((els.texScroll?.clientHeight || 0) - 8, 120);
-  const mirrorHeight = mirror?.offsetHeight || ta.scrollHeight;
-  const proposalHeight = els.proposalPreview?.scrollHeight || 0;
-  const contentHeight = Math.max(mirrorHeight, proposalHeight, scrollMin);
+  // Mirror is position:absolute; inset:0, so offsetHeight tracks the wrap — not
+  // content. Measure via the last mirror line (or fall back to textarea scrollHeight).
+  let mirrorHeight = 0;
+  if (mirror) {
+    const lines = mirror.querySelectorAll(".paper-tex-mirror-line");
+    if (lines.length) {
+      const last = lines[lines.length - 1];
+      mirrorHeight = last.offsetTop + last.offsetHeight + 8;
+    } else {
+      mirrorHeight = mirror.scrollHeight;
+    }
+  }
+  const prevHeight = ta.style.height;
+  ta.style.height = "auto";
+  const textHeight = ta.scrollHeight;
+  ta.style.height = prevHeight;
+  const proposalEl = els.proposalPreview;
+  const proposalHeight =
+    proposalEl && !proposalEl.classList.contains("hidden") ? proposalEl.scrollHeight || 0 : 0;
+  const contentHeight = Math.max(mirrorHeight, textHeight, proposalHeight, scrollMin);
   ta.style.height = `${contentHeight}px`;
   if (els.commentMargin) els.commentMargin.style.minHeight = `${contentHeight}px`;
 }
@@ -10439,19 +10446,36 @@ async function savePaperTex({ quiet = false } = {}) {
     if (els.status) els.status.textContent = "Не удалось сохранить: статья не выбрана";
     return false;
   }
+  if (paperState.viewedSha) {
+    showPaperToast("Откройте «Сейчас» в списке версий — сейчас открыт снимок из git", {
+      variant: "error",
+    });
+    return false;
+  }
+  if (paperState.collabProposal) {
+    showPaperToast("Сначала примите или отклоните предложение агента", { variant: "error" });
+    return false;
+  }
   if (paperState.texSaving) return false;
   syncTexFromInput();
   const content = paperState.texText ?? els.texInput?.value ?? "";
   paperState.texSaving = true;
   updatePaperSaveUi();
   try {
-    const res = paperCollab.isActive()
-      ? await KoiApi.flushPaperCollab(entry.project_id, entry.slug)
+    const collabActive = paperCollab.isActive();
+    const res = collabActive
+      ? await paperCollab.flush()
       : await KoiApi.savePaperTex(entry.project_id, entry.slug, content);
-    paperState.texDirty = false;
+    const latestContent = els.texInput?.value ?? paperState.texText ?? "";
+    const savedCurrent = collabActive
+      ? (res?.text == null || res.text === latestContent) &&
+        paperCollab.currentText() === latestContent &&
+        !paperCollab.hasPendingEdit()
+      : latestContent === content;
+    paperState.texDirty = !savedCurrent;
     paperState.paperVersionsDirty = true;
-    paperState.texText = content;
-    paperState.texLines = content.split("\n");
+    paperState.texText = latestContent;
+    paperState.texLines = latestContent.split("\n");
     if (res?.tex_mtime != null) {
       paperState.lastRemoteTexMtime = res.tex_mtime;
     } else {
@@ -10462,14 +10486,27 @@ async function savePaperTex({ quiet = false } = {}) {
     paperState.texSavedAt = Date.now();
     const label = `${entry.project_id}/${entry.slug}`;
     if (!quiet && els.status) {
-      els.status.textContent = `main.tex сохранён · ${label}`;
+      els.status.textContent = savedCurrent
+        ? `main.tex сохранён · ${label}`
+        : `Версия сохранена · новые правки ещё не сохранены`;
       setTimeout(() => {
-        if (els.status?.textContent?.startsWith("main.tex сохранён")) els.status.textContent = "";
+        if (
+          els.status?.textContent?.startsWith("main.tex сохранён") ||
+          els.status?.textContent?.startsWith("Версия сохранена")
+        ) {
+          els.status.textContent = "";
+        }
       }, 5000);
     }
-    if (!quiet) showPaperToast(`main.tex сохранён · ${label}`);
+    if (!quiet) {
+      showPaperToast(
+        savedCurrent
+          ? `main.tex сохранён · ${label}`
+          : "Версия сохранена, но в редакторе уже есть новые правки"
+      );
+    }
     void loadPaperVersions(entry.project_id, entry.slug);
-    return true;
+    return savedCurrent;
   } catch (err) {
     if (els.status) els.status.textContent = `Не удалось сохранить main.tex: ${err.message}`;
     showPaperToast(`Ошибка сохранения: ${err.message}`, { variant: "error" });

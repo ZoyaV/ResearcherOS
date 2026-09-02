@@ -259,6 +259,28 @@ def test_bridge_imports_external_write(tmp_path: Path) -> None:
     assert doc.to_string() == "hello world\n"
 
 
+def test_flush_rejects_stale_hash_without_writing(tmp_path: Path) -> None:
+    tex = tmp_path / "main.tex"
+    original = "hello\n"
+    updated = "hello world\n"
+    tex.write_text(original, encoding="utf-8")
+    session = CollabSession(
+        "demo", "emnlp", tex, watch=False, debounce_s=10, proposal_root=tmp_path / "proposals"
+    )
+    session.apply_client_text("alice", updated, 0)
+
+    rejected = session.flush(expected_hash=content_hash(original))
+    assert rejected["type"] == "flush_rejected"
+    assert rejected["hash"] == content_hash(updated)
+    assert tex.read_text(encoding="utf-8") == original
+
+    saved = session.flush(expected_hash=content_hash(updated))
+    assert saved["type"] == "materialized"
+    assert saved["hash"] == content_hash(updated)
+    assert tex.read_text(encoding="utf-8") == updated
+    session.close()
+
+
 def test_atomic_write_replaces_file(tmp_path: Path) -> None:
     path = tmp_path / "main.tex"
     atomic_write_text(path, "one")
@@ -562,3 +584,68 @@ def test_collab_rest_edit_and_live_get() -> None:
                 browser_doc.apply_update(base64.b64decode(first["update"]))
                 assert browser_doc.to_string() == "agent candidate\n"
         assert (slot / TEX_NAME).read_text(encoding="utf-8") == "agent candidate\n"
+
+
+def test_collab_websocket_flush_correlates_and_checks_hash() -> None:
+    client = TestClient(app)
+    with tempfile.TemporaryDirectory() as tmp:
+        slot = Path(tmp) / "emnlp-demo"
+        slot.mkdir()
+        tex = slot / TEX_NAME
+        tex.write_text("hello\n", encoding="utf-8")
+        with patch("api.deps.parse_project"), patch(
+            "api.routers.collaboration.parse_project",
+        ), patch(
+            "api.routers.collaboration.get_paper_slot_dir",
+            return_value=slot,
+        ):
+            with client.websocket_connect(
+                "/projects/demo/papers/emnlp-demo/collab?peer=alice&user=Alice"
+            ) as ws:
+                def receive_type(expected_type: str) -> dict:
+                    for _ in range(8):
+                        message = ws.receive_json()
+                        if message.get("type") == expected_type:
+                            return message
+                    raise AssertionError(f"websocket did not send {expected_type}")
+
+                sync = ws.receive_json()
+                assert sync["type"] == "sync"
+                receive_type("hello")
+                browser_doc = CollabDocument()
+                browser_doc.apply_update(base64.b64decode(sync["update"]))
+                state = browser_doc.get_state()
+                browser_doc.apply_edit(5, 0, " world")
+                ws.send_json(
+                    {
+                        "type": "crdt_update",
+                        "update": base64.b64encode(browser_doc.get_update(state)).decode("ascii"),
+                    }
+                )
+                receive_type("ack")
+
+                ws.send_json(
+                    {
+                        "type": "flush",
+                        "request_id": "stale-save",
+                        "expected_hash": content_hash("hello\n"),
+                    }
+                )
+                rejected = receive_type("flush_rejected")
+                assert rejected["type"] == "flush_rejected"
+                assert rejected["request_id"] == "stale-save"
+                assert tex.read_text(encoding="utf-8") == "hello\n"
+
+                expected = content_hash("hello world\n")
+                ws.send_json(
+                    {
+                        "type": "flush",
+                        "request_id": "current-save",
+                        "expected_hash": expected,
+                    }
+                )
+                saved = receive_type("materialized")
+                assert saved["type"] == "materialized"
+                assert saved["request_id"] == "current-save"
+                assert saved["hash"] == expected
+                assert tex.read_text(encoding="utf-8") == "hello world\n"

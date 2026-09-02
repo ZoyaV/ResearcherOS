@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Техническое задание · ResearcherOS</title>
+  <meta name="description" content="Техническое задание по доработке ResearcherOS: архитектура, варианты развития и необходимые решения." />
+  <script>
+    (function () {
+      var t = localStorage.getItem("koi-theme");
+      if (t !== "light" && t !== "dark") t = "light";
+      document.documentElement.setAttribute("data-theme", t);
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../css/site.css?v=16" />
+  <link rel="stylesheet" href="todo.css?v=1" />
+</head>
+<body class="page-detail page-todo">
+  <header class="site-header site-header--detail">
+    <div class="site-header__inner">
+      <a class="brand" href="../index.html" aria-label="ResearcherOS — главная">
+        <span class="brand__name">ResearcherOS</span>
+      </a>
+      <nav class="nav" aria-label="Навигация">
+        <a href="../index.html#about">About</a>
+        <a href="../index.html#versions">Versions</a>
+        <a href="../index.html#start">How to start</a>
+        <a href="../features/">Features</a>
+        <a href="https://github.com/ZoyaV/ResearcherOS">GitHub</a>
+        <button type="button" id="btn-theme" class="btn-theme" title="Тёмная тема" aria-label="Тёмная тема">
+          <svg class="theme-icon theme-icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"/><path fill="currentColor" d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" stroke-width="2"/></svg>
+          <svg class="theme-icon theme-icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M21 14.5A8.5 8.5 0 0 1 9.5 3 7 7 0 1 0 21 14.5z"/></svg>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <dialog class="architecture-modal" id="architecture-modal" aria-labelledby="architecture-modal-title">
+    <div class="architecture-modal__bar"><h2 id="architecture-modal-title">Архитектура ResearcherOS</h2><button class="architecture-modal__close" type="button" data-modal-close aria-label="Закрыть">×</button></div>
+    <iframe id="architecture-modal-frame" title="Интерактивная схема архитектуры"></iframe>
+  </dialog>
+
+  <main class="todo-main">
+    <div class="todo-crumb"><a href="../index.html">ResearcherOS</a><span>/</span><span>TODO</span></div>
+    <section class="todo-intro">
+      <p class="eyebrow">TODO · ResearcherOS</p>
+      <h1>Техническое задание по доработке ResearcherOS</h1>
+      <p class="todo-lead">Набор архитектурных и продуктовых решений, которые нужно проработать для следующего этапа ResearcherOS.</p>
+    </section>
+
+    <nav class="todo-toc" aria-label="Оглавление">
+      <p class="eyebrow">Оглавление</p>
+      <div class="todo-toc__links">
+        <a href="#architecture"><span>01</span> Архитектура</a>
+        <a href="#comparison"><span>↳</span> Сравнение Cloud / Local</a>
+        <a href="#ui-ux"><span>02</span> UI / UX дизайн</a>
+        <a href="#skills-work"><span>03</span> Skills</a>
+        <a href="#materials"><span>04</span> Методические материалы</a>
+        <a href="#platform-testing"><span>05</span> Тестирование платформы</a>
+        <a href="#specification"><span>06</span> Спецификация проекта</a>
+      </div>
+    </nav>
+
+    <section class="todo-block todo-block--architecture" id="architecture">
+      <div class="block-heading">
+        <p class="eyebrow">01 · Архитектура</p>
+        <h2>Текущая архитектура <span>vs</span> архитектура мечты</h2>
+        <p>Сравнение двух способов владеть исследовательским состоянием: через Git-репозиторий или через ResearcherOS Cloud.</p>
+      </div>
+    <section class="diagram-grid" aria-label="Сравнение архитектур">
+      <article class="diagram-card diagram-card--current">
+        <div class="diagram-card__head"><div><p class="diagram-kicker">Сейчас</p><h2>Git-centric ResearcherOS</h2></div><span class="diagram-badge">старая схема</span></div>
+        <iframe class="architecture-frame architecture-frame--current" src="../features/full_schema.html?embed=1" title="Текущая архитектура ResearcherOS" loading="lazy"></iframe>
+        <a class="inline-link" href="../features/full_schema.html" data-architecture-modal="../features/full_schema.html?embed=0" data-modal-title="Текущая архитектура ResearcherOS">Открыть схему полностью →</a>
+      </article>
+
+      <article class="diagram-card diagram-card--dream">
+        <div class="diagram-card__head"><div><p class="diagram-kicker">Цель</p><h2>ResearcherOS Cloud</h2></div><span class="diagram-badge">присланная схема</span></div>
+        <iframe class="architecture-frame architecture-frame--dream" src="cloud_architecture.html?embed=1" title="Архитектура ResearcherOS Cloud" loading="lazy"></iframe>
+        <a class="inline-link" href="cloud_architecture.html" data-architecture-modal="cloud_architecture.html?embed=0" data-modal-title="Архитектура ResearcherOS Cloud">Открыть схему полностью →</a>
+      </article>
+    </section>
+
+    <section class="todo-section" id="comparison">
+      <p class="eyebrow">01 · Сравнение</p>
+      <h2>Сравнение Cloud / Local архитектуры</h2>
+      <div class="comparison-copy">
+        <h3>Текущая работает так-то</h3>
+        <p>Сейчас ResearcherOS — это локальное приложение поверх проекта. Исследователь и агент работают рядом с кодом и читают/изменяют исследовательское состояние в файлах репозитория: дерево гипотез, эксперименты, отчёты, знания и статью. Git хранит историю, ветки и перенос состояния между копиями. Hub получает опубликованный снимок и показывает его для чтения, но не владеет исходным проектом.</p>
+        <h3>Возможная реализация по примеру <a href="https://linear.app" target="_blank" rel="noopener noreferrer">Linear</a></h3>
+        <p>Cloud-версия может выглядеть как единое рабочее пространство, где исследовательское состояние живёт внутри сервиса, а не в локальной копии репозитория. Входная точка — Organization, внутри неё Teams и Projects; проект содержит общие объекты ResearcherOS: hypotheses, experiments, reports, knowledge и papers. Каждый объект получает владельца, статус, историю изменений, комментарии и права доступа. Пользователь видит одно актуальное состояние, а агент подключается к тому же проекту как участник — через Agent API или MCP — и может выполнять ограниченные операции от своего имени.</p>
+        <p>По аналогии с Linear, где рядом с рабочими объектами есть Activity, Reviews и агентские действия, в ResearcherOS стоит выделить отдельные <code>AgentRun / Session</code>: кто запустил, что агент прочитал, какие tools вызвал, какие артефакты создал и где требуется решение человека. Git при этом можно оставить интеграцией — для кода, export, импорта и привычного versioned checkpoint, но не единственным источником shared state.</p>
+      </div>
+      <div class="comparison-copy__ideal">
+        <h3>Образ идеала: ResearchState остаётся узлом правды</h3>
+        <p>Идеальная версия может быть гибридной: Cloud отвечает за совместную работу и скорость интерфейса, но каноническое состояние исследования по-прежнему живёт в Git. Cloud хранит проекцию для realtime, поиска и уведомлений; окончательная запись проходит через доменные операции, валидацию и коммит в репозиторий.</p>
+        <div class="ideal-flow"><code>UI / Agent API / MCP</code><span>→</span><code>ResearcherOS mutation service</code><span>→</span><code>validate → Git commit</code><span>→</span><code>ResearchState</code></div>
+        <p><strong>Как это сделать.</strong> У каждого Cloud Project есть привязанный Git remote и каноническая ветка ResearchState. Пользователь или агент не меняет базу напрямую: он отправляет операцию — например, «создать Experiment» или «добавить вывод в Report». Сервис проверяет права и инварианты, применяет изменение к рабочему дереву, создаёт коммит и публикует событие. UI сразу получает optimistic update, а затем подтверждение commit SHA. Если одновременно пришли две операции, сервер ставит их в очередь или создаёт понятный конфликт для ревью — Git остаётся механизмом разрешения, истории и rollback.</p>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Свойство</th><th>Текущая Git-centric</th><th>ResearcherOS Cloud + Agent API + MCP</th><th>Образ идеала: Git-backed Cloud</th></tr></thead>
+          <tbody>
+            <tr><th>Source of truth</th><td>Markdown + Git repository</td><td>Cloud DB / object storage</td><td class="ideal-column">ResearchState в Git; Cloud — проекция</td></tr>
+            <tr><th>Граница проекта</th><td>Git repository</td><td>Cloud Project</td><td>Cloud Project ↔ Git remote</td></tr>
+            <tr><th>Совместная работа</th><td>clone / branch / pull / merge</td><td>единое realtime-состояние</td><td>realtime UI поверх Git-backed state</td></tr>
+            <tr><th>Concurrent edits</th><td>Git-конфликты или отдельный realtime-слой</td><td>конкурентная работа через backend</td><td>очередь мутаций + commit ordering + review конфликтов</td></tr>
+            <tr><th>История</th><td>Git history</td><td>audit / event history нужно реализовать</td><td>Git history + audit событий</td></tr>
+            <tr><th>Agent lifecycle</th><td>слабая отдельная абстракция</td><td>first-class <code>AgentRun / Session</code></td><td>AgentRun пишет только валидированные mutations</td></tr>
+            <tr><th>Агент меняет state</th><td>файлы + skills</td><td>validated API / MCP operations</td><td>API / MCP → mutation → Git commit</td></tr>
+            <tr><th>Permissions агента</th><td>filesystem / repo permissions</td><td>granular scopes</td><td>scopes API + branch/repo permissions</td></tr>
+            <tr><th>Offline</th><td>полноценный</td><td>практически теряется</td><td>локальный Git остаётся fallback / export</td></tr>
+            <tr><th>Portability</th><td><code>git clone</code></td><td>зависит от export API</td><td><code>git clone</code> + Cloud sync</td></tr>
+            <tr><th>Infrastructure complexity</th><td>низкая</td><td>существенно выше</td><td>средняя: projection, queue, API, Git worker</td></tr>
+            <tr><th>Vendor dependency</th><td>низкая</td><td>выше</td><td>умеренная: Git сохраняет переносимость</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="section-copy">Главный trade-off: текущая архитектура делегирует инфраструктурную сложность Git. Cloud-архитектура забирает эту сложность внутрь ResearcherOS в обмен на контроль над collaboration, agents и shared state.</p>
+    </section>
+
+    <section class="evaluation-section">
+      <p class="eyebrow">Оценка решения</p>
+      <h2>Cloud / Local: цена выбора</h2>
+      <div class="evaluation-grid">
+        <article class="evaluation-card evaluation-card--cloud">
+          <p class="evaluation-card__label">Если идти в Cloud</p>
+          <h3>Потребуется больше продукта и эксплуатации</h3>
+          <ul>
+            <li><strong>Больше времени на реализацию и тестирование.</strong> Нужно построить не только UI, но и auth, multi-tenancy, API, очереди, realtime, миграции, backup и сценарии восстановления.</li>
+            <li><strong>Постоянная поддержка сервиса.</strong> Кто-то должен следить за доступностью, обновлениями, безопасностью, логами, стоимостью инфраструктуры и инцидентами.</li>
+            <li><strong>Сложнее обеспечить корректность.</strong> Придётся тестировать права доступа, конкурентные изменения, повторную доставку событий, идемпотентность и рассинхронизацию проекций.</li>
+            <li><strong>Дороже первый запуск и миграция.</strong> Нужно определить cloud-модель данных, перенести проекты и сохранить экспорт обратно в понятный Git-формат.</li>
+            <li><strong>Зависимость от сети и сервиса.</strong> Без доступного backend shared experience ухудшается; нужен продуманный offline/export fallback.</li>
+          </ul>
+        </article>
+        <article class="evaluation-card evaluation-card--local">
+          <p class="evaluation-card__label">Если оставаться Local / Git-centric</p>
+          <h3>Сохраняется простота, но растёт трение</h3>
+          <ul>
+            <li><strong>Более сложные пайплайны синхронизации.</strong> Нужно отдельно поддерживать push/pull, ветки, конфликты, публикацию снимков и realtime-слой — хотя эти процессы потенциально можно улучшать.</li>
+            <li><strong>Менее удобно для команды.</strong> У людей остаются отдельные копии, нужно понимать Git-контекст, ждать синхронизации и разбираться, какая версия состояния актуальна.</li>
+            <li><strong>Слабее общий контекст для агентов.</strong> Агенту приходится одновременно работать с локальной файловой системой, Git и отдельными API; подключение удалённого агента получается неестественным.</li>
+            <li><strong>Сложнее масштабировать collaboration.</strong> Чем больше участников и параллельных действий, тем заметнее ограничения branch/merge-модели для живого исследовательского состояния.</li>
+            <li><strong>Стратегический риск.</strong> Кто-то может раньше реализовать удобную cloud-архитектуру для shared research state — и тогда ResearcherOS будет сложнее конкурировать за командный UX.</li>
+          </ul>
+        </article>
+      </div>
+    </section>
+
+    <section class="gain-loss-grid">
+      <article class="callout callout--gain"><p class="eyebrow">02 · Приобретём</p><h2>Что с ней приобретём</h2><ul><li><strong>Multi-user UX.</strong> Все смотрят на один Experiment, Kanban или Hypothesis Tree.</li><li><strong>Agent interoperability.</strong> MCP становится стабильным контрактом для Claude, Codex, OpenCode и custom agents.</li><li><strong>First-class lifecycle.</strong> У эксперимента появляются отдельные AgentRun, статусы, активности и артефакты.</li><li><strong>Fine-grained permissions.</strong> Разные scopes для людей, команд и агентов.</li><li><strong>Асинхронность и наблюдаемость.</strong> Webhooks, event bus, audit и долгие запуски работают как часть платформы.</li><li><strong>Централизованный retrieval.</strong> Единый search/index поверх hypotheses, reports, knowledge и experiments.</li></ul></article>
+      <article class="callout callout--loss"><p class="eyebrow">03 · Потеряем</p><h2>Что с ней потеряем</h2><ul><li><strong>Бесплатную силу Git.</strong> Organization, Team, Project, RBAC, fork, revert и review становятся нашей задачей.</li><li><strong>Простоту multi-tenancy.</strong> Нужна изоляция tenant на каждом API endpoint.</li><li><strong>Portability.</strong> Состояние в Cloud DB уже не равно набору Markdown-файлов.</li><li><strong>Прямую связь code ↔ research state.</strong> Агент работает через filesystem/Git и MCP как через две среды.</li><li><strong>Offline-first.</strong> Shared cloud state требует доступности сервиса.</li><li><strong>Операционную лёгкость.</strong> Появляются auth, migrations, storage, queue, backup, monitoring и concurrency control.</li></ul></article>
+    </section>
+
+    <section class="principle"><p class="eyebrow">Архитектурная развилка</p><div class="principle-grid"><div><span>Current ResearcherOS</span><code>Repository owns the project.<br />ResearcherOS interprets the project.</code></div><div><span>ResearcherOS Cloud</span><code>ResearcherOS owns the project.<br />Git becomes one of its integrations.</code></div></div></section>
+    </section>
+
+    <section class="todo-block todo-block--workstream" id="ui-ux">
+      <div class="block-heading"><p class="eyebrow">02 · UI / UX дизайн</p><h2>Проработать User Experience</h2><p>Сделать ResearcherOS удобным инструментом ежедневной работы, а не только выразительной демонстрацией возможностей.</p></div>
+      <div class="workstream-grid workstream-grid--three">
+        <article class="workstream-card"><span class="workstream-num">01</span><h3>Переработка дизайна</h3><p>Снизить визуальную нагрузку и сделать интерфейс спокойнее: иерархия, плотность, контраст, типографика, состояния загрузки и ошибки.</p><p><strong>Отдельно проработать human-in-the-loop:</strong> где агент предлагает, где человек подтверждает, что можно откатить, как видно pending changes, историю и запрос на решение.</p><p><strong>Результат:</strong> несколько тем интерфейса — более выразительная и менее контрастная — с единой системой компонентов.</p></article>
+        <article class="workstream-card"><span class="workstream-num">02</span><h3>Прототипирование сценариев</h3><p>До реализации проверить ключевые потоки: постановка гипотезы, запуск эксперимента, разбор отчёта, предложение правки агентом и ручное подтверждение.</p><p>Для каждого сценария описать happy path, отмену, ошибку, ожидание долгого запуска и переход между человеком и агентом.</p><p><strong>Результат:</strong> кликабельные прототипы и набор UX-критериев, по которым можно сравнивать варианты.</p></article>
+        <article class="workstream-card"><span class="workstream-num">03</span><h3>A/B-тестирование</h3><p>В идеале — сравнить текущий и обновлённый интерфейс на одинаковых задачах и реальных рабочих сценариях.</p><p>Измерять не только «нравится / не нравится», но и время до результата, число ошибок, число отмен, понятность статуса агента и долю действий, завершённых без подсказки.</p><p><strong>Результат:</strong> решение, какие изменения оставить, на основе наблюдений и метрик, а не вкусов.</p></article>
+      </div>
+    </section>
+
+    <section class="todo-block todo-block--workstream" id="skills-work">
+      <div class="block-heading"><p class="eyebrow">03 · Skills</p><h2>Доработка и тестирование скилов</h2><p>Сделать skills воспроизводимыми процедурами, а не набором удачных промптов.</p></div>
+      <div class="workstream-layout"><div class="workstream-summary"><h3>Что нужно проработать</h3><p>Проверить, какие skills действительно помогают в исследовательском цикле, где они дублируют друг друга и какие решения должны оставаться за человеком.</p></div><ul class="check-list"><li><strong>Аудит каталога:</strong> назначение, входы, выходы, ограничения и ожидаемый результат каждого skill.</li><li><strong>Контракты:</strong> единый формат контекста, артефактов, статусов, ошибок и human review.</li><li><strong>Тестовые сценарии:</strong> нормальные данные, неполный контекст, конфликтующие требования, повторный запуск и отказ внешнего инструмента.</li><li><strong>Регрессионный набор:</strong> фиксированные проекты и задачи, на которых проверяется качество после изменения skill или модели.</li><li><strong>Делегация с осторожностью:</strong> отдельные skills можно отдавать на внешнюю разработку только вместе с тестами, критериями приёмки и владельцем внутри ResearcherOS.</li></ul></div>
+    </section>
+
+    <section class="todo-block todo-block--workstream" id="materials">
+      <div class="block-heading"><p class="eyebrow">04 · Методические материалы</p><h2>Уроки и документация</h2><p>Объяснить не только кнопки, но и правильную модель исследовательской работы.</p></div>
+      <div class="workstream-grid workstream-grid--three"><article class="workstream-card"><h3>Уроки</h3><p>Пошаговые сценарии: от гипотезы к эксперименту, от запуска к отчёту, от отчёта к знанию и следующему решению.</p></article><article class="workstream-card"><h3>Документация</h3><p>Архитектура, формат проекта, API, skills, роли человека и агента, синхронизация, восстановление и ограничения.</p></article><article class="workstream-card"><h3>Примеры и шаблоны</h3><p>Минимальные рабочие проекты, хорошие и плохие примеры постановок, чеклисты ревью и шаблоны для новых команд.</p></article></div>
+      <div class="definition-card"><strong>Критерий готовности.</strong> Новый пользователь должен пройти основной исследовательский цикл без устного объяснения команды, а разработчик — понять контракт функции по документации и воспроизводимому примеру.</div>
+    </section>
+
+    <section class="todo-block todo-block--workstream" id="platform-testing">
+      <div class="block-heading"><p class="eyebrow">05 · Тестирование платформы</p><h2>Проверить надёжность целиком</h2><p>Тестировать не только отдельные функции, но и путь от действия пользователя или агента до сохранённого исследовательского результата.</p></div>
+      <div class="testing-grid"><article class="testing-card"><span>01</span><h3>Функциональный слой</h3><p>Unit- и integration-тесты API, файловых форматов, доменных правил, Git-синхронизации, proposal/review и прав доступа.</p></article><article class="testing-card"><span>02</span><h3>Пользовательские сценарии</h3><p>E2E-проверки основных путей в UI: создание проекта, гипотеза, эксперимент, агентский запуск, отчёт, ручное подтверждение и откат.</p></article><article class="testing-card"><span>03</span><h3>Сложные условия</h3><p>Конкурентные изменения, потеря сети, долгие запуски, частично записанные результаты, большие проекты, разные браузеры и повторная доставка событий.</p></article><article class="testing-card"><span>04</span><h3>Качество релиза</h3><p>Smoke-тест после деплоя, регрессия перед релизом, мониторинг ошибок, проверка миграций и понятный rollback-план.</p></article></div>
+      <div class="definition-card"><strong>Предложение.</strong> Завести небольшой постоянный набор «golden projects» — эталонных проектов с ожидаемыми состояниями и действиями. Прогонять его на каждом изменении платформы, UI и skills, чтобы видеть, не сломался ли полный исследовательский цикл.</div>
+    </section>
+
+    <section class="todo-block todo-block--workstream" id="specification">
+      <div class="block-heading"><p class="eyebrow">06 · Спецификация проекта</p><h2>Сделать проект безопасным для контрибьюций</h2><p>Описать систему так, чтобы новые люди и агенты могли добавлять возможности, понимать границы изменений и не ломать существующие сценарии.</p></div>
+      <div class="workstream-layout"><div class="workstream-summary"><h3>Спецификация как контракт</h3><p>Документ должен быть не только справкой, но и рабочим соглашением между авторами проекта, UI, backend, skills и агентами.</p></div><ul class="check-list"><li><strong>Карта системы:</strong> слои, зависимости, source of truth, границы локального приложения, Hub и будущего Cloud.</li><li><strong>Доменные контракты:</strong> форматы ResearchState, project metadata, reports, papers, skills, API-операций и событий.</li><li><strong>Правила расширения:</strong> куда добавлять новую фичу, UI-компонент, skill, виджет, интеграцию или миграцию.</li><li><strong>Инварианты и совместимость:</strong> что нельзя менять без миграции, как версионировать схемы и как поддерживать старые проекты.</li><li><strong>Протокол изменения:</strong> issue → proposal/design note → реализация → тесты → документация → review → release note.</li><li><strong>Инструкции для агентов:</strong> разрешённые операции, обязательное чтение контекста, критерии остановки и запрет на незаметные обходы контрактов.</li><li><strong>Definition of done:</strong> изменение принято только когда есть код, тест, документация, пример использования и понятный rollback.</li></ul></div>
+      <div class="definition-card"><strong>Результат.</strong> Один источник правил для контрибьюторов: новый участник понимает, как устроен проект и как внести изменение; агент может проверить себя до и после работы; ревьюер видит, какие контракты затронуты и почему изменение безопасно.</div>
+    </section>
+  </main>
+  <footer class="site-footer"><div class="site-footer__inner"><span>ResearcherOS · TODO / architecture</span><a href="../index.html">На главную</a></div></footer>
+  <script src="../js/site.js?v=12"></script>
+  <script>
+    (function () {
+      var modal = document.getElementById("architecture-modal");
+      var frame = document.getElementById("architecture-modal-frame");
+      var title = document.getElementById("architecture-modal-title");
+      if (!modal || !frame) return;
+      document.querySelectorAll("[data-architecture-modal]").forEach(function (link) {
+        link.addEventListener("click", function (event) {
+          event.preventDefault();
+          frame.src = link.dataset.architectureModal;
+          title.textContent = link.dataset.modalTitle || "Архитектура ResearcherOS";
+          modal.showModal();
+        });
+      });
+      modal.querySelector("[data-modal-close]").addEventListener("click", function () { modal.close(); });
+      modal.addEventListener("close", function () { frame.src = "about:blank"; });
+      modal.addEventListener("click", function (event) {
+        if (event.target === modal) modal.close();
+      });
+    })();
+  </script>
+</body>
+</html>

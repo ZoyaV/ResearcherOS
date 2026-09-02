@@ -7,7 +7,7 @@
 
 import { KoiApi } from "./api.js?v=20260826t";
 import * as Y from "./vendor/yjs.mjs?v=13.6.27";
-import { createPaperWebRtcMesh } from "./paper-webrtc.js?v=20260827f";
+import { createPaperWebRtcMesh } from "./paper-webrtc.js?v=20260829a";
 
 const NAME_KEY = "koi-collab-name";
 const LOCAL_ORIGIN = Symbol("paper-collab-local");
@@ -16,6 +16,7 @@ const P2P_ORIGIN = Symbol("paper-collab-p2p");
 const RESET_ORIGIN = Symbol("paper-collab-reset");
 const COMMENTS_SEED = Symbol("paper-collab-comments-seed");
 const COMMENTS_WRITE = Symbol("paper-collab-comments-write");
+const FLUSH_TIMEOUT_MS = 10000;
 
 function randomId(prefix) {
   return `${prefix}-${Math.random().toString(16).slice(2, 10)}`;
@@ -77,6 +78,14 @@ function base64ToBytes(value) {
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
   return bytes;
+}
+
+async function textHash(text) {
+  const bytes = new TextEncoder().encode(String(text || ""));
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 function inputSpan(textarea, event, before) {
@@ -143,6 +152,8 @@ export function createPaperCollabClient({
   let synced = false;
   let closing = false;
   let pendingUpdates = 0;
+  const pendingAckWaiters = new Set();
+  const pendingFlushes = new Map();
   let projectId = "";
   let slug = "";
   let caretBefore = { start: 0, end: 0, value: "" };
@@ -202,6 +213,37 @@ export function createPaperCollabClient({
     if (!socket || socket.readyState !== WebSocket.OPEN) return false;
     socket.send(JSON.stringify(payload));
     return true;
+  }
+
+  function settleAckWaiters(error = null) {
+    if (!error && pendingUpdates > 0) return;
+    for (const waiter of pendingAckWaiters) {
+      clearTimeout(waiter.timer);
+      if (error) waiter.reject(error);
+      else waiter.resolve();
+    }
+    pendingAckWaiters.clear();
+  }
+
+  function waitForPendingUpdates() {
+    if (pendingUpdates === 0) return Promise.resolve();
+    return new Promise((resolve, reject) => {
+      const waiter = { resolve, reject, timer: null };
+      waiter.timer = setTimeout(() => {
+        pendingAckWaiters.delete(waiter);
+        reject(new Error("Сервер не подтвердил отправленные правки"));
+      }, FLUSH_TIMEOUT_MS);
+      pendingAckWaiters.add(waiter);
+    });
+  }
+
+  function rejectPendingFlushes(error) {
+    settleAckWaiters(error);
+    for (const pending of pendingFlushes.values()) {
+      clearTimeout(pending.timer);
+      pending.reject(error);
+    }
+    pendingFlushes.clear();
   }
 
   function applySpan(span, origin) {
@@ -335,10 +377,9 @@ export function createPaperCollabClient({
         gitCommit: String(config.git_commit || ""),
       };
       emitStatus();
-      const local = getLocalText?.() || "";
-      if (local && ytext && ytext.toString() !== local) {
-        replaceText(local, RESET_ORIGIN);
-      }
+      // Do not push the textarea over Yjs here: the websocket sync is
+      // authoritative. Overwriting with a stale/truncated local buffer has
+      // re-corrupted the room after proposal accepts.
       const gitDirty =
         Boolean(config.document_hash) &&
         Boolean(config.base_document_hash) &&
@@ -347,7 +388,11 @@ export function createPaperCollabClient({
       if (gitDirty) mesh.markPublishSnapshot();
       else if (getLocalDirty?.()) mesh.markLocalDirty();
       mesh.broadcastTex();
-      if (!gitDirty) mesh.requestTexFromPeers();
+      // Prefer publishing our (server-synced) state; only request from peers
+      // when we have nothing useful yet.
+      if (!gitDirty && !(ytext && ytext.toString().includes("\\end{document}"))) {
+        mesh.requestTexFromPeers();
+      }
     } catch (error) {
       networkStatus = {
         ...networkStatus,
@@ -408,6 +453,7 @@ export function createPaperCollabClient({
     }
     if (message.type === "ack") {
       pendingUpdates = Math.max(0, pendingUpdates - 1);
+      settleAckWaiters();
       revision = Number(message.revision) || revision;
       emitStatus();
       return;
@@ -457,7 +503,39 @@ export function createPaperCollabClient({
       onProposal?.(message.proposal || null, message.resolution || "");
       return;
     }
-    if (message.type === "materialized") onMaterialized?.(message);
+    if (message.type === "materialized") {
+      const requestId = String(message.request_id || "");
+      const pending = requestId ? pendingFlushes.get(requestId) : null;
+      if (pending) {
+        pendingFlushes.delete(requestId);
+        clearTimeout(pending.timer);
+        if (String(message.hash || "") !== pending.expectedHash) {
+          pending.reject(new Error("Сервер сохранил другую версию main.tex"));
+        } else {
+          if (ytext?.toString() === pending.text && pendingUpdates === 0) {
+            mesh.noteSaved();
+          }
+          pending.resolve({ ...message, text: pending.text });
+        }
+      }
+      onMaterialized?.(message);
+      return;
+    }
+    if (message.type === "flush_rejected") {
+      const requestId = String(message.request_id || "");
+      const pending = requestId ? pendingFlushes.get(requestId) : null;
+      if (!pending) return;
+      pendingFlushes.delete(requestId);
+      clearTimeout(pending.timer);
+      const reason = String(message.reason || "");
+      pending.reject(
+        new Error(
+          reason.includes("proposal")
+            ? "Сначала примите или отклоните предложение агента"
+            : "Текст изменился до завершения сохранения"
+        )
+      );
+    }
   }
 
   function openSocket(url) {
@@ -529,6 +607,7 @@ export function createPaperCollabClient({
     const ws = socket;
     socket.addEventListener("close", () => {
       if (socket !== ws) return;
+      rejectPendingFlushes(new Error("Соединение прервано до подтверждения сохранения"));
       connected = false;
       synced = false;
       emitStatus();
@@ -544,6 +623,7 @@ export function createPaperCollabClient({
 
   async function disconnect() {
     closing = true;
+    rejectPendingFlushes(new Error("Сохранение отменено: collaboration отключена"));
     if (socket) socket.close();
     socket = null;
     ydoc?.destroy();
@@ -601,6 +681,74 @@ export function createPaperCollabClient({
     mesh.broadcastTexSpan({ ...span, base_len, pre });
   }
 
+  function requestFlush(expectedHash, text, { force = false } = {}) {
+    const requestId = randomId("flush");
+    return new Promise((resolve, reject) => {
+      const pending = { resolve, reject, expectedHash, text, timer: null };
+      pending.timer = setTimeout(() => {
+        pendingFlushes.delete(requestId);
+        reject(new Error("Сервер не подтвердил сохранение main.tex"));
+      }, FLUSH_TIMEOUT_MS);
+      pendingFlushes.set(requestId, pending);
+      const payload = {
+        type: "flush",
+        request_id: requestId,
+        expected_hash: force ? "" : expectedHash,
+      };
+      if (force) payload.text = text;
+      if (!send(payload)) {
+        clearTimeout(pending.timer);
+        pendingFlushes.delete(requestId);
+        reject(new Error("Не удалось отправить запрос сохранения"));
+      }
+    });
+  }
+
+  async function flush() {
+    if (!socket || socket.readyState !== WebSocket.OPEN || !ydoc || !ytext) {
+      throw new Error("Collaboration ещё не подключена");
+    }
+    // Hash after pending acks, then retry on races; last attempt force-saves editor text.
+    const maxAttempts = 4;
+    let lastError = null;
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      await waitForPendingUpdates();
+      const local = getLocalText?.() || "";
+      const live = ytext.toString();
+      if (local && local !== live) {
+        replaceText(local, LOCAL_ORIGIN);
+        mesh.broadcastTex();
+        if (attempt < maxAttempts - 1) continue;
+      }
+      const text = getLocalText?.() || ytext.toString();
+      if (text !== ytext.toString()) {
+        replaceText(text, LOCAL_ORIGIN);
+        mesh.broadcastTex();
+        await waitForPendingUpdates();
+      }
+      const expectedHash = await textHash(ytext.toString());
+      if (attempt < maxAttempts - 1 && (ytext.toString() !== text || pendingUpdates > 0)) {
+        continue;
+      }
+      const force = attempt === maxAttempts - 1;
+      try {
+        const result = await requestFlush(expectedHash, text, { force });
+        if (force && ytext.toString() !== text) {
+          replaceText(text, LOCAL_ORIGIN);
+        }
+        return result;
+      } catch (err) {
+        lastError = err;
+        const stale =
+          String(err?.message || "").includes("Текст изменился до завершения сохранения") ||
+          String(err?.message || "").includes("proposal");
+        if (stale && attempt < maxAttempts - 1) continue;
+        throw err;
+      }
+    }
+    throw lastError || new Error("Текст изменился до завершения сохранения");
+  }
+
   return {
     peerId,
     connect,
@@ -620,7 +768,7 @@ export function createPaperCollabClient({
       mesh.broadcastComments(frame);
       return send({ type: "comments", ...frame });
     },
-    requestFlush: () => send({ type: "flush" }),
+    flush,
     isActive: () =>
       (connected && synced) || Number(networkStatus.relayPeerCount) > 0,
     hasPendingEdit: () => pendingUpdates > 0,

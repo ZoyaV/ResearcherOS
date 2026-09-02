@@ -231,7 +231,54 @@ async def browser_test(
             if await page_b.evaluate("window.testClient.currentText()") != expected_text:
                 raise AssertionError("instance B did not converge to the expected initial text")
 
+            snapshot_guard = await page_a.evaluate(
+                """async () => {
+                  const mod = await import('/paper-webrtc.js?v=p2p-snapshot-guard-test');
+                  return {
+                    dirty: mod.canAdoptRemoteSnapshot('local edit', {local_dirty: true}),
+                    published: mod.canAdoptRemoteSnapshot('saved edit', {publish_snapshot: true}),
+                    clean: mod.canAdoptRemoteSnapshot('git text', {}),
+                    empty: mod.canAdoptRemoteSnapshot('', {local_dirty: true}),
+                  };
+                }"""
+            )
+            if snapshot_guard != {
+                "dirty": False,
+                "published": False,
+                "clean": True,
+                "empty": True,
+            }:
+                raise AssertionError(f"remote snapshot guard is unsafe: {snapshot_guard}")
+
             await append(page_a, "\n% P2P from Alice")
+            immediate_save = await page_a.evaluate("window.testClient.flush()")
+            if not immediate_save.get("hash"):
+                raise AssertionError("immediate save did not return a materialized hash")
+            save_race = await page_a.evaluate(
+                """async () => {
+                  const client = window.testClient;
+                  const pending = client.flush().then(
+                    () => ({ok: true}),
+                    error => ({ok: false, error: String(error?.message || error)})
+                  );
+                  const before = client.currentText();
+                  const text = '\\n% typed while save was pending';
+                  const input = document.createElement('textarea');
+                  input.value = before;
+                  input.selectionStart = input.selectionEnd = before.length;
+                  client.rememberCaret(input);
+                  input.value = before + text;
+                  input.selectionStart = input.selectionEnd = input.value.length;
+                  client.queueInput(input, {inputType: 'insertText', data: text});
+                  const outcome = await pending;
+                  return {outcome, text: client.currentText()};
+                }"""
+            )
+            if save_race["outcome"]["ok"]:
+                raise AssertionError("save incorrectly accepted a superseded editor version")
+            if "typed while save was pending" not in save_race["text"]:
+                raise AssertionError("typing during save was lost")
+            await page_a.evaluate("window.testClient.flush()")
             await page_b.wait_for_function(
                 "window.testClient.currentText().includes('% P2P from Alice')"
             )
@@ -267,8 +314,10 @@ async def browser_test(
             ):
                 raise AssertionError("reconnected peer did not converge")
 
-            await page_a.evaluate("window.testClient.requestFlush()")
-            await page_b.evaluate("window.testClient.requestFlush()")
+            flushed_a = await page_a.evaluate("window.testClient.flush()")
+            flushed_b = await page_b.evaluate("window.testClient.flush()")
+            if flushed_a.get("hash") != flushed_b.get("hash"):
+                raise AssertionError("peers materialized different document hashes")
             final_text = await page_a.evaluate("window.testClient.currentText()")
             deadline = time.monotonic() + 5
             while time.monotonic() < deadline:
