@@ -1,0 +1,5 @@
+impression_id,format,device,impressions,clicks
+te-001,text,mobile,100,10
+te-002,text,desktop,100,15
+te-003,graphic,mobile,100,5
+te-004,graphic,desktop,100,12

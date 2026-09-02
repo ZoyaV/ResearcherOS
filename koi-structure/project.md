@@ -3,14 +3,14 @@ id: bicycle-ads-efficiency
 title: Эффективность поисковой рекламы велосипедов
 description: 'Магазин Centra Market, май 2024 — учебный проект для знакомства с платформой:
   две причины, по два эксперимента на доказательство и устранение.'
-updated: '2026-07-09T08:05:47Z'
+updated: '2026-08-07T08:41:25Z'
 format: koi/1
 card_tags:
 - test-tag
 programs:
 - id: obuchenie-na-platforme-researchos
   title: Обучение на платформе ResearchOS
-code_root: ../datasets
+code_root: ..
 literature_keywords:
 - search advertising
 - sponsored search
@@ -131,3 +131,22 @@ literature_keywords:
 | --- | --- | --- | --- |
 |  |  | Перенести 556 ₽ с картинок на телефоне в текст на телефоне <!-- id:fmt-policy-realloc desc:при цене клика 37,5 ₽ оценить около 15 дополнительных кликов; пересчитать общую долю кликов с учётом потери 18 кликов и прироста --> |  |
 |  |  | Убрать из расчёта картинки на телефоне (542 показа, 18 кликов, 556 ₽) <!-- id:fmt-policy-off desc:пересчитать итоги кампании — 12 816 показов, 1 391 клик, 50 005 ₽; сравнить долю кликов до и после отключения --> |  |
+
+## cause: c-wctr-prediction
+
+Предсказывать wCTR по формату и устройству до запуска кампании
+
+### cause_evidence: ev-wctr-holdout
+
+Проверить, можно ли оценивать weighted CTR по сегменту объявления на данных, которых модель не видела при обучении.
+
+#### method: m-wctr-evo-smoke
+
+Обучить wCTR и проверить на test
+
+Учебный smoke-run для интеграции ResearchOS и Evo. Train и held-out test лежат в `datasets/wctr/` и имеют непересекающиеся `impression_id`. Benchmark обучается только на train; итоговый score и observed/predicted wCTR считаются отдельно на test. В текущем demo-проекте нет исторического `bicycle.csv`, поэтому fixture синтетический и не является результатом по кампании.
+
+<!-- koi:kanban board-wctr-evo -->
+| backlog | running | done | successful |
+| --- | --- | --- | --- |
+| Запустить held-out wCTR smoke-run <!-- id:wctr-evo-smoke desc:evo_run: .evo/run_0000\nlive_log: .evo/dashboard.log\nbenchmark: datasets/wctr/benchmark.py --split test\ngate: datasets/wctr/gate.py\ntrain/test разделены по impression_id; синтетика до добавления bicycle.csv --> |  |  |  |

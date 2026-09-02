@@ -1,0 +1,7 @@
+impression_id,format,device,impressions,clicks
+tr-001,text,mobile,100,12
+tr-002,text,desktop,100,14
+tr-003,graphic,mobile,100,4
+tr-004,graphic,desktop,100,13
+tr-005,text,mobile,100,11
+tr-006,graphic,mobile,100,3
