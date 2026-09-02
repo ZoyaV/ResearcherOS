@@ -3,7 +3,7 @@ id: bicycle-ads-efficiency
 title: Эффективность поисковой рекламы велосипедов
 description: 'Магазин Centra Market, май 2024 — учебный проект для знакомства с платформой:
   две причины, по два эксперимента на доказательство и устранение.'
-updated: '2026-08-07T08:41:25Z'
+updated: '2026-09-02T10:39:11Z'
 format: koi/1
 card_tags:
 - test-tag
@@ -149,4 +149,4 @@ literature_keywords:
 <!-- koi:kanban board-wctr-evo -->
 | backlog | running | done | successful |
 | --- | --- | --- | --- |
-|  | Запустить held-out wCTR smoke-run <!-- id:wctr-evo-smoke desc:skill: koi-grill-experiment → koi-evo-card → koi-report-review\nevo_run: .evo/run_0000\nlive_log: .evo/dashboard.log\nbenchmark: datasets/wctr/benchmark.py --split test\ngate: datasets/wctr/gate.py\ntrain/test разделены по impression_id; синтетика до добавления bicycle.csv\nCHECK_PASSED exp_0001; GATE_CHECK_PASSED exp_0001; evo run exp_0001 committed; score=-0.3294151018906866 --> |  |  |
+|  |  | Запустить held-out wCTR smoke-run <!-- id:wctr-evo-smoke desc:skill: koi-grill-experiment → koi-evo-card → koi-report-review\nevo_run: .evo/run_0000\nlive_log: .evo/dashboard.log\nbenchmark: datasets/wctr/benchmark.py --split test\ngate: datasets/wctr/gate.py\ntrain/test разделены по impression_id; синтетика до добавления bicycle.csv\nCHECK_PASSED exp_0001; GATE_CHECK_PASSED exp_0001; evo run exp_0001 committed; score=-0.3294151018906866 --> |  |
