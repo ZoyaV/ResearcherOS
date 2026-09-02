@@ -15,11 +15,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/site.css?v=14" />
+  <link rel="stylesheet" href="css/site.css?v=16" />
 </head>
 <body class="page-home">
   <nav class="hero__strip hero__strip--sticky" id="chapter-nav" aria-label="Разделы">
     <a class="hero__strip-link" href="#about" data-nav="about">About</a>
+    <span class="hero__strip-sep" aria-hidden="true">/</span>
+    <a class="hero__strip-link" href="#versions" data-nav="versions">Versions</a>
     <span class="hero__strip-sep" aria-hidden="true">/</span>
     <a class="hero__strip-link" href="#start" data-nav="start">How to start</a>
     <span class="hero__strip-sep" aria-hidden="true">/</span>
@@ -80,6 +82,41 @@
             интерфейсе.
           </p>
         </div>
+      </div>
+    </section>
+
+    <section class="chapter" id="versions" data-chapter="versions">
+      <div class="chapter__inner reveal">
+        <h2 class="chapter__title">Versions</h2>
+        <p class="chapter__lead">Две линии релиза. Выберите ту, с которой удобнее жить.</p>
+        <div class="version-grid">
+          <a class="version-card" href="https://github.com/ZoyaV/ResearcherOS/releases/tag/v0.3.0">
+            <div class="version-card__head">
+              <h3 class="version-card__title">v0.3.0</h3>
+              <span class="chip">стабильный релиз</span>
+            </div>
+            <p class="version-card__body">
+              Срез платформы на дату релиза: дерево гипотез, канбан экспериментов, отчёты и база знаний,
+              обзор литературы, виджеты на рабочем столе проекта, каталог навыков в Hub, раскладка каталогов
+              <code>tree/</code> и установка одной командой, составные проекты и граф шагов (DAG) на доске метода.
+            </p>
+          </a>
+          <a class="version-card" href="https://github.com/ZoyaV/ResearcherOS/tree/main">
+            <div class="version-card__head">
+              <h3 class="version-card__title">main</h3>
+              <span class="chip">текущая разработка</span>
+            </div>
+            <p class="version-card__body">
+              Всё из v0.3.0 и более новые правки. Например, быстрая синхронизация текста статьи,
+              когда несколько человек правят её одновременно.
+            </p>
+          </a>
+        </div>
+        <a class="version-docs" href="features/">
+          <span class="version-docs__label">Документация</span>
+          <span class="version-docs__desc">Архитектура платформы и локальные фичи</span>
+          <span class="version-docs__arrow" aria-hidden="true">→</span>
+        </a>
       </div>
     </section>
 
