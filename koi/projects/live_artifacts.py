@@ -246,6 +246,44 @@ def _path_for_api(project_id: str, resolved: Path) -> str:
     return str(resolved)
 
 
+def _evo_images(project_id: str, evo_root: Path, nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Find benchmark graphs in Evo worktrees and expose safe project paths."""
+    found: list[Path] = []
+    for node in nodes:
+        worktree = Path(str(node.get("worktree") or ""))
+        for base in (worktree / "runs", worktree / "datasets", worktree / "artifacts"):
+            if base.is_dir():
+                found.extend(p for p in base.rglob("*") if p.is_file() and p.suffix.lower() in IMAGE_SUFFIXES)
+    for base in (evo_root / "runs", evo_root.parent.parent / "runs"):
+        if base.is_dir():
+            found.extend(p for p in base.rglob("*") if p.is_file() and p.suffix.lower() in IMAGE_SUFFIXES)
+    unique = {str(path.resolve()): path for path in found}
+    out = []
+    for path in sorted(unique.values(), key=lambda item: item.stat().st_mtime, reverse=True)[:MAX_IMAGES]:
+        out.append({"name": path.name, "path": _path_for_api(project_id, path), "mtime": datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc).isoformat()})
+    return out
+
+
+def _evo_checks(evo_root: Path, nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    checks: list[dict[str, Any]] = []
+    for node in nodes:
+        root = evo_root / "experiments" / str(node.get("id") or "") / "checks"
+        if not root.is_dir():
+            continue
+        for folder in sorted(root.iterdir()):
+            for name in ("check.json", "gate_check.json"):
+                path = folder / name
+                if not path.is_file():
+                    continue
+                try:
+                    item = json.loads(path.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError):
+                    continue
+                if isinstance(item, dict):
+                    checks.append(item)
+    return checks
+
+
 def normalize_hint_path(project_id: str, rel: str) -> str:
     """Strip legacy ``../<repo>/`` prefixes so paths resolve inside the project repo."""
     raw = str(rel or "").strip()
@@ -302,6 +340,19 @@ def live_snapshot(
                 evo_block["summary"] = {**(evo_block.get("summary") or {}), "experiments": len(nodes), "best_score": max(scores) if scores else None}
                 evo_block["experiments"] = nodes
                 evo_block["state_path"] = _path_for_api(project_id, graph_path)
+                live_report = repo_root(project_id) / "koi-structure" / "reports"
+                if live_report.is_dir():
+                    matches = list(live_report.rglob("evo-live.md"))
+                    if matches:
+                        evo_block["live_report"] = _path_for_api(project_id, matches[0])
+                evo_block["artifacts"] = _evo_images(project_id, evo_root, nodes)
+                latest = sorted(nodes, key=lambda node: str(node.get("updated_at") or ""))[-1] if nodes else {}
+                evo_block["idea"] = latest.get("hypothesis") if latest else "Ожидание первой candidate-ветки."
+                checks = _evo_checks(evo_root, nodes)
+                passed = sum(1 for check in checks if check.get("status") == "passed")
+                score = next((check.get("score") for check in reversed(checks) if check.get("score") is not None), None)
+                evo_block["solution"] = f"Кандидат {latest.get('id')}; score {score if score is not None else '—'}; проверок passed: {passed}" if latest else "Решение ещё не предложено."
+                evo_block["checks"] = checks[-24:]
         except (ValueError, OSError, json.JSONDecodeError) as exc:
             evo_block["error"] = str(exc)
 

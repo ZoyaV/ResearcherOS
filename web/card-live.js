@@ -238,7 +238,7 @@ function noteHtml(data) {
   return `<div class="card-live-note-block"><p class="card-live-note-text">${escapeHtml(note)}</p></div>`;
 }
 
-function evoHtml(evo) {
+function evoHtml(evo, projectId) {
   if (!evo?.configured) {
     return `<p class="card-live-empty">Укажите <code>evo_run: runs/evo/&lt;run_id&gt;</code> в description карточки или отчёте.</p>`;
   }
@@ -251,8 +251,17 @@ function evoHtml(evo) {
     const status = item.status || (item.passed === false ? "rejected" : "ok");
     return `<tr><td>${escapeHtml(item.id || item.experiment_id || "")}</td><td>${escapeHtml(status)}</td><td>${escapeHtml(score)}</td></tr>`;
   }).join("");
+  const artifacts = (evo.artifacts || []).map((item) => {
+    const bust = item.mtime ? `?v=${encodeURIComponent(item.mtime)}` : "";
+    const url = `${KoiApi.liveFileUrl(projectId, item.path)}${bust}`;
+    return `<a class="card-live-metric" href="${escapeHtml(url)}" target="_blank" rel="noopener"><img src="${escapeHtml(url)}" alt="${escapeHtml(item.name)}" loading="lazy" /><span>${escapeHtml(item.name)}</span></a>`;
+  }).join("");
   return `<div class="card-live-evo">
     <div class="card-live-evo-summary"><span>Статус: <strong>${escapeHtml(evo.status || "unknown")}</strong></span><span>Лучший score: <strong>${escapeHtml(summary.best_score ?? "—")}</strong></span><span>Экспериментов: <strong>${escapeHtml(summary.experiments ?? experiments.length)}</strong></span></div>
+    <p><strong>Идея:</strong> ${escapeHtml(evo.idea || "—")}</p>
+    <p><strong>Решение:</strong> ${escapeHtml(evo.solution || "—")}</p>
+    ${evo.live_report ? `<p class="card-live-evo-report">Live-текст: <code>${escapeHtml(evo.live_report)}</code></p>` : ""}
+    ${artifacts ? `<h4>Графики</h4><div class="card-live-metrics-grid">${artifacts}</div>` : ""}
     ${rows ? `<table class="card-live-evo-table"><thead><tr><th>Ветка</th><th>Статус</th><th>Score</th></tr></thead><tbody>${rows}</tbody></table>` : `<p class="card-live-empty">Evo ещё не записал список экспериментов.</p>`}
   </div>`;
 }
@@ -266,7 +275,7 @@ function paneHtml(view, data, projectId) {
     case "metrics":
       return metricsHtml(data?.metrics_dir, projectId);
     case "evo":
-      return evoHtml(data?.evo);
+      return evoHtml(data?.evo, projectId);
     case "note":
       return noteHtml(data);
     default:

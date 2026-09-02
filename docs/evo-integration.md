@@ -1,18 +1,29 @@
 # Headless Evo в ResearchOS
 
 ResearchOS использует Evo как backend поиска по реализации эксперимента. UI
-Evo не запускается: карточка ResearchOS остаётся источником постановки,
+Evo не встраивается: карточка ResearchOS остаётся источником постановки,
 отчёта и verdict, а ResearchOS Monitor показывает нормализованный статус,
-score, gates и traces.
+score, gates, гипотезу, решение и графики из Evo worktree.
 
 ## Контракт карточки
 
 Добавьте в description карточки:
 
 ```text
-evo_run: runs/evo/<run_id>
-live_log: runs/evo/<run_id>/stdout.log
+evo_run: .evo/run_<id>
+live_log: .evo/dashboard.log
 ```
+
+Для синхронизации текста и артефактов во время прогона запустите рядом с Evo:
+
+```bash
+PYTHONPATH=/path/to/ResearchOS uv run python -m koi.evolution.watch \
+  <project_id> <board_id> <card_id> .evo/run_<id>
+```
+
+Watcher обновляет `evo-live.md` в отчёте карточки и копирует SVG/PNG в его
+`assets/`. GET-путь Monitor остаётся read-only и при этом сразу показывает
+те же поля через polling.
 
 Evo traces можно писать в тот же каталог через `EVO_TRACES_DIR`. Файл
 `state.json` — небольшой ResearchOS-слой, который содержит `status`, `pid`,
