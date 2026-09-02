@@ -252,7 +252,7 @@ function evoHtml(evo, projectId) {
     return `<tr><td>${escapeHtml(item.id || item.experiment_id || "")}</td><td>${escapeHtml(status)}</td><td>${escapeHtml(score)}</td></tr>`;
   }).join("");
   const artifacts = (evo.artifacts || []).map((item) => {
-    const bust = item.mtime ? `?v=${encodeURIComponent(item.mtime)}` : "";
+    const bust = item.mtime ? `&v=${encodeURIComponent(item.mtime)}` : "";
     const url = `${KoiApi.liveFileUrl(projectId, item.path)}${bust}`;
     return `<a class="card-live-metric" href="${escapeHtml(url)}" target="_blank" rel="noopener"><img src="${escapeHtml(url)}" alt="${escapeHtml(item.name)}" loading="lazy" /><span>${escapeHtml(item.name)}</span></a>`;
   }).join("");
