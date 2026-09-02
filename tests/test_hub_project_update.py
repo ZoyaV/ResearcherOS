@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import pytest
 from fastapi import HTTPException
 
+from hub.app.access import can_view_project_with_store
 from hub.app.config import HubConfig
 from hub.app.main import UpdateProjectBody, update_project
 from hub.app.store import HubProject, HubStore
@@ -123,6 +124,7 @@ def test_unlisted_token_rotates_after_leaving(monkeypatch, tmp_path):
 
     first = _run(UpdateProjectBody(visibility="unlisted"))
     assert first["secret_token"] == "token-one"
+    store.add_bookmark(42, "demo", first["secret_token"])
 
     _run(UpdateProjectBody(visibility="network"))
     assert store.get_project("demo").secret_token == ""
@@ -130,6 +132,47 @@ def test_unlisted_token_rotates_after_leaving(monkeypatch, tmp_path):
     second = _run(UpdateProjectBody(visibility="unlisted"))
     assert second["secret_token"] == "token-two"
     assert second["secret_token"] != first["secret_token"]
+    project = store.get_project("demo")
+    assert not can_view_project_with_store(
+        project, 42, store, token=first["secret_token"]
+    )
+
+
+def test_restricting_visibility_is_local_and_clears_skills(monkeypatch, tmp_path):
+    store = _setup(monkeypatch, tmp_path)
+    store.save_snapshot("demo", {"meta": {"visibility": "public"}})
+    store.replace_project_skills(
+        "demo", [{"id": "example", "key": "demo/example"}]
+    )
+
+    async def unexpected_sync(*_args):
+        raise AssertionError("restricting visibility must not require GitHub")
+
+    monkeypatch.setattr("hub.app.main._sync_project", unexpected_sync)
+    result = _run(UpdateProjectBody(visibility="network"))
+
+    assert result["visibility"] == "network"
+    assert store.get_snapshot("demo")["meta"]["visibility"] == "network"
+    assert store.list_skills_catalog() == []
+
+
+def test_returning_to_public_resyncs_project(monkeypatch, tmp_path):
+    store = _setup(monkeypatch, tmp_path)
+    project = store.get_project("demo")
+    project.visibility = "network"
+    store.save_project(project)
+    calls = []
+
+    async def sync(candidate, _token):
+        calls.append((candidate.branch, candidate.visibility))
+        store.save_project(candidate)
+        return {"project": {}}
+
+    monkeypatch.setattr("hub.app.main._sync_project", sync)
+    result = _run(UpdateProjectBody(visibility="public"))
+
+    assert result["visibility"] == "public"
+    assert calls == [("koi/research", "public")]
 
 
 def test_invalid_visibility_and_non_owner_are_rejected(monkeypatch, tmp_path):

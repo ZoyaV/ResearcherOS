@@ -637,14 +637,22 @@ async def update_project(
             candidate.secret_token = ""
         candidate.visibility = visibility
 
-    source_changed = (
-        candidate.branch != project.branch
-        or candidate.visibility != project.visibility
+    branch_changed = candidate.branch != project.branch
+    visibility_changed = candidate.visibility != project.visibility
+    needs_public_sync = (
+        visibility_changed and candidate.visibility == "public" and candidate.enabled
     )
-    if source_changed:
+    if branch_changed or needs_public_sync:
         await _sync_project(candidate, session.access_token)
     else:
         store.save_project(candidate)
+        if visibility_changed:
+            snapshot = store.get_snapshot(candidate.slug)
+            if snapshot is not None:
+                meta = snapshot.get("meta")
+                if isinstance(meta, dict):
+                    meta["visibility"] = candidate.visibility
+                    store.save_snapshot(candidate.slug, snapshot)
         if not candidate.enabled or candidate.visibility != "public":
             store.clear_project_skills(candidate.slug)
 
