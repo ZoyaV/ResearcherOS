@@ -3,7 +3,7 @@
 import { KoiApi } from "./api.js";
 
 /** Matches live_log / metrics_dir / live_note lines in card description (see card_live.py). */
-const LIVE_HINT_RE = /^(live_log|metrics_dir|live_note):\s*.+/im;
+const LIVE_HINT_RE = /^(live_log|metrics_dir|live_note|evo_run):\s*.+/im;
 
 /** @param {string} [text] */
 export function cardHasLiveHints(text) {
@@ -238,6 +238,25 @@ function noteHtml(data) {
   return `<div class="card-live-note-block"><p class="card-live-note-text">${escapeHtml(note)}</p></div>`;
 }
 
+function evoHtml(evo) {
+  if (!evo?.configured) {
+    return `<p class="card-live-empty">Укажите <code>evo_run: runs/evo/&lt;run_id&gt;</code> в description карточки или отчёте.</p>`;
+  }
+  if (evo.error) return `<p class="card-live-error">${escapeHtml(evo.error)}</p>`;
+  if (!evo.exists) return `<p class="card-live-empty">Evo state ещё не создан: <code>${escapeHtml(evo.path)}</code></p>`;
+  const summary = evo.summary || {};
+  const experiments = Array.isArray(evo.experiments) ? evo.experiments : [];
+  const rows = experiments.slice(-20).map((item) => {
+    const score = item.score == null ? "—" : String(item.score);
+    const status = item.status || (item.passed === false ? "rejected" : "ok");
+    return `<tr><td>${escapeHtml(item.id || item.experiment_id || "")}</td><td>${escapeHtml(status)}</td><td>${escapeHtml(score)}</td></tr>`;
+  }).join("");
+  return `<div class="card-live-evo">
+    <div class="card-live-evo-summary"><span>Статус: <strong>${escapeHtml(evo.status || "unknown")}</strong></span><span>Лучший score: <strong>${escapeHtml(summary.best_score ?? "—")}</strong></span><span>Экспериментов: <strong>${escapeHtml(summary.experiments ?? experiments.length)}</strong></span></div>
+    ${rows ? `<table class="card-live-evo-table"><thead><tr><th>Ветка</th><th>Статус</th><th>Score</th></tr></thead><tbody>${rows}</tbody></table>` : `<p class="card-live-empty">Evo ещё не записал список экспериментов.</p>`}
+  </div>`;
+}
+
 function paneHtml(view, data, projectId) {
   switch (view) {
     case "status":
@@ -246,6 +265,8 @@ function paneHtml(view, data, projectId) {
       return logHtml(data?.live_log);
     case "metrics":
       return metricsHtml(data?.metrics_dir, projectId);
+    case "evo":
+      return evoHtml(data?.evo);
     case "note":
       return noteHtml(data);
     default:
