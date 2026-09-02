@@ -1,5 +1,11 @@
 # Headless Evo в ResearchOS
 
+Полный пользовательский сценарий: `koi-grill-experiment` проектирует claim и
+карточку в `backlog`, `koi-evo-card` запускает Evo и live-stream, а
+`koi-report-review` оформляет результат в отчёт. Карточка появляется в
+Monitor сразу после перехода в `running` и следующего polling; не нужно ждать
+первого score.
+
 ResearchOS использует Evo как backend поиска по реализации эксперимента. UI
 Evo не встраивается: карточка ResearchOS остаётся источником постановки,
 отчёта и verdict, а ResearchOS Monitor показывает нормализованный статус,
