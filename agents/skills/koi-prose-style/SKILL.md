@@ -46,7 +46,7 @@ project documentation.
 
 ### B. Avoid formulaic AI prose
 
-Use [Wikipedia: Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing)
+Use Wikipedia’s “Signs of AI writing” checklist
 and the short UI checklist in [anti-ai-writing.md](anti-ai-writing.md). Check for:
 
 1. Empty prestige words such as groundbreaking, nuanced, seamless, tapestry,

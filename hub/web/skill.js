@@ -101,13 +101,7 @@
         esc(skill.project_title || skill.project_slug) +
         "</a>" +
         (skill.owner_login ? " · @" + esc(skill.owner_login) : "") +
-        (skill.repo_full_name
-          ? ' · <a href="https://github.com/' +
-            esc(skill.repo_full_name) +
-            '" rel="noopener">' +
-            esc(skill.repo_full_name) +
-            "</a>"
-          : "") +
+        (skill.repo_full_name ? " · " + esc(skill.repo_full_name) : "") +
         "</p>" +
         "</header>" +
         filesBlock(skill) +

@@ -1,6 +1,6 @@
 # Anti-AI prose for KOI
 
-This adapts [Wikipedia: Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing)
+This adapts Wikipedia’s “Signs of AI writing”
 for short ResearchOS text: nodes, cards, questions, conclusions, and knowledge
 documents. These signs are **probabilistic**: one incidental phrase is weak
 evidence, while a cluster in one fragment is `FAIL`.

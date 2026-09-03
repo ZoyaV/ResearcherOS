@@ -208,6 +208,75 @@
     update();
   }
 
+  function isBlockedExternal(href) {
+    if (!href) return false;
+    var raw = String(href).trim();
+    if (!raw || raw === "#" || raw.indexOf("javascript:") === 0 || raw.indexOf("mailto:") === 0) {
+      return false;
+    }
+    try {
+      var u = new URL(raw, location.href);
+      if (u.protocol !== "http:" && u.protocol !== "https:") return false;
+      // Local preview of the app is allowed; everything else off-site is blocked.
+      if (u.hostname === "127.0.0.1" || u.hostname === "localhost") return false;
+      if (u.origin === location.origin) return false;
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function ensureAnonModal() {
+    var el = document.getElementById("anon-external-modal");
+    if (el) return el;
+    el = document.createElement("div");
+    el.id = "anon-external-modal";
+    el.className = "anon-modal";
+    el.setAttribute("hidden", "");
+    el.innerHTML =
+      '<div class="anon-modal__backdrop" data-anon-close></div>' +
+      '<div class="anon-modal__dialog" role="dialog" aria-modal="true" aria-labelledby="anon-external-title">' +
+      '<h2 id="anon-external-title" class="anon-modal__title">External link unavailable</h2>' +
+      '<p class="anon-modal__body">This is anonymous code. You cannot connect to an external resource.</p>' +
+      '<button type="button" class="anon-modal__ok btn btn-primary" data-anon-close>OK</button>' +
+      "</div>";
+    document.body.appendChild(el);
+    return el;
+  }
+
+  function openAnonModal() {
+    var el = ensureAnonModal();
+    el.removeAttribute("hidden");
+    document.documentElement.classList.add("anon-modal-open");
+    var ok = el.querySelector(".anon-modal__ok");
+    if (ok) ok.focus();
+  }
+
+  function closeAnonModal() {
+    var el = document.getElementById("anon-external-modal");
+    if (!el) return;
+    el.setAttribute("hidden", "");
+    document.documentElement.classList.remove("anon-modal-open");
+  }
+
+  function initAnonExternalBlock() {
+    document.addEventListener("click", function (e) {
+      var a = e.target.closest("a");
+      if (!a) return;
+      var blocked =
+        a.hasAttribute("data-anon-external") || isBlockedExternal(a.getAttribute("href"));
+      if (!blocked) return;
+      e.preventDefault();
+      openAnonModal();
+    });
+    document.addEventListener("click", function (e) {
+      if (e.target.closest("[data-anon-close]")) closeAnonModal();
+    });
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape") closeAnonModal();
+    });
+  }
+
   document.querySelectorAll(".graph .mermaid").forEach(function (el) {
     if (!el.getAttribute("data-src")) {
       el.setAttribute("data-src", el.textContent);
@@ -221,4 +290,5 @@
   initScrollHint();
   loadSkillsGrid();
   initMermaid(false);
+  initAnonExternalBlock();
 })();

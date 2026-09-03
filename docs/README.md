@@ -7,7 +7,7 @@ Two entry points are organized by audience:
 | **Human** | [human/](human/) | [getting-started.md](human/getting-started.md) |
 | **IDE agent** | [agents.md](agents.md) | [AGENTS.md](../AGENTS.md) |
 
-Platform feature pages, styled like docs-site, live in [features/](features/); start with [features/README.md](features/README.md).
+Platform feature pages live in the public site: [docs-site/features/](../docs-site/features/) (nav link **Docs**).
 
 ## Humans (`docs/human/`)
 

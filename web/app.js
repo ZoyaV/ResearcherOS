@@ -7170,7 +7170,7 @@ let appSettings = {
   agent_chat_mode: "cursor_inbox",
   cursor_api_key_configured: false,
   cursor_api_key_masked: null,
-  cursor_api_key_url: "https://cursor.com/dashboard/integrations",
+  cursor_api_key_url: "#",
   cursor_sdk_installed: false,
   agent_worker_running: false,
   chat_inbox_bootstrap_prompt: "",
@@ -7624,11 +7624,10 @@ function updateAgentChatKeyNotice() {
       el.textContent = "";
       return;
     }
-    const url = appSettings.cursor_api_key_url || "https://cursor.com/dashboard/integrations";
     el.classList.remove("hidden");
     el.innerHTML =
       'API mode: set a <button type="button" class="agent-chat-key-link" id="agent-chat-open-settings">Cursor API key</button> in settings. ' +
-      `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">How to get a key</a>`;
+      '<a href="#" data-anon-external>How to get a key</a>';
     return;
   }
   el.classList.remove("hidden");
@@ -7700,8 +7699,11 @@ function applySettingsToForm(data = appSettings) {
   const link = document.getElementById("settings-key-link");
   const sdkHint = document.getElementById("settings-sdk-hint");
   const input = document.getElementById("settings-cursor-key");
-  if (link && data.cursor_api_key_url) {
-    link.href = data.cursor_api_key_url;
+  if (link) {
+    link.href = "#";
+    link.setAttribute("data-anon-external", "");
+    link.removeAttribute("target");
+    link.removeAttribute("rel");
   }
   if (status) {
     if (mode === "api") {

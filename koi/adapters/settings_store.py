@@ -18,7 +18,7 @@ AGENT_CHAT_MODE_CURSOR_INBOX = "cursor_inbox"
 AGENT_CHAT_MODES = frozenset(
     {AGENT_CHAT_MODE_API, AGENT_CHAT_MODE_CURSOR_IDE, AGENT_CHAT_MODE_CURSOR_INBOX}
 )
-CURSOR_API_KEY_URL = "https://cursor.com/dashboard/integrations"
+CURSOR_API_KEY_URL = "#"
 
 
 def load_env_file() -> None:

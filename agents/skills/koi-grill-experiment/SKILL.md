@@ -10,9 +10,9 @@ description: >-
 
 # KOI: grill an experiment
 
-This interview follows [grill-me](https://www.aihero.dev/skills-grill-me) by
-Matt Pocock: do not accept a rough idea; **push the setup to shared
-understanding** before a run, moving a card to done, or editing code.
+This interview follows grill-me by Matt Pocock: do not accept a rough idea;
+**push the setup to shared understanding** before a run, moving a card to done,
+or editing code.
 
 This is **planning**, not execution. The output is a draft report covering
 Sections 1–3 (or `hypothesis-spec.md`) and a kanban card. Use

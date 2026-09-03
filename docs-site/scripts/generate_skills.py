@@ -9,8 +9,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SKILLS = json.loads((ROOT / "skills.json").read_text(encoding="utf-8"))
 OUT = ROOT / "skills"
-CSS_V = "13"
-JS_V = "12"
+CSS_V = "17"
+JS_V = "14"
 
 THEME_BOOT = """  <script>
     (function () {
@@ -36,9 +36,11 @@ HEADER = f"""  <header class="site-header site-header--detail">
       </a>
       <nav class="nav" aria-label="Main navigation">
         <a href="../index.html#about">About</a>
+        <a href="../index.html#versions">Versions</a>
         <a href="../index.html#start">How to start</a>
         <a href="../index.html#skills" aria-current="page">Skills</a>
-        <a href="https://github.com/ZoyaV/ResearcherOS">GitHub</a>
+        <a href="../index.html#lessons">Lessons</a>
+        <a href="#" data-anon-external>GitHub</a>
 {THEME_BTN}
       </nav>
     </div>
@@ -47,7 +49,7 @@ HEADER = f"""  <header class="site-header site-header--detail">
 FOOTER = f"""  <footer class="site-footer">
     <div class="site-footer__inner">
       <span>ResearcherOS · code / hub</span>
-      <a href="https://github.com/ZoyaV/ResearcherOS">ZoyaV/ResearcherOS</a>
+      <a href="#" data-anon-external>ResearcherOS</a>
     </div>
   </footer>
   <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
@@ -124,7 +126,7 @@ def skill_page(s: dict) -> str:
     </div>
 
     <div class="article__actions">
-      <a class="btn btn-ghost" href="https://github.com/ZoyaV/ResearcherOS/tree/main/agents/skills/{sid}">Source on GitHub</a>
+      <a class="btn btn-ghost" href="#" data-anon-external>Source on GitHub</a>
       <a class="btn btn-primary" href="../index.html#skills">Back to Skills</a>
     </div>
   </main>

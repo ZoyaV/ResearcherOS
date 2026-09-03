@@ -1,6 +1,6 @@
 # ResearcherOS docs-site
 
-Public English-language GitHub Pages site: project overview, three ways to get started, skill catalog, and lessons.
+English-language docs site: project overview, three ways to get started, skill catalog, lessons, and feature docs (`features/`).
 
 ## Run locally
 
@@ -13,11 +13,7 @@ python3 -m http.server 8765
 
 ## Deployment
 
-The [`.github/workflows/pages.yml`](../.github/workflows/pages.yml) workflow publishes `docs-site/` to GitHub Pages on pushes to `main`.
-
-Repository setting: **Settings → Pages → Source: GitHub Actions**.
-
-Project URL: `https://zoyav.github.io/ResearcherOS/` (repository name: `ResearcherOS`).
+This tree is meant for local browsing (`python3 -m http.server`). External hosting and repository URLs are not wired in this anonymous build.
 
 ## Update a skill
 

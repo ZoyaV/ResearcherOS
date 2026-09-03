@@ -2706,7 +2706,7 @@ function resetZoteroStatusDefault() {
   if (!el) return;
   el.className = "rw-settings-hint";
   el.innerHTML =
-    'Key: <a href="https://www.zotero.org/settings/keys" target="_blank" rel="noreferrer">zotero.org/settings/keys</a>';
+    'Key: <a href="#" data-anon-external>zotero.org/settings/keys</a>';
 }
 
 function readZoteroCredentials() {

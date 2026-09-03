@@ -27,7 +27,7 @@ All research data lives in Markdown files — no database required. The engine i
 | 2026-07-24 | **Widgets API** — build your own floating panels on the project workspace (Cursor quota, free GPUs, budget, and similar). Widget files live with the project; ResearcherOS finds the enabled ones and shows them. |
 | 2026-07-22 | **Literature review** — on the Literature page, pick papers from a local library, arXiv, or Zotero, ask a research question, and get groups of similar papers from several AI assistants plus a final report with a map of those groups and a draft Related Work (prior-work) section. |
 | 2026-07-22 | **Hub Skills catalog** — public projects can publish agent skill packages into a shared Hub pool; after sync, open packages appear on the Skills tab for others to browse and download. |
-| 2026-07-22 | **Telegram channel for product news** — public channel [@researcher_os](https://t.me/researcher_os) for ResearcherOS development updates (new features, the web interface, and Hub — a catalog of shared tools); not experiment metrics. |
+| 2026-07-22 | **Telegram channel for product news** — public channel for ResearcherOS development updates (new features, the web interface, and Hub — a catalog of shared tools); not experiment metrics. |
 | 2026-07-17 | **`tree/` layout + install CLI** — research data under `tree/<repo>/koi-structure/` (branch `koi/research`); code in sibling `<repo>/`. One command: `python -m koi.projects.install_cli install <repo>`. |
 | 2026-07-16 | **Composite merge by title** — shared ancestors match on `(type, normalized title, parent)`, not only id; remaps child/board links. Fixes duplicate problem/cause branches in ResearcherOS and Hub. ADR: [docs/adr-002-composite-view.md](docs/adr-002-composite-view.md). |
 | 2026-07-15 | **DAG layout JSON** — card positions in DAG view persist to `koi-structure/dag-layouts/<board_id>.json` (API `GET/PUT /projects/{id}/boards/{board_id}/dag-layout`); browser `localStorage` is migrated on first open. |
@@ -43,12 +43,12 @@ All research data lives in Markdown files — no database required. The engine i
 
 ## Installation
 
-Requirements: Python 3.10+, `git`, `curl`. Optional: [tectonic](https://tectonic-typesetting.github.io) or `pdflatex` for NeurIPS PDF export.
+Requirements: Python 3.10+, `git`, `curl`. Optional: `tectonic` or `pdflatex` for NeurIPS PDF export.
 
 ### Clone
 
 ```bash
-git clone git@github.com:ZoyaV/ResearcherOS.git ReseachOS
+git clone <ResearcherOS-source> ReseachOS
 cd ReseachOS
 ```
 
@@ -219,6 +219,6 @@ Where research lives: tree + kanban in UI or `koi-structure/project.md`; reports
 
 | | |
 |---|---|
-| Public site (GitHub Pages) | [docs-site/](docs-site/) → after deploy: `https://zoyav.github.io/ResearcherOS/` |
+| Docs site (local) | [docs-site/](docs-site/) |
+| Feature docs | [docs-site/features/](docs-site/features/) |
 | Documentation | [docs/](docs/) |
-| Issues | [github.com/ZoyaV/ResearcherOS/issues](https://github.com/ZoyaV/ResearcherOS/issues) |

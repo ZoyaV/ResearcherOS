@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from koi.adapters.settings_store import CURSOR_API_KEY_URL
-
 ANSWER_FORMAT_INSTRUCTIONS = """
 Answer format for the UI panel:
 1. Write connected natural English that explains the subject, related facts,
@@ -58,5 +56,5 @@ def no_cursor_key_warning() -> str:
         "The agent can currently answer only from existing research.json conclusions. "
         "For complete answers to arbitrary questions, add the key in ResearchOS settings "
         "using the Settings button in the top bar.\n\n"
-        f"Get a key: {CURSOR_API_KEY_URL}"
+        "This is anonymous code. You cannot connect to an external resource to obtain a key."
     )
