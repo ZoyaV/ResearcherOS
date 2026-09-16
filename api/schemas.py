@@ -51,6 +51,7 @@ class UpdateCardBody(BaseModel):
     column_id: Optional[str] = None
     tags: Optional[list[str]] = None
     depends_on: Optional[list[str]] = None
+    pinned: Optional[bool] = None
 
 
 class CreateCardBody(BaseModel):

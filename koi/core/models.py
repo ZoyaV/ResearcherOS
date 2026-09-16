@@ -84,6 +84,7 @@ class ExperimentCard(BaseModel):
     linked_node_id: Optional[str] = None  # optional link to tree experiment node
     created_at: Optional[str] = None  # ISO-8601 UTC, set on create
     updated_at: Optional[str] = None  # ISO-8601 UTC, bumped on every card update
+    pinned: bool = False  # stay at the top of the kanban column
 
 
 class KanbanBoard(BaseModel):

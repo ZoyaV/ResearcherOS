@@ -11,7 +11,7 @@ import {
   computeCostChipHtml,
   mergeComputeCost,
 } from "./compute-cost.js";
-import { KoiApi } from "./api.js?v=20260826t";
+import { KoiApi } from "./api.js?v=20260902a";
 import { createPaperCollabClient, localUserName } from "./paper-collab.js?v=20260829d";
 import { destroyKanbanDagView, fitKanbanDagView, refreshKanbanDagView } from "./kanban-dag.js?v=20260715a";
 import { clearKanbanMilestones, clearMilestoneBoardFilter, refreshKanbanMilestones } from "./milestones.js?v=20260807e";
@@ -3653,6 +3653,8 @@ function fillNodeEdit(node) {
 const PAGE_ICON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm1 7V3.5L18.5 9H15zM8 13h8v2H8v-2zm0 4h8v2H8v-2zm0-8h5v2H8V9z"/></svg>`;
 const EYE_ON_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5C21.27 7.61 17 4.5 12 4.5zM12 17a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 .001 6.001A3 3 0 0 0 12 9z"/></svg>`;
 const EYE_OFF_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 6.5c2.76 0 5.26 1.18 7.02 3.08l1.45-1.45 1.41 1.41-18.4 18.4-1.41-1.41 3.1-3.1C3.43 15.35 1.9 13.8 1 12c1.73-4.39 6-7.5 11-7.5 1.1 0 2.16.17 3.16.48l-1.62 1.62A8.2 8.2 0 0 0 12 6.5zm0 11c-2.76 0-5.26-1.18-7.02-3.08l2.12-2.12A4.98 4.98 0 0 0 12 17c.9 0 1.74-.24 2.47-.66l1.55 1.55c-1.2.7-2.57 1.11-4.02 1.11zm3.54-2.12A5 5 0 0 0 9.12 9.46l1.5 1.5A3 3 0 0 1 14.04 14l1.5 1.38z"/></svg>`;
+const TREE_PULL_SVG = `<svg class="project-list__pull-icon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46A7.93 7.93 0 0 0 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74A7.93 7.93 0 0 0 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>`;
+const treeSyncingIds = new Set();
 const OPEN_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7zM5 5v14h14v-7h-2v5H7V7h5V5H5z"/></svg>`;
 const DETACH_SVG = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>`;
 
@@ -4837,7 +4839,7 @@ function setKanbanViewMode(mode) {
     hint.textContent = isHubMode()
       ? "Только просмотр · ↗ — отчёт · фильтр · DAG — связи между карточками"
       : isBoard
-        ? "⠿ — перетащить · + — новая карточка · двойной клик — правка · ↗ — отчёт"
+        ? "⠿ — перетащить · булавка — закрепить сверху · + — новая карточка · двойной клик — правка · ↗ — отчёт"
         : "DAG — → зажать на карточке, отпустить на цели · двойной клик на стрелке — удалить";
   }
 }
@@ -5244,6 +5246,18 @@ function bindKanbanCardEvents(boardEl, board, context = {}) {
       () => getBoardCard(state.project.boards[board.id] || board, cardId) || card,
       { rerenderKanban: true }
     );
+
+    cardEl.querySelector(".card-pin")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const c =
+        getBoardCard(state.project.boards[board.id] || board, cardId) || card;
+      void persistCard(
+        board,
+        cardId,
+        { pinned: !cardIsPinned(c) },
+        { rerenderKanban: true }
+      );
+    });
 
     cardEl.querySelector(".card-copy-path")?.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -6173,6 +6187,31 @@ function kanbanCardLiveInspectBtnHtml(cardId) {
             </button>`;
 }
 
+function cardIsPinned(card) {
+  return Boolean(card?.pinned);
+}
+
+function compareKanbanColumnCards(a, b) {
+  return Number(cardIsPinned(b)) - Number(cardIsPinned(a));
+}
+
+function kanbanCardPinIconHtml() {
+  return `<svg class="card-pin-icon" viewBox="0 0 24 24" aria-hidden="true">
+    <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 17v5M8.2 3.5h7.6M15.2 3.5v7.1c0 .7.3 1.4.8 1.9l1.7 1.7c.4.4.6.9.6 1.4v.9H5.7v-.9c0-.5.2-1 .6-1.4l1.7-1.7c.5-.5.8-1.2.8-1.9V3.5"/>
+  </svg>`;
+}
+
+function kanbanCardPinControlHtml(card, { map = false } = {}) {
+  const pinned = cardIsPinned(card);
+  if (map) {
+    return pinned
+      ? `<span class="card-pin-mark" title="Закреплена" aria-label="Закреплена">${kanbanCardPinIconHtml()}</span>`
+      : "";
+  }
+  const label = pinned ? "Открепить" : "Закрепить";
+  return `<button type="button" class="card-pin" title="${label}" aria-label="${label}" aria-pressed="${pinned ? "true" : "false"}">${kanbanCardPinIconHtml()}</button>`;
+}
+
 function syncKanbanCardLiveInspect(cardEl, card, reportContent = "") {
   if (!cardEl || card.column_id !== "running") return false;
   if (cardEl.querySelector(".card-live-inspect")) return false;
@@ -6231,16 +6270,24 @@ function kanbanCardHtml(c, col, variant = "modal") {
               </div>`
     : `<p class="card-title-display inline-edit-text" title="Двойной клик — редактировать">${escapeHtml(c.title)}</p>
               <input type="text" class="card-title-input inline-edit-field hidden" />`;
+  const pinned = cardIsPinned(c);
+  const pinControl = kanbanCardPinControlHtml(c, { map });
   return `
-        <div class="kanban-card${hasTags ? " has-tag-accent" : ""}${liveBtn ? " has-live" : ""}${costChip ? " has-compute-cost" : ""}" data-card-id="${c.id}"${accentStyle ? ` style="${accentStyle}"` : ""}>
+        <div class="kanban-card${hasTags ? " has-tag-accent" : ""}${liveBtn ? " has-live" : ""}${costChip ? " has-compute-cost" : ""}${pinned ? " is-pinned" : ""}" data-card-id="${c.id}"${pinned ? ' data-pinned="true"' : ""}${accentStyle ? ` style="${accentStyle}"` : ""}>
           <div class="kanban-card-head">
             <span class="card-drag-handle" draggable="true" title="Перетащить в другую колонку" aria-label="Перетащить">${gripIcon}</span>
             <div class="card-text-block">
               ${titleBlock}
-              <p class="card-desc-display inline-edit-text card-desc-text${descEmpty ? " is-empty" : ""}${descTodoOnly ? " has-todo-only" : ""}${descConclusion}" data-placeholder="${escapeHtml(descPlaceholder)}">${escapeHtml(displayDesc)}</p>
+              <p class="card-desc-display inline-edit-text card-desc-text${descEmpty ? " is-empty" : ""}${descTodoOnly ? " has-todo-only" : ""}${descConclusion}" data-placeholder="${escapeHtml(descPlaceholder)}"${
+                !descEmpty && (displayDesc.split(/\n/).length > 3 || displayDesc.length > 160)
+                  ? ` title="${escapeHtml(displayDesc)}"`
+                  : ""
+              }>${escapeHtml(displayDesc)}</p>
               <textarea class="card-desc-input inline-edit-field hidden" rows="3"></textarea>
             </div>
-            ${deleteBtn}
+            ${pinControl || deleteBtn
+              ? `<div class="kanban-card-head-tools">${pinControl}${deleteBtn}</div>`
+              : ""}
           </div>
           ${todoProgress}
           <div class="kanban-card-footer">
@@ -6261,9 +6308,10 @@ function kanbanBoardHtml(board, variant = "modal", { tagFilters = [] } = {}) {
   const filtering = hasActiveKanbanFilters();
   return (board.columns || [])
     .map((col) => {
-      const cards = board.cards.filter(
-        (c) => c.column_id === col.id && cardMatchesKanbanFilters(c, tagFilters)
-      );
+      const cards = board.cards
+        .filter((c) => c.column_id === col.id && cardMatchesKanbanFilters(c, tagFilters))
+        .slice()
+        .sort(compareKanbanColumnCards);
       const totalInCol = board.cards.filter((c) => c.column_id === col.id).length;
       const hiddenByFilter = filtering ? totalInCol - cards.length : 0;
       const countHtml =
@@ -6499,6 +6547,66 @@ function renderProjectListEye(treeId) {
   );
 }
 
+function projectSyncBehind(projectId) {
+  const projects = syncStatus?.projects;
+  if (!Array.isArray(projects)) return 0;
+  const row = projects.find((p) => p.project_id === projectId);
+  return Number(row?.behind) || 0;
+}
+
+function treePullTitle(projectId, behind) {
+  if (behind > 0) {
+    return `Git pull «${projectId}»: на origin ${behind} новых коммитов`;
+  }
+  return `Git pull репозитория «${projectId}»`;
+}
+
+/** Per-repo pull control for a tree (one button) or composite member branch. */
+function renderProjectListPull(projectId) {
+  if (!projectId) return "";
+  const behind = projectSyncBehind(projectId);
+  const title = treePullTitle(projectId, behind);
+  const syncing = treeSyncingIds.has(projectId);
+  const badge =
+    behind > 0
+      ? `<span class="project-list__pull-badge" aria-hidden="true">${behind > 9 ? "9+" : String(behind)}</span>`
+      : `<span class="project-list__pull-badge hidden" aria-hidden="true"></span>`;
+  return (
+    `<button type="button" class="project-list__pull${behind > 0 ? " has-updates" : ""}${syncing ? " is-syncing" : ""}"` +
+    ` data-pull-project-id="${escapeHtml(projectId)}"` +
+    ` title="${escapeHtml(title)}"` +
+    ` aria-label="${escapeHtml(title)}"` +
+    (syncing ? ' aria-busy="true"' : "") +
+    `>${TREE_PULL_SVG}${badge}</button>`
+  );
+}
+
+function applyProjectListPullStatus() {
+  document.querySelectorAll(".project-list__pull[data-pull-project-id]").forEach((btn) => {
+    const id = btn.dataset.pullProjectId;
+    if (!id) return;
+    const behind = projectSyncBehind(id);
+    const syncing = treeSyncingIds.has(id);
+    btn.classList.toggle("has-updates", behind > 0);
+    btn.classList.toggle("is-syncing", syncing);
+    btn.toggleAttribute("aria-busy", syncing);
+    if (!btn.classList.contains("has-error") && !syncing) {
+      const title = treePullTitle(id, behind);
+      btn.title = title;
+      btn.setAttribute("aria-label", title);
+    }
+    const badge = btn.querySelector(".project-list__pull-badge");
+    if (!badge) return;
+    if (behind > 0) {
+      badge.textContent = behind > 9 ? "9+" : String(behind);
+      badge.classList.remove("hidden");
+    } else {
+      badge.textContent = "";
+      badge.classList.add("hidden");
+    }
+  });
+}
+
 function renderProjectListButton(p, currentId) {
   const active = p.id === currentId;
   const hidden = isLabTreeHidden(p.id);
@@ -6513,6 +6621,7 @@ function renderProjectListButton(p, currentId) {
     compositeHint +
     (active ? ' aria-current="true"' : "") +
     `>${escapeHtml(p.title)}</button>` +
+    renderProjectListPull(p.id) +
     renderProjectListEye(p.id) +
     `</div>` +
     `</li>`
@@ -6536,11 +6645,14 @@ function renderCompositeMemberBranch(member, currentId, selectedBranchId) {
   const active = branchActive && (compositeActive || currentId === member.id);
   return (
     `<li class="project-list__item project-list__item--branch">` +
+    `<div class="project-list__row">` +
     `<button type="button" class="project-list__btn project-list__btn--branch${active ? " is-active" : ""}"` +
     ` data-branch-id="${escapeHtml(member.id)}"` +
     ` title="Выбрать ветку для Related Work (дерево остаётся общим)"` +
     (active ? ' aria-current="true"' : "") +
     `><span class="project-list__branch-mark" aria-hidden="true">↳</span> ${escapeHtml(member.title)}</button>` +
+    renderProjectListPull(member.id) +
+    `</div>` +
     `</li>`
   );
 }
@@ -6556,6 +6668,9 @@ function renderCompositeListButton(c, currentId, selectedBranchId) {
         members.map((m) => renderCompositeMemberBranch(m, currentId, selectedBranchId)).join("") +
         `</ul>`
       : "";
+  // One-member composite has no branch list — put that repo's pull on the header row.
+  const headerPull =
+    members.length === 1 ? renderProjectListPull(members[0].id) : "";
   return (
     `<li class="project-list__item project-list__item--composite${hidden ? " is-tree-hidden" : ""}">` +
     `<div class="project-list__row">` +
@@ -6563,6 +6678,7 @@ function renderCompositeListButton(c, currentId, selectedBranchId) {
     ` data-composite-id="${escapeHtml(c.id)}"` +
     (active ? ' aria-current="true"' : "") +
     `><span class="project-list__composite-mark" aria-hidden="true">⎇</span> ${escapeHtml(c.title)}</button>` +
+    headerPull +
     renderProjectListEye(virtualId) +
     `</div>` +
     branches +
@@ -6832,6 +6948,7 @@ async function loadProjectList(activeId) {
         currentId
       );
     }
+    applyProjectListPullStatus();
     return flat;
   }
 
@@ -6868,6 +6985,7 @@ async function loadProjectList(activeId) {
 
     ul.innerHTML = parts.join("");
   }
+  applyProjectListPullStatus();
   return list;
 }
 
@@ -7071,6 +7189,14 @@ function initProjectsSidebar() {
   });
 
   document.getElementById("project-list")?.addEventListener("click", (e) => {
+    const pullBtn = e.target.closest(".project-list__pull");
+    if (pullBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      const projectId = pullBtn.dataset.pullProjectId;
+      if (projectId) void runTreeProjectSync(projectId);
+      return;
+    }
     const eyeBtn = e.target.closest(".project-list__eye");
     if (eyeBtn) {
       e.preventDefault();
@@ -8098,6 +8224,7 @@ function applySyncStatus(data) {
   syncStatus = data;
   const btn = document.getElementById("btn-sync");
   const badge = document.getElementById("sync-behind-badge");
+  applyProjectListPullStatus();
   if (!btn) return;
 
   if (!data?.ok) {
@@ -8125,9 +8252,85 @@ function applySyncStatus(data) {
   }
 }
 
-async function refreshSyncStatus() {
+function treePullAffectsCurrent(projectId) {
+  const currentId = state.project?.id;
+  if (!currentId || !projectId) return false;
+  if (currentId === projectId) return true;
+  if (!isCompositeView()) return false;
+  return (state.project?.members || []).some(
+    (m) => (m.project_id || m.id) === projectId
+  );
+}
+
+/** Per-tree git pull; independent of the topbar Sync (can run in parallel). */
+async function runTreeProjectSync(projectId) {
+  if (!projectId || treeSyncingIds.has(projectId)) return;
+
+  treeSyncingIds.add(projectId);
+  const liveBtn = () =>
+    Array.from(document.querySelectorAll(".project-list__pull")).find(
+      (el) => el.dataset.pullProjectId === projectId
+    );
+  liveBtn()?.classList.add("is-syncing");
+  liveBtn()?.classList.remove("has-error");
+  liveBtn()?.setAttribute("aria-busy", "true");
+  setStatus(`Git pull: ${projectId}…`);
+
   try {
-    const data = await KoiApi.getSyncStatus();
+    const result = await KoiApi.pullSync(projectId);
+
+    if (result.action === "pulled") {
+      const currentId = state.project?.id;
+      const shouldReload = treePullAffectsCurrent(projectId);
+      await loadProjectList(currentId);
+      if (shouldReload && currentId) {
+        if (isCompositeVirtualId(currentId)) {
+          await switchComposite(currentId.slice("composite:".length));
+        } else {
+          await switchProject(currentId);
+        }
+      }
+      if (result.rq_discoveries?.length) {
+        await presentRqDiscoveries(result.rq_discoveries);
+      } else {
+        await loadRqDiscoveryFeed();
+      }
+      setStatus(`Git pull «${projectId}»: готово`);
+      return;
+    }
+
+    if (result.action === "none") {
+      setStatus(`Git pull «${projectId}»: уже актуально`);
+      return;
+    }
+
+    const msg =
+      result.message || result.error || "Синхронизация не выполнена";
+    setStatus(msg, true);
+    const btn = liveBtn();
+    if (btn) {
+      btn.classList.add("has-error");
+      btn.title = msg;
+    }
+  } catch (err) {
+    setStatus(err.message, true);
+    const btn = liveBtn();
+    if (btn) {
+      btn.classList.add("has-error");
+      btn.title = err.message;
+    }
+  } finally {
+    treeSyncingIds.delete(projectId);
+    const btn = liveBtn();
+    btn?.classList.remove("is-syncing");
+    btn?.removeAttribute("aria-busy");
+    void refreshSyncStatus();
+  }
+}
+
+async function refreshSyncStatus({ fetch = true } = {}) {
+  try {
+    const data = await KoiApi.getSyncStatus(fetch);
     applySyncStatus(data);
     return data;
   } catch {
@@ -8184,11 +8387,14 @@ function initSync() {
   document.getElementById("btn-sync")?.addEventListener("click", () => {
     void runProjectSync();
   });
-  void refreshSyncStatus();
+  // Cached refs first (instant badges), then a live fetch in the background.
+  void refreshSyncStatus({ fetch: false }).then(() => {
+    void refreshSyncStatus({ fetch: true });
+  });
   void checkPendingRqDiscoveries();
   if (syncPollTimer) clearInterval(syncPollTimer);
   syncPollTimer = setInterval(() => {
-    void refreshSyncStatus();
+    void refreshSyncStatus({ fetch: true });
   }, SYNC_POLL_MS);
   if (rqDiscoveryPollTimer) clearInterval(rqDiscoveryPollTimer);
   rqDiscoveryPollTimer = setInterval(() => {

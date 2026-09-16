@@ -172,6 +172,39 @@ Method
     assert reloaded_by_id == by_id
 
 
+def test_roundtrip_preserves_card_pinned() -> None:
+    text = """---
+id: proj-pin
+title: Pins
+---
+# problem: root
+
+Root
+
+#### method: m1
+
+Method
+
+<!-- koi:kanban board-m1 -->
+| backlog | running | done | successful |
+| --- | --- | --- | --- |
+| Pinned <!-- id:c-pin pinned:1 desc:keep top --> | | | |
+| Plain <!-- id:c-plain desc:no pin --> | | | |
+"""
+    project = parse_project_md(text, project_id="proj-pin")
+    board = project.boards[0]
+    by_id = {c.id: c for c in board.cards}
+    assert by_id["c-pin"].pinned is True
+    assert by_id["c-plain"].pinned is False
+    assert by_id["c-pin"].description == "keep top"
+
+    reserialized = serialize_project_md(project)
+    assert "pinned:1" in reserialized
+    reloaded = parse_project_md(reserialized, project_id="proj-pin")
+    re_by_id = {c.id: c.pinned for c in reloaded.boards[0].cards}
+    assert re_by_id == {"c-pin": True, "c-plain": False}
+
+
 def test_roundtrip_preserves_card_depends_on() -> None:
     text = """---
 id: proj-deps

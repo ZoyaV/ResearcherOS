@@ -140,15 +140,19 @@ def _parse_card_timestamp(raw: str) -> Optional[str]:
         return stamp if re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z?", stamp) else None
 
 
+_PINNED_TRUE = {"1", "true", "yes", "on"}
+
+
 def _parse_card_comment(
     meta: str,
-) -> tuple[Optional[str], str, list[str], list[str], Optional[str], Optional[str]]:
+) -> tuple[Optional[str], str, list[str], list[str], Optional[str], Optional[str], bool]:
     card_id: Optional[str] = None
     desc = ""
     tags: list[str] = []
     depends_on: list[str] = []
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
+    pinned = False
 
     id_m = re.search(r"\bid:(\S+)", meta)
     if id_m:
@@ -172,9 +176,13 @@ def _parse_card_comment(
     if tags_m:
         tags = _parse_card_tags(tags_m.group(1).strip())
 
+    pinned_m = re.search(r"\bpinned:([^\s]+)", meta)
+    if pinned_m:
+        pinned = pinned_m.group(1).strip().lower() in _PINNED_TRUE
+
     meta_for_desc = meta
     for m in sorted(
-        (m for m in (deps_m, tags_m, created_m, updated_m) if m),
+        (m for m in (deps_m, tags_m, created_m, updated_m, pinned_m) if m),
         key=lambda m: m.start(),
         reverse=True,
     ):
@@ -184,21 +192,23 @@ def _parse_card_comment(
     if desc_m:
         desc = _decode_card_desc(desc_m.group(1).strip())
 
-    return card_id, desc, tags, depends_on, created_at, updated_at
+    return card_id, desc, tags, depends_on, created_at, updated_at, pinned
 
 
 def _parse_card_cell(
     raw: str,
-) -> tuple[str, Optional[str], str, list[str], list[str], Optional[str], Optional[str]]:
+) -> tuple[str, Optional[str], str, list[str], list[str], Optional[str], Optional[str], bool]:
     m = CARD_META_RE.match(raw)
     if not m:
-        return raw.strip(), None, "", [], [], None, None
+        return raw.strip(), None, "", [], [], None, None, False
     title = m.group(1).strip()
     comment = m.group(2)
     if not comment:
-        return title, None, "", [], [], None, None
-    card_id, desc, tags, depends_on, created_at, updated_at = _parse_card_comment(comment)
-    return title, card_id, desc, tags, depends_on, created_at, updated_at
+        return title, None, "", [], [], None, None, False
+    card_id, desc, tags, depends_on, created_at, updated_at, pinned = _parse_card_comment(
+        comment
+    )
+    return title, card_id, desc, tags, depends_on, created_at, updated_at, pinned
 
 
 def _split_frontmatter(text: str) -> tuple[dict[str, Any], str]:
@@ -289,8 +299,8 @@ def _parse_kanban_table(lines: list[str], board_id: str, owner_node_id: str) -> 
         for col_id, raw in zip(header_cells, cells):
             if not raw or raw in ("—", "-", ""):
                 continue
-            title, card_id, desc, tags, depends_on, created_at, updated_at = _parse_card_cell(
-                raw
+            title, card_id, desc, tags, depends_on, created_at, updated_at, pinned = (
+                _parse_card_cell(raw)
             )
             cards.append(
                 ExperimentCard(
@@ -303,6 +313,7 @@ def _parse_kanban_table(lines: list[str], board_id: str, owner_node_id: str) -> 
                     depends_on=depends_on,
                     created_at=created_at,
                     updated_at=updated_at,
+                    pinned=pinned,
                 )
             )
 
@@ -436,6 +447,8 @@ def _format_card(cell: ExperimentCard) -> str:
     parts: list[str] = []
     if cell.id:
         parts.append(f"id:{cell.id}")
+    if cell.pinned:
+        parts.append("pinned:1")
     if cell.created_at:
         parts.append(f"created:{cell.created_at}")
     if cell.updated_at:

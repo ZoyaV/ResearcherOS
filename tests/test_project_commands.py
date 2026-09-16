@@ -363,6 +363,40 @@ def test_update_card_renames_report_and_enqueues_edit(
     ]
 
 
+def test_update_card_toggles_pinned_without_touching_updated_at(
+    project: Project,
+    command_context: dict[str, list],
+) -> None:
+    card = project.boards[0].cards[0]
+    card.updated_at = "2026-01-01T00:00:00Z"
+
+    result = project_commands.update_card(
+        "demo",
+        "board-method",
+        "card-a",
+        project_commands.UpdateCardCommand(pinned=True),
+    )
+
+    pinned = result.boards[0].cards[0]
+    assert pinned.pinned is True
+    assert pinned.updated_at == "2026-01-01T00:00:00Z"
+    assert command_context["sync"] == [
+        ("demo", "kanban_updated", "закреплена карточка Card A")
+    ]
+
+    command_context["sync"].clear()
+    result = project_commands.update_card(
+        "demo",
+        "board-method",
+        "card-a",
+        project_commands.UpdateCardCommand(pinned=False),
+    )
+    assert result.boards[0].cards[0].pinned is False
+    assert command_context["sync"] == [
+        ("demo", "kanban_updated", "откреплена карточка Card A")
+    ]
+
+
 def test_delete_card_removes_incoming_dependencies(
     project: Project,
     command_context: dict[str, list],

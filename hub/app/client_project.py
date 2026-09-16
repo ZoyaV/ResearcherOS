@@ -66,6 +66,7 @@ def project_from_client(data: dict) -> Project:
                 linked_node_id=card.get("linked_node_id"),
                 created_at=card.get("created_at") or None,
                 updated_at=card.get("updated_at") or None,
+                pinned=bool(card.get("pinned")),
             )
             for card in raw_board.get("cards") or []
         ]

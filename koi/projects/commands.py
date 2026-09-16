@@ -86,6 +86,7 @@ class UpdateCardCommand:
     column_id: Optional[str] = None
     tags: Optional[tuple[str, ...]] = None
     depends_on: Optional[tuple[str, ...]] = None
+    pinned: Optional[bool] = None
 
 
 @dataclass(frozen=True)
@@ -397,6 +398,12 @@ def update_card(
             card.depends_on = dependencies
             dependencies_changed = True
             touched = True
+    pin_changed = False
+    if command.pinned is not None:
+        pinned = bool(command.pinned)
+        if pinned != bool(card.pinned):
+            card.pinned = pinned
+            pin_changed = True
 
     if touched:
         now = card_now_iso()
@@ -416,6 +423,9 @@ def update_card(
         _enqueue_sync(project_id, "kanban_updated", f"связи DAG карточки {card.title}")
     elif command.title is not None or command.description is not None or command.tags is not None:
         _enqueue_sync(project_id, "kanban_updated", f"правка карточки {card.title}")
+    elif pin_changed:
+        verb = "закреплена" if card.pinned else "откреплена"
+        _enqueue_sync(project_id, "kanban_updated", f"{verb} карточка {card.title}")
 
     if command.title is not None and command.title != old_title:
         card_reports.rename_report_for_card(project, board_id, card_id, card.title)
